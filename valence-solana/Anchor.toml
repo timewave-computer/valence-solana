@@ -1,0 +1,22 @@
+[features]
+seeds = true
+skip-lint = false
+
+[programs.localnet]
+authorization = "AuthorizationProgramxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+registry = "ValenceRegistryProgramxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+processor = "ProcessorProgramxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+base_account = "BaseAccountProgramxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+storage_account = "StorageAccountProgramxxxxxxxxxxxxxxxxxxxxxx"
+single_use_account = "SingleUseAccountProgramxxxxxxxxxxxxxxxxxxxx"
+account_factory = "AccountFactoryProgramxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts" 

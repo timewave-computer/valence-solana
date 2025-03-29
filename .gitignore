@@ -24,3 +24,9 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw? 
+
+# Working files
+work/
+scripts/
+result/
+valence-solana/app/
