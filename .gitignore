@@ -29,4 +29,4 @@ yarn-error.log*
 work/
 scripts/
 result/
-valence-solana/app/
+app/

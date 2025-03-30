@@ -5,9 +5,6 @@ This document outlines the architectural plan for implementing Valence Protocol 
 ## System Overview
 
 ```mermaid
----
-title: Valence Protocol Solana Architecture
----
 graph TD
     subgraph "Valence Core Programs"
         AP[Authorization Program]
@@ -19,7 +16,6 @@ graph TD
     subgraph "Account Programs"
         BAP[Base Account Program]
         SAP[Storage Account Program]
-        SUA[Single-Use Account Program]
     end
     
     subgraph "Library Programs"
@@ -32,10 +28,8 @@ graph TD
     AP -- "registers/queries" --> VR
     PP -- "executes on" --> BAP
     PP -- "executes on" --> SAP
-    PP -- "executes on" --> SUA
     AF -- "creates" --> BAP
     AF -- "creates" --> SAP
-    AF -- "creates" --> SUA
     BAP -- "approves" --> LP1
     BAP -- "approves" --> LP2
     BAP -- "approves" --> LP3
@@ -48,7 +42,7 @@ graph TD
 The Authorization Program is the entry point for Valence Programs on Solana, managing permissions and routing messages to the Processor Program.
 
 **Program Accounts Structure:**
-```
+```rust
 AuthorizationState {
     owner: Pubkey,                      // Program authority
     sub_owners: Vec<Pubkey>,            // Secondary authorities
@@ -96,7 +90,7 @@ CurrentExecution {
 The Valence Registry maintains information about approved libraries and their configurations.
 
 **Program Accounts Structure:**
-```
+```rust
 RegistryState {
     owner: Pubkey,                      // Registry authority
     authorization_program_id: Pubkey,   // Linked Authorization Program
@@ -121,7 +115,7 @@ LibraryInfo {
 The Processor Program executes messages received from the Authorization Program, maintaining priority queues and enforcing execution rules.
 
 **Program Accounts Structure:**
-```
+```rust
 ProcessorState {
     authorization_program_id: Pubkey,    // Authorization program ID
     is_paused: bool,                     // Processor active state
@@ -175,7 +169,7 @@ PendingCallback {
 Holds assets (tokens) and allows approved libraries to execute operations. Accounts can safely custody both SPL tokens and native SOL.
 
 **Program Accounts Structure:**
-```
+```rust
 AccountState {
     owner: Pubkey,                      // Account owner
     approved_libraries: Vec<Pubkey>,    // Approved library programs
@@ -210,7 +204,7 @@ ApprovalNonce {
 Extends Base Account with key-value storage capabilities. Can store both tokens and arbitrary data in an efficient format.
 
 **Program Accounts Structure:**
-```
+```rust
 StorageAccountState {
     base_account: AccountState,          // Base account state
     storage_authority: Pubkey,           // PDA for storage management
@@ -235,38 +229,12 @@ StorageItem {
 - Optimize storage layout for common access patterns
 - Implement lazy loading for large values
 
-#### Single-Use Account Program
-
-A specialized account that enforces a "use-once" rule where all funds/data must be transferred out on first use. Useful for atomic operations, escrow patterns, and enhanced security.
-
-**Program Accounts Structure:**
-```
-SingleUseAccountState {
-    base_account: AccountState,           // Base account state
-    was_used: bool,                       // Whether account was used
-    required_destination: Option<Pubkey>, // Required destination (if any)
-    expiration_time: Option<i64>,         // Auto-close timestamp
-}
-```
-
-**Key Instructions:**
-- **Initialize**: Create single-use account with owner
-- **Execute**: Run operation and ensure full withdrawal (fails if anything remains)
-- **EmergencyRecover**: Allow owner to recover funds after expiration
-
-**Security Mechanisms:**
-- Prevents funds from being left behind after use
-- Account automatically marks itself as used after first operation
-- Validates all token accounts are empty after execution
-- Enforced destination if specified during initialization
-- Time-based expiration with recovery mechanism
-
 ### 5. Account Factory Program
 
 The Account Factory enables efficient creation and initialization of accounts in a single transaction, reducing the typical multi-step process of account creation.
 
 **Program Accounts Structure:**
-```
+```rust
 FactoryState {
     owner: Pubkey,                      // Factory owner
     valence_registry: Pubkey,           // Valence Registry address
@@ -276,7 +244,7 @@ FactoryState {
 
 AccountTemplate {
     name: String,                       // Template name
-    account_type: AccountType,          // Base, Storage, SingleUse
+    account_type: AccountType,          // Base, Storage
     default_config: Vec<u8>,            // Default configuration
     is_active: bool,                    // Whether template is active
 }
@@ -307,7 +275,7 @@ AccountTemplate {
 Libraries implement specific DeFi operations that operate on accounts.
 
 **Common Structure:**
-```
+```rust
 LibraryConfig {
     owner: Pubkey,                       // Library owner
     processor_program_id: Pubkey,        // Authorized processor
@@ -359,7 +327,6 @@ LibraryConfig {
 5. **Account Lifecycle**:
    - Accounts are created via Account Factory for efficiency
    - Regular accounts hold tokens/data indefinitely
-   - Single-use accounts enforce complete withdrawal after one use
    - Libraries operate on accounts according to their approval status
 
 ## Implementation Challenges and Solutions
@@ -421,11 +388,6 @@ LibraryConfig {
 - **Factory-Account Interface**: Factory initializes accounts with proper structure
 - **Client-Factory Interface**: Clients create accounts with minimal transactions
 
-### Single-Use Account Interface
-- **One-time Execution**: Only allows a single execution that empties the account
-- **Destination Verification**: Ensures funds go to pre-approved destinations
-- **Expiration Handling**: Provides recovery mechanism for expired accounts
-
 ## Security Considerations
 
 1. **Program Separation and Authorization**
@@ -449,26 +411,3 @@ LibraryConfig {
    - Permission checks for template registration
    - Rate limiting for account creation
    - Fee mechanisms to prevent spam
-
-5. **Single-Use Account Protection**
-   - Atomic execution ensures all-or-nothing operations
-   - Verification that all assets leave account
-   - Fallback recovery mechanisms for owners
-
-## Development Roadmap
-
-1. **Phase 1: Core Infrastructure**
-   - Authorization and Registry Programs
-   - Processor Program with queue management
-   - Base Account Program
-
-2. **Phase 2: Extensions**
-   - Storage Account Program
-   - Core Library implementations (Token Swap, Yield Farming)
-   - Integration test suite
-
-3. **Phase 3: Optimization and Security**
-   - Instruction batching and chunking optimizations
-   - Compute budget management
-   - Security audit
-   - Testnet deployment
