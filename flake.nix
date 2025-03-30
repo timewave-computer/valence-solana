@@ -16,11 +16,20 @@
         # Specify Solana version explicitly
         solana-version = "1.17.20";
         anchor-version = "0.29.0";
+        defaultDevnet = "https://api.devnet.solana.com";
         
         # Use stable Rust with specific components needed for Solana/Anchor development
         rustWithComponents = pkgs.rust-bin.stable.latest.default.override {
           extensions = [ "rust-src" "rust-analyzer" "clippy" "rustfmt" ];
           targets = [ "wasm32-unknown-unknown" ];
+        };
+
+        # Environment variables for macOS with Apple Silicon
+        macosMacOSEnvironment = pkgs.lib.optionalAttrs (system == "aarch64-darwin" || system == "x86_64-darwin") {
+          MACOSX_DEPLOYMENT_TARGET = "11.0";
+          CARGO_BUILD_TARGET = if system == "aarch64-darwin" then "aarch64-apple-darwin" else "x86_64-apple-darwin";
+          RUSTFLAGS = "-C link-arg=-undefined -C link-arg=dynamic_lookup";
+          BINDGEN_EXTRA_CLANG_ARGS = "-I${pkgs.libclang.lib}/lib/clang/${pkgs.libclang.version}/include";
         };
 
         # Define a script to install Anchor with specific version
@@ -179,7 +188,7 @@
           # Add ledger directory
           VALIDATOR_ARGS+=(--ledger "$LEDGER_DIR")
 
-          echo "Starting Solana validator with args: ${VALIDATOR_ARGS[*]}"
+          echo "Starting Solana validator with args: ''${VALIDATOR_ARGS[@]}"
 
           # Start the validator in the background
           if $QUIET; then
@@ -456,50 +465,20 @@ EOF
           ];
 
           shellHook = ''
-            export RUST_SRC_PATH="${rustWithComponents}/lib/rustlib/src/rust/library"
-            export RUST_BACKTRACE=1
+            echo "Entering Valence Solana development environment..."
             export PATH=$PATH:$HOME/.cargo/bin
-            
-            # Set Solana home directories
-            export SOLANA_HOME="$HOME/.local/share/solana"
-            mkdir -p "$SOLANA_HOME"
-            
-            # Clean up any test-ledger directories
-            find . -type d -name "test-ledger" -exec rm -rf {} + 2>/dev/null || true
-            
-            # Make sure Solana config directory exists
-            mkdir -p "$HOME/.config/solana"
-            
-            # Set Anchor environment variables 
-            export ANCHOR_WALLET="$HOME/.config/solana/id.json"
-            
-            # Create a wallet if it doesn't exist
-            if [ ! -f "$HOME/.config/solana/id.json" ]; then
-              echo "Creating a new Solana wallet..."
-              solana-keygen new --no-bip39-passphrase -o "$HOME/.config/solana/id.json" --silent
+            ${setupAnchorScript}/bin/setup-anchor
+            # Check if devnet needs to be updated
+            if [ -z "$(solana config get | grep 'RPC URL: ${defaultDevnet}')" ]; then
+              echo "Setting up devnet configuration..."
+              solana config set --url ${defaultDevnet}
             fi
-            
-            # Configure Solana to use localhost
-            solana config set --url http://127.0.0.1:8899 > /dev/null
-            
-            # Setup Anchor CLI if needed
-            if ! command -v anchor &> /dev/null; then
-              echo "Note: Anchor CLI not found in path. Run setup-anchor to install."
-            fi
-            
-            echo "==================================================================="
-            echo "Valence Protocol Solana Development Environment Activated!"
-            echo "==================================================================="
-            echo "Commands available:"
-            echo "  start-solana-node     - Start a basic local Solana validator"
-            echo "  enhanced-validator    - Start an advanced Solana validator with more options"
-            echo "  setup-solana-local    - Configure and fund a local wallet"
-            echo "  setup-anchor          - Install Anchor CLI ${anchor-version}"
-            echo "  create-anchor-workspace <name> - Create a new Anchor workspace"
-            echo "  create-program <name> - Create a new program in the workspace"
-            echo "  build-and-test        - Build and test the Anchor project"
-            echo "==================================================================="
+            echo "Solana configuration:"
+            solana config get
           '';
+
+          # Include Apple Silicon environment variables
+          inherit (macosMacOSEnvironment) MACOSX_DEPLOYMENT_TARGET CARGO_BUILD_TARGET RUSTFLAGS BINDGEN_EXTRA_CLANG_ARGS;
         };
       }
     );
