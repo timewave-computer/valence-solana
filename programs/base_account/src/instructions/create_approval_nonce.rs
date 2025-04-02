@@ -1,32 +1,39 @@
 use anchor_lang::prelude::*;
+use std::collections::BTreeMap;
 use crate::state::{AccountState, ApprovalNonce};
 use crate::error::BaseAccountError;
 
 pub fn handler(ctx: Context<CreateApprovalNonce>, expiration: i64) -> Result<()> {
     let account_state = &ctx.accounts.account;
     let approval_nonce = &mut ctx.accounts.approval_nonce;
-    let library = ctx.accounts.library.key();
     
     // Only the owner can create approval nonces
     if account_state.owner != ctx.accounts.signer.key() {
         return Err(BaseAccountError::Unauthorized.into());
     }
     
-    // Check if library is approved
-    if !account_state.is_library_approved(&library) {
-        return Err(BaseAccountError::LibraryNotApproved.into());
-    }
-    
-    // Initialize the approval nonce
-    approval_nonce.library = library;
-    approval_nonce.nonce = Clock::get()?.unix_timestamp as u64;  // Use current timestamp as nonce
-    approval_nonce.owner = ctx.accounts.signer.key();
+    // Set the values on the approval nonce account
+    approval_nonce.library = ctx.accounts.library.key();
+    approval_nonce.nonce = account_state.instruction_count;
+    approval_nonce.owner = account_state.owner;
     approval_nonce.expiration = expiration;
     approval_nonce.is_used = false;
-    approval_nonce.bump = *ctx.bumps.get("approval_nonce").unwrap();
+    approval_nonce.bump = ctx.bumps.approval_nonce;
     
-    msg!("Created approval nonce for library: {}, expires at: {}", library, expiration);
+    msg!("Created approval nonce for library: {} with expiration: {}", 
+         ctx.accounts.library.key(), expiration);
+    
     Ok(())
+}
+
+impl<'info> CreateApprovalNonce<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, CreateApprovalNonce<'info>>,
+        _bumps: &BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]

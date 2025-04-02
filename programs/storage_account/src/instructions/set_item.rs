@@ -39,6 +39,26 @@ pub struct SetItem<'info> {
     pub system_program: Program<'info, System>,
 }
 
+impl<'info> SetItem<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, SetItem<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation beyond the account constraints can be added here
+        // For example, checking key length or value size limits
+        let params = ctx.remaining_accounts.get(0)
+            .ok_or(StorageAccountError::MissingRequiredParameters)?;
+        
+        // Validate that the key length is reasonable
+        let key_length = params.data.borrow_mut()[0] as usize;
+        if key_length == 0 || key_length > 100 {
+            return Err(StorageAccountError::InvalidKeyLength.into());
+        }
+        
+        Ok(())
+    }
+}
+
 pub fn handler(ctx: Context<SetItem>, params: SetItemParams) -> Result<()> {
     let storage_account = &mut ctx.accounts.storage_account;
     let storage_item = &mut ctx.accounts.storage_item;

@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, TokenAccount, Token, Transfer};
 use crate::state::BaseAccount;
 use crate::error::BaseAccountError;
 
@@ -7,6 +7,17 @@ use crate::error::BaseAccountError;
 pub struct TransferTokensParams {
     pub amount: u64,
 }
+
+impl<'info> TransferTokens<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, TransferTokens<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
 
 #[derive(Accounts)]
 pub struct TransferTokens<'info> {
@@ -47,18 +58,19 @@ pub fn handler(ctx: Context<TransferTokens>, params: TransferTokensParams) -> Re
     ];
     
     // Transfer tokens
-    token::transfer(
-        CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            token::Transfer {
-                from: ctx.accounts.source_token_account.to_account_info(),
-                to: ctx.accounts.destination_token_account.to_account_info(),
-                authority: ctx.accounts.authority.to_account_info(),
-            },
-            &[&seeds[..]],
-        ),
-        params.amount,
-    )?;
+    let transfer_accounts = Transfer {
+        from: ctx.accounts.source_token_account.to_account_info(),
+        to: ctx.accounts.destination_token_account.to_account_info(),
+        authority: ctx.accounts.base_account.to_account_info(),
+    };
+    
+    let cpi_ctx = CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        transfer_accounts,
+        &[&seeds[..]],
+    );
+    
+    token::transfer(cpi_ctx, params.amount)?;
     
     // Increment the instruction count
     base_account.increment_instruction_count();

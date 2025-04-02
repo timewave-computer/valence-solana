@@ -15,6 +15,17 @@ pub fn handler(ctx: Context<Initialize>, processor_id: Pubkey, registry_id: Pubk
     Ok(())
 }
 
+impl<'info> Initialize<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, Initialize<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
+
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(

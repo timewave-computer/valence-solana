@@ -8,6 +8,17 @@ pub struct InitializeParams {
     pub fee_receiver: Option<Pubkey>,
 }
 
+impl<'info> Initialize<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, Initialize<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
+
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(mut)]

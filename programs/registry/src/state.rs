@@ -14,6 +14,23 @@ pub struct RegistryState {
     pub bump: u8,
 }
 
+impl<'info> Initialize
+UpdateLibraryStatus
+QueryLibrary
+ListLibraries<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, Initialize
+UpdateLibraryStatus
+QueryLibrary
+ListLibraries<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
+
 /// Library information
 #[account]
 pub struct LibraryInfo {

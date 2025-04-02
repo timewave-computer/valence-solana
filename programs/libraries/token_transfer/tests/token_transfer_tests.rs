@@ -17,6 +17,24 @@ use token_transfer::{
         transfer_with_authority::{TransferWithAuthorityParams, TransferWithAuthority},
     },
 };
+use litesvm::LiteSVM;
+use solana_program::{
+    pubkey::Pubkey,
+    instruction::AccountMeta,
+};
+use spl_token_2022::{
+    instruction as token_instruction,
+    state::{Account as TokenAccount},
+    id as token_program_id,
+};
+use spl_associated_token_account::instruction as associated_token_instruction;
+use token_transfer::{
+    utils::token_helpers,
+    instruction::{
+        TokenTransferParams, 
+    },
+};
+use std::str::FromStr;
 
 // Utility function to create a program test for token_transfer
 async fn setup_program_test() -> (ProgramTest, Keypair, Keypair, Pubkey) {
@@ -1127,3 +1145,294 @@ async fn test_error_max_transfer_exceeded() {
 // - test_error_insufficient_funds 
 // - test_error_invalid_fee_amount
 // - test_allowlist_validation 
+
+fn create_associated_token_account(
+    svm: &mut LiteSVM, 
+    payer: &Keypair, 
+    wallet: &Pubkey, 
+    mint: &Pubkey
+) -> Pubkey {
+    // Find associated token address
+    let token_address = spl_associated_token_account::get_associated_token_address_with_program_id(
+        wallet,
+        mint,
+        &token_program_id(),
+    );
+    
+    // Create associated token account
+    let create_ata_ix = associated_token_instruction::create_associated_token_account(
+        &payer.pubkey(),
+        wallet,
+        mint,
+        &token_program_id(),
+    );
+    
+    let tx = Transaction::new_signed_with_payer(
+        &[create_ata_ix],
+        Some(&payer.pubkey()),
+        &[payer],
+        svm.last_blockhash(),
+    );
+    
+    svm.process_transaction(tx).unwrap();
+    
+    token_address
+}
+
+fn mint_to(
+    svm: &mut LiteSVM,
+    mint: &Pubkey,
+    destination: &Pubkey,
+    authority: &Keypair,
+    amount: u64,
+) {
+    let mint_to_ix = token_instruction::mint_to(
+        &token_program_id(),
+        mint,
+        destination,
+        &authority.pubkey(),
+        &[],
+        amount,
+    ).unwrap();
+    
+    let tx = Transaction::new_signed_with_payer(
+        &[mint_to_ix],
+        Some(&authority.pubkey()),
+        &[authority],
+        svm.last_blockhash(),
+    );
+    
+    svm.process_transaction(tx).unwrap();
+}
+
+#[test]
+fn test_token_transfer_library() {
+    // Initialize the LiteSVM instance
+    let mut svm = LiteSVM::new();
+    
+    // Add token program
+    svm.add_program_from_name(&token_program_id(), "spl_token_2022").unwrap();
+    
+    // Add our token_transfer program
+    let program_keypair = Keypair::new();
+    let program_id = program_keypair.pubkey();
+    
+    // Create test accounts
+    let authority = Keypair::new();
+    let user = Keypair::new();
+    let recipient = Keypair::new();
+    let fee_receiver = Keypair::new();
+    
+    // Fund accounts
+    let fund_lamports = 10_000_000_000; // 10 SOL
+    svm.transfer(&svm.payer().pubkey(), &authority.pubkey(), fund_lamports).unwrap();
+    svm.transfer(&svm.payer().pubkey(), &user.pubkey(), fund_lamports).unwrap();
+    svm.transfer(&svm.payer().pubkey(), &recipient.pubkey(), fund_lamports).unwrap();
+    svm.transfer(&svm.payer().pubkey(), &fee_receiver.pubkey(), fund_lamports).unwrap();
+    
+    // Create mint
+    let mint_keypair = Keypair::new();
+    let mint_pubkey = mint_keypair.pubkey();
+    
+    // Create mint account
+    let mint_rent = svm.get_rent().minimum_balance(Mint::LEN);
+    let create_mint_account_ix = system_instruction::create_account(
+        &authority.pubkey(),
+        &mint_pubkey,
+        mint_rent,
+        Mint::LEN as u64,
+        &token_program_id(),
+    );
+    
+    // Initialize mint (6 decimals)
+    let mint_decimals = 6;
+    let init_mint_ix = token_instruction::initialize_mint(
+        &token_program_id(),
+        &mint_pubkey,
+        &authority.pubkey(),
+        None,
+        mint_decimals,
+    ).unwrap();
+    
+    // Process mint setup
+    let mint_tx = Transaction::new_signed_with_payer(
+        &[create_mint_account_ix, init_mint_ix],
+        Some(&authority.pubkey()),
+        &[&authority, &mint_keypair],
+        svm.last_blockhash(),
+    );
+    
+    svm.process_transaction(mint_tx).unwrap();
+    
+    // Create token accounts
+    let authority_token_account = create_associated_token_account(
+        &mut svm,
+        &authority,
+        &authority.pubkey(),
+        &mint_pubkey,
+    );
+    
+    let user_token_account = create_associated_token_account(
+        &mut svm,
+        &authority,
+        &user.pubkey(),
+        &mint_pubkey,
+    );
+    
+    let recipient_token_account = create_associated_token_account(
+        &mut svm,
+        &authority,
+        &recipient.pubkey(),
+        &mint_pubkey,
+    );
+    
+    let fee_token_account = create_associated_token_account(
+        &mut svm,
+        &authority,
+        &fee_receiver.pubkey(),
+        &mint_pubkey,
+    );
+    
+    // Mint tokens
+    let initial_mint_amount = 1000 * 10u64.pow(mint_decimals);
+    
+    // Mint to authority and user
+    mint_to(&mut svm, &mint_pubkey, &authority_token_account, &authority, initial_mint_amount);
+    mint_to(&mut svm, &mint_pubkey, &user_token_account, &authority, initial_mint_amount);
+    
+    // Find config PDA
+    let (config_pda, _config_bump) = Pubkey::find_program_address(
+        &[
+            b"token_transfer_config",
+            authority.pubkey().as_ref(),
+        ],
+        &program_id,
+    );
+    
+    // Find token authority PDA
+    let (_token_authority_pda, _token_authority_bump) = Pubkey::find_program_address(
+        &[
+            b"token_authority",
+            user_token_account.as_ref(),
+        ],
+        &program_id,
+    );
+    
+    // Test constants
+    const TEST_FEE_BPS: u16 = 100; // 1%
+    const TEST_TRANSFER_AMOUNT: u64 = 50 * 10u64.pow(6); // 50 tokens
+    
+    // Initialize the token transfer library
+    // First build the instruction manually
+    let init_accounts = vec![
+        AccountMeta::new(authority.pubkey(), true),
+        AccountMeta::new(config_pda, false),
+        AccountMeta::new_readonly(system_program::ID, false),
+    ];
+    
+    let max_transfer_amount = 1_000_000 * 10u64.pow(mint_decimals);
+    let params = InitializeParams {
+        processor_program_id: authority.pubkey(), // In test we use authority as processor
+        max_transfer_amount,
+        max_batch_size: 10,
+        fee_bps: TEST_FEE_BPS,
+        fee_collector: fee_receiver.pubkey(),
+        slippage_bps: 0,
+        validate_account_ownership: true,
+        enforce_source_allowlist: false,
+        enforce_recipient_allowlist: false,
+        enforce_mint_allowlist: false,
+        allowed_sources: vec![],
+        allowed_recipients: vec![],
+        allowed_mints: vec![],
+    };
+    
+    let init_data = token_transfer::instruction::Initialize { params }.data();
+    
+    let init_ix = Instruction {
+        program_id,
+        accounts: init_accounts,
+        data: init_data,
+    };
+    
+    let init_tx = Transaction::new_signed_with_payer(
+        &[init_ix],
+        Some(&authority.pubkey()),
+        &[&authority],
+        svm.last_blockhash(),
+    );
+    
+    svm.process_transaction(init_tx).unwrap();
+    
+    // Check user balances before transfer
+    let pre_source_account = svm.get_account(&user_token_account).unwrap();
+    let pre_source_token_account = TokenAccount::unpack(&pre_source_account.data).unwrap();
+    let pre_source_balance = pre_source_token_account.amount;
+    
+    let pre_dest_account = svm.get_account(&recipient_token_account).unwrap();
+    let pre_dest_token_account = TokenAccount::unpack(&pre_dest_account.data).unwrap();
+    let pre_dest_balance = pre_dest_token_account.amount;
+    
+    let pre_fee_account = svm.get_account(&fee_token_account).unwrap();
+    let pre_fee_token_account = TokenAccount::unpack(&pre_fee_account.data).unwrap();
+    let pre_fee_balance = pre_fee_token_account.amount;
+    
+    // Transfer tokens with fee collection
+    let transfer_accounts = vec![
+        AccountMeta::new(authority.pubkey(), true),
+        AccountMeta::new_readonly(config_pda, false),
+        AccountMeta::new(user_token_account, false),
+        AccountMeta::new(recipient_token_account, false),
+        AccountMeta::new(fee_token_account, false),
+        AccountMeta::new_readonly(token_program_id(), false),
+        AccountMeta::new_readonly(spl_associated_token_account::ID, false),
+        AccountMeta::new_readonly(system_program::ID, false),
+    ];
+    
+    let transfer_params = TokenTransferParams {
+        amount: TEST_TRANSFER_AMOUNT,
+        source_owner: user.pubkey(),
+        destination_owner: recipient.pubkey(),
+        slippage_bps: None,
+        memo: Some("Test transfer".to_string()),
+    };
+    
+    let transfer_data = token_transfer::instruction::TransferToken { params: transfer_params }.data();
+    
+    let transfer_ix = Instruction {
+        program_id,
+        accounts: transfer_accounts,
+        data: transfer_data,
+    };
+    
+    let transfer_tx = Transaction::new_signed_with_payer(
+        &[transfer_ix],
+        Some(&authority.pubkey()),
+        &[&authority, &user],
+        svm.last_blockhash(),
+    );
+    
+    svm.process_transaction(transfer_tx).unwrap();
+    
+    // Verify balances after transfer
+    let post_source_account = svm.get_account(&user_token_account).unwrap();
+    let post_source_token_account = TokenAccount::unpack(&post_source_account.data).unwrap();
+    let post_source_balance = post_source_token_account.amount;
+    
+    let post_dest_account = svm.get_account(&recipient_token_account).unwrap();
+    let post_dest_token_account = TokenAccount::unpack(&post_dest_account.data).unwrap();
+    let post_dest_balance = post_dest_token_account.amount;
+    
+    let post_fee_account = svm.get_account(&fee_token_account).unwrap();
+    let post_fee_token_account = TokenAccount::unpack(&post_fee_account.data).unwrap();
+    let post_fee_balance = post_fee_token_account.amount;
+    
+    // Calculate expected fee
+    let expected_fee = TEST_TRANSFER_AMOUNT * TEST_FEE_BPS as u64 / 10000;
+    let expected_transfer = TEST_TRANSFER_AMOUNT - expected_fee;
+    
+    // Assert correct balances
+    assert_eq!(post_source_balance, pre_source_balance - TEST_TRANSFER_AMOUNT);
+    assert_eq!(post_dest_balance, pre_dest_balance + expected_transfer);
+    assert_eq!(post_fee_balance, pre_fee_balance + expected_fee);
+} 

@@ -68,6 +68,8 @@ This project uses Nix to provide a consistent and reproducible development envir
 
 #### Setting up Nix
 
+Flake adapted from [arilotter/solana-flake](https://github.com/arilotter/solana-flake)
+
 1. Install Nix following the [official guide](https://nixos.org/download.html)
 
 2. Enable Flakes (if not already enabled):
@@ -141,6 +143,37 @@ anchor build
 Run the test suite from within the Nix environment:
 
 ```bash
+anchor test
+```
+
+### LiteSVM for Rust Tests
+
+The project has been migrated to use [LiteSVM](https://github.com/LiteSVM/litesvm) for Rust-based tests of Solana programs. LiteSVM provides several advantages:
+
+- Much faster execution than traditional Solana test validators
+- Tests written in Rust directly (no TypeScript/JavaScript needed)
+- Better type safety and integration with Rust tooling
+- Simpler debugging and less resource intensive
+
+To run the tests:
+
+```bash
+# Run all tests for a specific package
+./scripts/litesvm-test.sh token_transfer
+
+# Run a specific test
+./scripts/litesvm-test.sh token_transfer -- test_token_transfer_library
+
+# Run unit tests within a module
+./scripts/litesvm-test.sh token_transfer -- utils::token_helpers::tests
+```
+
+### Anchor Tests (Legacy)
+
+For legacy tests still using Anchor's TypeScript testing framework:
+
+```bash
+# Start local validator
 anchor test
 ```
 

@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use std::collections::BTreeMap;
 use crate::state::AccountState;
 use crate::error::BaseAccountError;
 
@@ -12,16 +13,28 @@ pub fn handler(ctx: Context<ApproveLibrary>) -> Result<()> {
     }
     
     // Check if library is already approved
-    if account_state.is_library_approved(&library) {
+    if account_state.approved_libraries.contains(&library) {
         return Err(BaseAccountError::LibraryAlreadyApproved.into());
     }
     
-    // Add library to approved list
-    account_state.approve_library(library)?;
+    // Approve the library
+    account_state.approved_libraries.push(library);
+    account_state.last_activity = Clock::get()?.unix_timestamp;
     
     msg!("Approved library: {}", library);
     Ok(())
 }
+
+impl<'info> ApproveLibrary<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, ApproveLibrary<'info>>,
+        _bumps: &BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
 
 #[derive(Accounts)]
 pub struct ApproveLibrary<'info> {

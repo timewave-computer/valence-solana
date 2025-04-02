@@ -17,6 +17,16 @@ pub struct InitializeParams {
     pub allowed_mints: Option<Vec<Pubkey>>,
 }
 
+impl<'info> Initialize<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, Initialize<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // No additional validation needed for initialization
+        Ok(())
+    }
+}
+
 #[derive(Accounts)]
 #[instruction(params: InitializeParams)]
 pub struct Initialize<'info> {

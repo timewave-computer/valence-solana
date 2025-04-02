@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount, Mint};
+use anchor_spl::token_2022::{Token2022, TokenAccount, Mint};
 use anchor_spl::associated_token::AssociatedToken;
 use crate::state::StorageAccount;
 use crate::error::StorageAccountError;
@@ -24,10 +24,21 @@ pub struct CreateTokenAccount<'info> {
     pub token_account: UncheckedAccount<'info>,
     
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
+    pub token_program: Program<'info, Token2022>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub rent: Sysvar<'info, Rent>,
 }
+
+impl<'info> CreateTokenAccount<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, CreateTokenAccount<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
 
 pub fn handler(ctx: Context<CreateTokenAccount>, mint: Pubkey) -> Result<()> {
     let storage_account = &mut ctx.accounts.storage_account;

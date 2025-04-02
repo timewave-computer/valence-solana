@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, CloseAccount};
+use anchor_spl::token::{Token, TokenAccount, CloseAccount};
+use std::collections::BTreeMap;
 use crate::state::AccountState;
 use crate::error::BaseAccountError;
 
@@ -25,6 +26,17 @@ pub fn handler(ctx: Context<CloseTokenAccount>) -> Result<()> {
     Ok(())
 }
 
+impl<'info> CloseTokenAccount<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, CloseTokenAccount<'info>>,
+        _bumps: &BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
+
 #[derive(Accounts)]
 pub struct CloseTokenAccount<'info> {
     #[account(mut)]
@@ -34,7 +46,7 @@ pub struct CloseTokenAccount<'info> {
         mut,
         constraint = token_account.owner == account.vault_authority @ BaseAccountError::InvalidVaultAuthority
     )]
-    pub token_account: Account<'info, anchor_spl::token::TokenAccount>,
+    pub token_account: Account<'info, TokenAccount>,
     
     #[account(mut)]
     pub signer: Signer<'info>,
@@ -43,5 +55,9 @@ pub struct CloseTokenAccount<'info> {
     #[account(mut)]
     pub destination: UncheckedAccount<'info>,
     
+    /// Token program account
     pub token_program: Program<'info, Token>,
+    
+    /// System program
+    pub system_program: Program<'info, System>,
 } 
