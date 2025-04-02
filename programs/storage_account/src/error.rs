@@ -28,4 +28,8 @@ pub enum StorageAccountError {
     InvalidStorageAccount,
     #[msg("The storage capacity has been exceeded")]
     StorageCapacityExceeded,
+    #[msg("Required parameters are missing")]
+    MissingRequiredParameters,
+    #[msg("Invalid key length")]
+    InvalidKeyLength,
 } 

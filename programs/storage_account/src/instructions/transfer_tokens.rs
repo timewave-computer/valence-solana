@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount};
+use anchor_spl::token_2022::{Token2022, TokenAccount};
 use crate::state::StorageAccount;
 use crate::error::StorageAccountError;
 
@@ -7,6 +7,17 @@ use crate::error::StorageAccountError;
 pub struct TransferTokensParams {
     pub amount: u64,
 }
+
+impl<'info> TransferTokens<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, TransferTokens<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
 
 #[derive(Accounts)]
 pub struct TransferTokens<'info> {
@@ -27,7 +38,7 @@ pub struct TransferTokens<'info> {
     #[account(mut)]
     pub destination_token_account: Account<'info, TokenAccount>,
     
-    pub token_program: Program<'info, Token>,
+    pub token_program: Program<'info, Token2022>,
 }
 
 pub fn handler(ctx: Context<TransferTokens>, params: TransferTokensParams) -> Result<()> {

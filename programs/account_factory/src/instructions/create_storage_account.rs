@@ -11,6 +11,17 @@ pub struct CreateStorageAccountParams {
     pub fund_amount: Option<u64>,
 }
 
+impl<'info> CreateStorageAccount<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, CreateStorageAccount<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
+
 #[derive(Accounts)]
 pub struct CreateStorageAccount<'info> {
     #[account(mut)]

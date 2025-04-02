@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use std::collections::BTreeMap;
 use crate::state::AccountState;
 use crate::error::BaseAccountError;
 
@@ -11,17 +12,29 @@ pub fn handler(ctx: Context<RevokeLibrary>) -> Result<()> {
         return Err(BaseAccountError::Unauthorized.into());
     }
     
-    // Check if library is already approved
-    if !account_state.is_library_approved(&library) {
+    // Check if library is approved
+    if !account_state.approved_libraries.contains(&library) {
         return Err(BaseAccountError::LibraryNotApproved.into());
     }
     
-    // Remove library from approved list
-    account_state.remove_approved_library(&library)?;
+    // Revoke the library
+    account_state.approved_libraries.retain(|&x| x != library);
+    account_state.last_activity = Clock::get()?.unix_timestamp;
     
-    msg!("Revoked library approval: {}", library);
+    msg!("Revoked library: {}", library);
     Ok(())
 }
+
+impl<'info> RevokeLibrary<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, RevokeLibrary<'info>>,
+        _bumps: &BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
 
 #[derive(Accounts)]
 pub struct RevokeLibrary<'info> {

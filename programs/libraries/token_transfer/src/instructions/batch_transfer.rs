@@ -1,7 +1,8 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, TokenAccount, Token, Transfer};
+use anchor_spl::token_2022::{self, TokenAccount, Token2022, Transfer};
 use crate::state::LibraryConfig;
 use crate::error::TokenTransferError;
+use crate::utils::token_helpers;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct TransferDestination {
@@ -9,6 +10,41 @@ pub struct TransferDestination {
     pub amount: u64,
     pub memo: Option<String>,
 }
+
+impl<'info> BatchTransfer<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, BatchTransfer<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Validate library is active
+        if !ctx.accounts.library_config.is_active {
+            return Err(TokenTransferError::LibraryInactive.into());
+        }
+        
+        // Validate processor program
+        if ctx.accounts.processor_program.key() != ctx.accounts.library_config.processor_program_id.expect("processor not set") {
+            return Err(TokenTransferError::InvalidProcessorProgram.into());
+        }
+        
+        // Validate batch transfers are enabled
+        if ctx.accounts.library_config.max_batch_size == 0 {
+            return Err(TokenTransferError::BatchTransfersDisabled.into());
+        }
+        
+        // Validate source account owner
+        if ctx.accounts.source_account.owner != *ctx.accounts.authority.key {
+            return Err(TokenTransferError::OwnerMismatch.into());
+        }
+        
+        // Validate source is allowed
+        if !ctx.accounts.library_config.is_source_allowed(&ctx.accounts.source_account.key()) {
+            return Err(TokenTransferError::UnauthorizedSource.into());
+        }
+        
+        Ok(())
+    }
+}
+
 
 /// Batch transfer parameters
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -23,9 +59,6 @@ pub struct BatchTransfer<'info> {
     #[account(
         seeds = [b"library_config"],
         bump,
-        constraint = library_config.is_active @ TokenTransferError::LibraryInactive,
-        constraint = processor_program.key() == library_config.processor_program_id.expect("processor not set") @ TokenTransferError::InvalidProcessorProgram,
-        constraint = library_config.max_batch_size > 0 @ TokenTransferError::BatchTransfersDisabled
     )]
     pub library_config: Account<'info, LibraryConfig>,
 
@@ -33,11 +66,7 @@ pub struct BatchTransfer<'info> {
     pub processor_program: UncheckedAccount<'info>,
 
     /// The source token account for all transfers
-    #[account(
-        mut,
-        constraint = source_account.owner == *authority.key @ TokenTransferError::OwnerMismatch,
-        constraint = library_config.is_source_allowed(&source_account.key()) @ TokenTransferError::UnauthorizedSource
-    )]
+    #[account(mut)]
     pub source_account: Account<'info, TokenAccount>,
 
     /// The authority that can authorize the transfers
@@ -47,8 +76,8 @@ pub struct BatchTransfer<'info> {
     #[account(mut)]
     pub fee_collector: Option<Account<'info, TokenAccount>>,
 
-    /// The token program
-    pub token_program: Program<'info, Token>,
+    /// The token program (Token-2022)
+    pub token_program: Program<'info, Token2022>,
 }
 
 // The remaining accounts represent destination token accounts
@@ -143,7 +172,7 @@ pub fn handler(ctx: Context<BatchTransfer>, params: BatchTransferParams) -> Resu
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
         
-        token::transfer(cpi_ctx, dest.amount)?;
+        token_helpers::transfer_tokens(cpi_ctx, dest.amount)?;
         
         // Log transfer
         msg!("Transferred {} tokens to {}", dest.amount, dest.destination);
@@ -172,7 +201,7 @@ pub fn handler(ctx: Context<BatchTransfer>, params: BatchTransferParams) -> Resu
         };
         
         let fee_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), fee_accounts);
-        token::transfer(fee_ctx, fee_amount)?;
+        token_helpers::transfer_tokens(fee_ctx, fee_amount)?;
         
         // Update fee collection stats
         library_config.add_fees_collected(fee_amount);

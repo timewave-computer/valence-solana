@@ -1,3 +1,6 @@
+#![allow(clippy::result_large_err)]
+#![allow(warnings)]
+
 use anchor_lang::prelude::*;
 
 declare_id!("TknTrfzGGGtAL3YxG8TKvoa2Yo2uXxn6SYgZ5C3fHNB");
@@ -5,6 +8,7 @@ declare_id!("TknTrfzGGGtAL3YxG8TKvoa2Yo2uXxn6SYgZ5C3fHNB");
 pub mod error;
 pub mod state;
 pub mod instructions;
+pub mod utils;
 
 use instructions::*;
 

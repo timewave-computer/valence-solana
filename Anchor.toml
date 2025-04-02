@@ -11,12 +11,22 @@ storage_account = "StrgAcntpYbpLUXMvUb8ZuUjQBnMLFZnBxwxrRjrYJU"
 account_factory = "AccFctyYYfhQTqQyP7NaSxna4HLnQW5XjJFKhQdjitA"
 token_transfer = "TknTrfzGGGtAL3YxG8TKvoa2Yo2uXxn6SYgZ5C3fHNB"
 
+[programs.testnet]
+authorization = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+registry = "VaLRegGhzqJwVmQhciS9JT6czSZJzBGmyReBt3SXXyL"
+processor = "ProcE5soriVLiEHDXAWzZNaZrGwEWzUmT5Waa4Cyr7A"
+base_account = "BaseSixYBPg1K1xjRXVBvd7LVLmATG2sFjUXzVZrfG6"
+storage_account = "StrgAcntpYbpLUXMvUb8ZuUjQBnMLFZnBxwxrRjrYJU"
+account_factory = "AccFctyYYfhQTqQyP7NaSxna4HLnQW5XjJFKhQdjitA"
+token_transfer = "TknTrfzGGGtAL3YxG8TKvoa2Yo2uXxn6SYgZ5C3fHNB"
+
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
 cluster = "localnet"
-wallet = "~/.config/solana/id.json"
+wallet = "/Users/hxrts/keypair.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts" 
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+deploy-testnet = "bash scripts/deploy_testnet.sh" 

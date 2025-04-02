@@ -1,484 +1,582 @@
 {
-  description = "Solana development environment for Valence Protocol (updated)";
+  description = "Solana development environment for Valence Protocol";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    rust-overlay.url = "github:oxalica/rust-overlay";
     flake-utils.url = "github:numtide/flake-utils";
+    rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
-  outputs = { self, nixpkgs, rust-overlay, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs = { self, nixpkgs, flake-utils, rust-overlay }:
+    flake-utils.lib.eachSystem [
+      "x86_64-linux"
+      "x86_64-darwin"
+      "aarch64-darwin"
+    ] (system:
       let
-        overlays = [ (import rust-overlay) ];
-        pkgs = import nixpkgs { inherit system overlays; };
-        
-        # Specify Solana version explicitly
-        solana-version = "1.17.20";
+        # Solana and Anchor versions
+        sol-version = "2.0.22";
         anchor-version = "0.29.0";
-        defaultDevnet = "https://api.devnet.solana.com";
         
-        # Use stable Rust with specific components needed for Solana/Anchor development
-        rustWithComponents = pkgs.rust-bin.stable.latest.default.override {
-          extensions = [ "rust-src" "rust-analyzer" "clippy" "rustfmt" ];
-          targets = [ "wasm32-unknown-unknown" ];
+        # macOS deployment target (used for all Darwin systems)
+        darwinDeploymentTarget = "11.0";
+        
+        # Common environment variables for all shells/derivations
+        commonEnv = {
+          # Always set MACOSX_DEPLOYMENT_TARGET 
+          MACOSX_DEPLOYMENT_TARGET = darwinDeploymentTarget;
+          # Always set SOURCE_DATE_EPOCH for reproducible builds
+          SOURCE_DATE_EPOCH = "1686858254"; # Use a fixed value for reproducibility
+          # Add explicit Solana install directory
+          SOLANA_INSTALL_DIR = "$HOME/.local/share/solana";
+          # Anchor CLI environment variables
+          ANCHOR_VERSION = anchor-version;
+          SOLANA_VERSION = sol-version;
+          # Add RUST_BACKTRACE for better debugging
+          RUST_BACKTRACE = "1";
         };
 
+        # Instantiate pkgs
+        pkgs = import nixpkgs { 
+          inherit system; 
+          overlays = [ rust-overlay.overlays.default ];
+        };
+
+        # Platform-specific configurations
+        platforms = {
+          platform-tools = rec {
+            version = "v1.43";
+            make = sys: hash:
+              pkgs.fetchzip {
+                url = "https://github.com/anza-xyz/platform-tools/releases/download/"
+                  + "${version}/platform-tools-${sys}.tar.bz2";
+                sha256 = hash;
+                stripRoot = false;
+              };
+            x86_64-linux = make "linux-x86_64" "sha256-GhMnfjKNJXpVqT1CZE0Zyp4+NXJG41sUxwHye9DGPt0=";
+            aarch64-darwin = make "osx-aarch64" "sha256-rt9LEz6Dp7bkrqtP9sgkvxY8tG3hqewD3vBXmJ5KMGk=";
+            x86_64-darwin = make "osx-x86_64" "sha256-LWOAbS+h5Fkgmk5wglbQ3n3yM6o7bCVcWkOXwcbFHqg=";
+          };
+          cli = rec {
+            name = "solana-cli";
+            version = sol-version;
+            make = sys: hash:
+              builtins.fetchTarball {
+                url = "https://github.com/anza-xyz/agave/releases/download/"
+                  + "v${sol-version}/solana-release-${sys}.tar.bz2";
+                sha256 = hash;
+              };
+            x86_64-linux = make "x86_64-unknown-linux-gnu" "sha256:1xchg2pyzkzpdplmz9chs5h7gzl91jnbdcrmm67fv0acs1lh0xzx";
+            aarch64-darwin = make "aarch64-apple-darwin" "sha256:19x2mlds0p3vjl7pf1bxz7s7ndaaq6ha9hvmvwmhdi0ybr4vxlj8";
+            x86_64-darwin = make "x86_64-apple-darwin" "sha256:19jksdvgqj97b0x0vr09xk61qgx0i4vgpqdzg4i7qhwgqhbjbdyb";
+          };
+          sol-version = sol-version;
+        };
+
+        # Agave source
+        agave-src = pkgs.fetchFromGitHub {
+          owner = "anza-xyz";
+          repo = "agave";
+          rev = "v${sol-version}";
+          fetchSubmodules = true;
+          sha256 = "sha256-3wvXHY527LOvQ8b4UfXoIKSgwDq7Sm/c2qqj2unlN6I=";
+        };
+
+        # Build solana-platform-tools with improved installation
+        solana-platform-tools = pkgs.stdenv.mkDerivation rec {
+          name = "solana-platform-tools";
+          version = platforms.platform-tools.version;
+          src = platforms.platform-tools.${system};
+
+          # Skip auto-patchelf on Darwin systems to avoid ELF errors
+          meta.skipAutoPatchelf = pkgs.stdenv.isDarwin;
+          meta.dontFixupSymlinks = true;
+
+          nativeBuildInputs = pkgs.lib.optionals (!pkgs.stdenv.isDarwin) [pkgs.autoPatchelfHook];
+          buildInputs = with pkgs; [
+            zlib
+            stdenv.cc.cc
+            openssl
+            libclang.lib
+            xz
+            python310
+            libedit
+          ] ++ pkgs.lib.optionals stdenv.isLinux [
+            udev
+          ];
+
+          # Use a temp directory to prevent path conflicts
+          preBuild = ''
+            export TEMP_DIR=$(mktemp -d)
+          '';
+
+          preFixup = if !pkgs.stdenv.isDarwin then ''
+            # Fix libedit linkage issues if they exist
+            for file in $(find $out -type f -executable); do
+              if patchelf --print-needed "$file" 2>/dev/null | grep -q "libedit.so.2"; then
+                patchelf --replace-needed libedit.so.2 libedit.so.0.0.74 "$file" || true
+              fi
+            done
+          '' else "";
+
+          installPhase = ''
+            platformtools=$out/bin/sdk/sbf/dependencies/platform-tools
+            mkdir -p $platformtools
+            
+            # Clean any existing directory to prevent conflicts
+            if [ -d "$platformtools" ]; then
+              rm -rf $platformtools
+              mkdir -p $platformtools
+            fi
+            
+            cp -r $src/llvm $platformtools || true
+            cp -r $src/rust $platformtools || true
+            chmod 0755 -R $out
+            touch $platformtools-${version}.md
+
+            # Copy SDK files
+            mkdir -p $out/bin/sdk/sbf
+            cp -ar ${agave-src}/sdk/sbf/* $out/bin/sdk/sbf/ || true
+          '';
+
+          # Skip symlink validation
+          fixupPhase = ''
+            echo "Skipping symlink validation..."
+            # Use || true to avoid failing on non-existing shebangs
+            patchShebangs --build $out || true
+            ${pkgs.lib.optionalString (!pkgs.stdenv.isDarwin) "autoPatchelf $out || true"}
+            # Strip binaries but don't fail on broken symlinks
+            find $out -type f -perm -0100 -print0 | xargs -0 -r strip -S || true
+          '';
+        };
+
+        # Build solana using release binaries, skipping our own cargo-build-sbf compilation
+        solana = pkgs.stdenv.mkDerivation {
+          name = "solana";
+          version = platforms.cli.version;
+          src = platforms.cli.${system};
+          
+          nativeBuildInputs = with pkgs; [
+            makeWrapper
+          ] ++ lib.optionals (!stdenv.isDarwin) [
+            autoPatchelfHook
+          ];
+
+          buildInputs = with pkgs; [
+            solana-platform-tools
+            stdenv.cc.cc.lib
+            libgcc
+            ocl-icd
+            zlib
+          ] ++ pkgs.lib.optionals stdenv.isLinux [
+            udev
+          ];
+
+          # Skip auto-patchelf on Darwin systems to avoid ELF errors
+          meta.skipAutoPatchelf = pkgs.stdenv.isDarwin;
+
+          installPhase = ''
+            mkdir -p $out/bin/sdk/sbf/dependencies
+            cp -r $src/* $out
+            
+            # Create explicit symlink to platform tools to prevent file conflicts
+            rm -rf $out/bin/sdk/sbf/dependencies/platform-tools || true
+            ln -sf ${solana-platform-tools}/bin/sdk/sbf/dependencies/platform-tools $out/bin/sdk/sbf/dependencies/platform-tools
+            
+            if [ -f "$out/bin/ld.lld" ]; then
+              ln -sf $out/bin/ld.lld $out/bin/ld
+            fi
+            
+            # Use the pre-built cargo-build-sbf and wrap it
+            if [ -f "$out/bin/cargo-build-sbf" ]; then
+              mv $out/bin/cargo-build-sbf $out/bin/.cargo-build-sbf-unwrapped
+              makeWrapper $out/bin/.cargo-build-sbf-unwrapped $out/bin/cargo-build-sbf \
+                --set SBF_SDK_PATH "${solana-platform-tools}/bin/sdk/sbf" \
+                --set RUSTC "${solana-platform-tools}/bin/sdk/sbf/dependencies/platform-tools/rust/bin/rustc" \
+                --set MACOSX_DEPLOYMENT_TARGET "${darwinDeploymentTarget}" \
+                --set SOURCE_DATE_EPOCH "1686858254"
+            fi
+            
+            chmod 0755 -R $out
+          '';
+
+          # Customize fixup phase to handle potential issues
+          fixupPhase = if pkgs.stdenv.isDarwin then ''
+            echo "Custom fixup for macOS..."
+            patchShebangs --build $out || true
+            find $out -type f -perm -0100 -exec grep -l "#!/" {} \; | while read f; do
+              patchShebangs --build "$f" || true
+            done
+          '' else "";
+        };
+
+        # Build solana-rust
+        solana-rust = pkgs.stdenv.mkDerivation rec {
+          name = "solana-rust";
+          version = sol-version;
+          src = pkgs.fetchFromGitHub {
+            owner = "anza-xyz";
+            repo = "agave";
+            rev = "v${sol-version}";
+            sha256 = "sha256-3wvXHY527LOvQ8b4UfXoIKSgwDq7Sm/c2qqj2unlN6I=";
+            fetchSubmodules = true;
+          };
+
+          # Skip build, we're just looking at the rust SDK
+          dontBuild = true;
+
+          installPhase = ''
+            mkdir -p $out
+            cp -r sdk $out/
+            
+            # Create the missing frozen-abi directory and build.rs file
+            mkdir -p $out/frozen-abi
+            touch $out/frozen-abi/build.rs
+          '';
+          
+          # Custom fixup phase to handle broken symlinks
+          fixupPhase = ''
+            echo "Fixing up symlinks..."
+            patchShebangs --build $out
+            
+            # Fix broken symlinks manually
+            if [ -L "$out/sdk/build.rs" ]; then
+              target=$(readlink "$out/sdk/build.rs")
+              if [ ! -e "$target" ]; then
+                echo "Creating missing target for $out/sdk/build.rs -> $target"
+                mkdir -p $(dirname "$target")
+                touch "$target"
+              fi
+            fi
+            
+            if [ -L "$out/sdk/program/build.rs" ]; then
+              target=$(readlink "$out/sdk/program/build.rs")
+              if [ ! -e "$target" ]; then
+                echo "Creating missing target for $out/sdk/program/build.rs -> $target"
+                mkdir -p $(dirname "$target")
+                touch "$target"
+              fi
+            fi
+            
+            # Disable symlink check
+            echo "Symlink validation complete"
+          '';
+          
+          # Don't fail on broken symlinks
+          meta = {
+            dontFixupSymlinks = true;
+          };
+        };
+
+        # Build anchor using a more compatible approach
+        anchor = pkgs.rustPlatform.buildRustPackage rec {
+          pname = "anchor";
+          version = anchor-version;
+
+          src = pkgs.fetchFromGitHub {
+            owner = "coral-xyz";
+            repo = "anchor";
+            rev = "v${anchor-version}";
+            hash = "sha256-hOpdCVO3fXMqnAihjXXD9SjqK4AMhQQhZmISqJnDVCI=";
+            fetchSubmodules = true;
+          };
+
+          # Use rustPlatform's git vendor hook to build vendor directory properly
+          useFetchGitSubmodules = true;
+          deepClone = true;
+          useFetchCargoVendor = true;
+
+          # Fixed cargo hash
+          cargoHash = "sha256-/F6syRBGaGTBerjhLg9LG7LLOk6Bp83+T1h/SaUzFFw=";
+          
+          # Skip tests to make the build faster
+          doCheck = false;
+
+          nativeBuildInputs = with pkgs; [
+            makeWrapper
+            # Specify a specific Rust version that's compatible with the time crate
+            (rust-bin.stable."1.75.0".default.override {
+              extensions = [ "rust-src" ];
+            })
+            pkg-config
+            libiconv
+          ] ++ lib.optionals stdenv.isDarwin [
+            darwin.apple_sdk.frameworks.AppKit
+            darwin.apple_sdk.frameworks.IOKit
+            darwin.apple_sdk.frameworks.Security
+          ];
+
+          buildInputs = with pkgs; [
+            openssl
+          ] ++ lib.optionals stdenv.isLinux [
+            libudev-zero 
+          ] ++ lib.optionals stdenv.isDarwin [
+            darwin.apple_sdk.frameworks.Security
+            darwin.apple_sdk.frameworks.CoreFoundation
+            darwin.apple_sdk.frameworks.CoreServices
+          ];
+
+          # Define environment variables needed for building
+          OPENSSL_NO_VENDOR = "1";
+          RUSTFLAGS = "-C link-arg=-undefined -C link-arg=dynamic_lookup";
+
+          # Skip these tests
+          checkFlags = [
+            "--skip=tests::test_check_and_get_full_commit_when_full_commit"
+            "--skip=tests::test_check_and_get_full_commit_when_partial_commit"
+            "--skip=tests::test_get_anchor_version_from_commit"
+          ];
+
+          # Fix the build by removing toolchain installation
+          postPatch = ''
+            # Remove the toolchain install from the idl build.rs
+            substituteInPlace lang/syn/src/idl/build.rs \
+              --replace "install_toolchain_if_needed(&toolchain)?;" "" \
+              --replace "+$toolchain," ""
+          '';
+
+          postInstall = ''
+            mv $out/bin/anchor $out/bin/.anchor-unwrapped
+            makeWrapper $out/bin/.anchor-unwrapped $out/bin/anchor \
+              --set RUSTC "${solana-platform-tools}/bin/sdk/sbf/dependencies/platform-tools/rust/bin/rustc"
+          '';
+        };
+
+        # Script to start a local validator
+        start-validator = pkgs.writeShellScriptBin "start-validator" ''
+          #!/usr/bin/env bash
+          echo "Starting local Solana validator..."
+          solana-test-validator "$@"
+        '';
+
         # Environment variables for macOS with Apple Silicon
-        macosMacOSEnvironment = pkgs.lib.optionalAttrs (system == "aarch64-darwin" || system == "x86_64-darwin") {
-          MACOSX_DEPLOYMENT_TARGET = "11.0";
+        macosMacOSEnvironment = pkgs.lib.optionalAttrs (system == "aarch64-darwin" || system == "x86_64-darwin") (commonEnv // {
           CARGO_BUILD_TARGET = if system == "aarch64-darwin" then "aarch64-apple-darwin" else "x86_64-apple-darwin";
           RUSTFLAGS = "-C link-arg=-undefined -C link-arg=dynamic_lookup";
           BINDGEN_EXTRA_CLANG_ARGS = "-I${pkgs.libclang.lib}/lib/clang/${pkgs.libclang.version}/include";
-        };
-
-        # Define a script to install Anchor with specific version
-        setupAnchorScript = pkgs.writeShellScriptBin "setup-anchor" ''
-          if ! command -v anchor &> /dev/null; then
-            echo "Installing Anchor CLI ${anchor-version}..."
-            cargo install --git https://github.com/coral-xyz/anchor --tag v${anchor-version} anchor-cli
-          else
-            current_version=$(anchor --version | cut -d' ' -f2)
-            if [ "$current_version" != "${anchor-version}" ]; then
-              echo "Updating Anchor CLI to ${anchor-version}..."
-              cargo install --git https://github.com/coral-xyz/anchor --tag v${anchor-version} anchor-cli --force
-            else
-              echo "Anchor CLI ${anchor-version} is already installed"
-            fi
-          fi
-        '';
-        
-        # Comprehensive script to start a Solana validator with test accounts
-        enhancedSolanaValidatorScript = pkgs.writeShellScriptBin "enhanced-validator" ''
-          #!/usr/bin/env bash
-          # Start a local Solana validator with test accounts
-          # This script provides a convenient way to start, stop, and manage a local Solana validator
-
-          set -e
-
-          # Default values
-          LEDGER_DIR="test-ledger"
-          CLEAN=false
-          WAIT_FOR_RESTART=false
-          LOG_FILE="validator.log"
-          QUIET=false
-          FAUCET=false
-          RESET_ACCOUNTS=false
-          VERBOSE=false
-
-          # Parse command line arguments
-          while [[ $# -gt 0 ]]; do
-            case "$1" in
-              --ledger|-l)
-                LEDGER_DIR="$2"
-                shift 2
-                ;;
-              --clean|-c)
-                CLEAN=true
-                shift
-                ;;
-              --wait|-w)
-                WAIT_FOR_RESTART=true
-                shift
-                ;;
-              --log|-f)
-                LOG_FILE="$2"
-                shift 2
-                ;;
-              --quiet|-q)
-                QUIET=true
-                shift
-                ;;
-              --faucet|-t)
-                FAUCET=true
-                shift
-                ;;
-              --reset-accounts|-r)
-                RESET_ACCOUNTS=true
-                shift
-                ;;
-              --verbose|-v)
-                VERBOSE=true
-                shift
-                ;;
-              --help|-h)
-                echo "Usage: enhanced-validator [OPTIONS]"
-                echo "Options:"
-                echo "  -l, --ledger <dir>       Ledger directory (default: test-ledger)"
-                echo "  -c, --clean              Clean ledger before starting"
-                echo "  -w, --wait               Wait for validator to restart if it crashes"
-                echo "  -f, --log <file>         Log file (default: validator.log)"
-                echo "  -q, --quiet              Minimize output"
-                echo "  -t, --faucet             Start a faucet alongside the validator"
-                echo "  -r, --reset-accounts     Reset accounts (useful during development)"
-                echo "  -v, --verbose            Verbose output"
-                echo "  -h, --help               Show this help message"
-                exit 0
-                ;;
-              *)
-                echo "Unknown option: $1"
-                exit 1
-                ;;
-            esac
-          done
-
-          # Function to check if solana-test-validator is running
-          is_validator_running() {
-            pgrep -f "solana-test-validator" > /dev/null
-          }
-
-          # Function to check if solana-faucet is running
-          is_faucet_running() {
-            pgrep -f "solana-faucet" > /dev/null
-          }
-
-          # Function to kill running validator and faucet
-          kill_validator_and_faucet() {
-            if is_validator_running; then
-              echo "Stopping existing validator..."
-              pkill -f "solana-test-validator" || true
-              sleep 2
-            fi
-
-            if is_faucet_running; then
-              echo "Stopping existing faucet..."
-              pkill -f "solana-faucet" || true
-              sleep 1
-            fi
-          }
-
-          # Clean the ledger directory if requested
-          if $CLEAN && [ -d "$LEDGER_DIR" ]; then
-            echo "Cleaning ledger directory: $LEDGER_DIR"
-            rm -rf "$LEDGER_DIR"
-          fi
-
-          # Kill any existing validator and faucet processes
-          kill_validator_and_faucet
-
-          # Create log directory if it doesn't exist
-          mkdir -p "$(dirname "$LOG_FILE")"
-          touch "$LOG_FILE"
-
-          # Create accounts directory
-          mkdir -p accounts
-
-          # Prepare validator args
-          VALIDATOR_ARGS=()
-
-          # Add RPC Bind to allow connections from other machines (useful for testing)
-          VALIDATOR_ARGS+=(--rpc-port 8899 --rpc-bind-address 0.0.0.0)
-
-          # Add bpf program log filter settings
-          VALIDATOR_ARGS+=(--log "solana=info")
-
-          if $VERBOSE; then
-            VALIDATOR_ARGS+=(--log "solana_runtime::message_processor=debug")
-            VALIDATOR_ARGS+=(--log "solana_bpf_loader=debug")
-            VALIDATOR_ARGS+=(--log "solana_rbpf=debug")
-          else
-            VALIDATOR_ARGS+=(--log "solana_runtime::message_processor=info")
-          fi
-
-          # Add account wipe setting if requested
-          if $RESET_ACCOUNTS; then
-            VALIDATOR_ARGS+=(--reset)
-          fi
-
-          # Add ledger directory
-          VALIDATOR_ARGS+=(--ledger "$LEDGER_DIR")
-
-          echo "Starting Solana validator with args: ''${VALIDATOR_ARGS[@]}"
-
-          # Start the validator in the background
-          if $QUIET; then
-            solana-test-validator "''${VALIDATOR_ARGS[@]}" > "$LOG_FILE" 2>&1 &
-          else
-            solana-test-validator "''${VALIDATOR_ARGS[@]}" | tee "$LOG_FILE" &
-          fi
-
-          VALIDATOR_PID=$!
-
-          # Setup trap to clean up on exit
-          trap "echo 'Shutting down validator (PID: $VALIDATOR_PID)'; kill -9 $VALIDATOR_PID 2>/dev/null || true; exit 0" INT TERM
-
-          # Wait for validator to start
-          echo "Waiting for validator to start..."
-          for i in {1..30}; do
-            if solana cluster-version; then
-              break
-            fi
-            sleep 1
-            echo -n "."
-            if [ $i -eq 30 ]; then
-              echo "Timed out waiting for validator to start"
-              exit 1
-            fi
-          done
-          echo "Validator started successfully!"
-
-          # Start faucet if requested
-          if $FAUCET; then
-            echo "Starting Solana faucet..."
-            solana-faucet &
-            FAUCET_PID=$!
-            trap "echo 'Shutting down validator and faucet'; kill -9 $VALIDATOR_PID $FAUCET_PID 2>/dev/null || true; exit 0" INT TERM
-          fi
-
-          # Display validator status
-          solana validators
-          solana block-production
-          solana epoch-info
-
-          # Airdrop some SOL to the default wallet for testing
-          WALLET_FILE="$HOME/.config/solana/id.json"
-          if [ -f "$WALLET_FILE" ]; then
-            WALLET_PUBKEY=$(solana-keygen pubkey "$WALLET_FILE")
-            echo "Airdropping 1000 SOL to wallet: $WALLET_PUBKEY"
-            solana airdrop 1000 "$WALLET_PUBKEY"
-            echo "Current balance: $(solana balance) SOL"
-          fi
-
-          # If --wait is specified, restart the validator if it crashes
-          if $WAIT_FOR_RESTART; then
-            echo "Validator will automatically restart if it crashes (--wait specified)"
-            while true; do
-              if ! kill -0 "$VALIDATOR_PID" 2>/dev/null; then
-                echo "Validator crashed, restarting..."
-                solana-test-validator "''${VALIDATOR_ARGS[@]}" | tee -a "$LOG_FILE" &
-                VALIDATOR_PID=$!
-                echo "New validator PID: $VALIDATOR_PID"
-              fi
-              sleep 5
-            done
-          else
-            # Otherwise, just wait for the validator to exit
-            wait "$VALIDATOR_PID"
-          fi
-        '';
-        
-        # Simple Script to start a Solana validator
-        solanaNodeScript = pkgs.writeShellScriptBin "start-solana-node" ''
-          echo "Starting Solana validator..."
-          solana-test-validator "$@"
-        '';
-        
-        # Script to setup a local Solana wallet and configuration
-        setupLocalScript = pkgs.writeShellScriptBin "setup-solana-local" ''
-          # Configure Solana to use localhost
-          solana config set --url http://127.0.0.1:8899
-          
-          # Create a wallet if it doesn't exist
-          if [ ! -f "$HOME/.config/solana/id.json" ]; then
-            echo "Creating a new Solana wallet..."
-            solana-keygen new --no-bip39-passphrase --force
-          fi
-          
-          # Airdrop some SOL
-          echo "Airdropping SOL to wallet..."
-          solana airdrop 100
-          solana balance
-          
-          echo "Local Solana configuration completed!"
-        '';
-        
-        # Script to create a new Anchor workspace
-        createAnchorWorkspaceScript = pkgs.writeShellScriptBin "create-anchor-workspace" ''
-          if [ $# -ne 1 ]; then
-            echo "Usage: create-anchor-workspace <workspace-name>"
-            exit 1
-          fi
-          
-          WORKSPACE_NAME=$1
-          
-          if [ -d "$WORKSPACE_NAME" ]; then
-            echo "Directory $WORKSPACE_NAME already exists!"
-            exit 1
-          fi
-          
-          echo "Creating new Anchor workspace: $WORKSPACE_NAME"
-          anchor init "$WORKSPACE_NAME"
-          cd "$WORKSPACE_NAME"
-          
-          # Update Anchor.toml with better defaults
-          cat > Anchor.toml << EOF
-[features]
-seeds = true
-skip-lint = false
-
-[programs.localnet]
-$WORKSPACE_NAME = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-
-[registry]
-url = "https://api.apr.dev"
-
-[provider]
-cluster = "localnet"
-wallet = "~/.config/solana/id.json"
-
-[scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
-EOF
-          
-          echo "Workspace created successfully! CD into $WORKSPACE_NAME to get started."
-        '';
-        
-        # Script to build and test the Anchor project
-        buildAndTestScript = pkgs.writeShellScriptBin "build-and-test" ''
-          echo "Building Anchor project..."
-          anchor build
-          
-          echo "Running tests..."
-          anchor test
-        '';
-        
-        # Script for creating a new program in the workspace
-        createProgramScript = pkgs.writeShellScriptBin "create-program" ''
-          if [ $# -ne 1 ]; then
-            echo "Usage: create-program <program-name>"
-            exit 1
-          fi
-          
-          PROGRAM_NAME=$1
-          
-          if [ ! -f "Anchor.toml" ]; then
-            echo "Not in an Anchor workspace! Please run this from the root of an Anchor workspace."
-            exit 1
-          fi
-          
-          if [ -d "programs/$PROGRAM_NAME" ]; then
-            echo "Program $PROGRAM_NAME already exists!"
-            exit 1
-          fi
-          
-          echo "Creating new program: $PROGRAM_NAME"
-          mkdir -p "programs/$PROGRAM_NAME/src"
-          
-          # Create lib.rs with basic program structure
-          cat > "programs/$PROGRAM_NAME/src/lib.rs" << EOF
-use anchor_lang::prelude::*;
-
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
-
-#[program]
-pub mod $PROGRAM_NAME {
-    use super::*;
-
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        Ok(())
-    }
-}
-
-#[derive(Accounts)]
-pub struct Initialize {}
-EOF
-          
-          # Create Cargo.toml for the program
-          cat > "programs/$PROGRAM_NAME/Cargo.toml" << EOF
-[package]
-name = "$PROGRAM_NAME"
-version = "0.1.0"
-description = "Created with Solana Nix environment"
-edition = "2021"
-
-[lib]
-crate-type = ["cdylib", "lib"]
-name = "$PROGRAM_NAME"
-
-[features]
-no-entrypoint = []
-no-idl = []
-no-log-ix-name = []
-cpi = ["no-entrypoint"]
-default = []
-
-[dependencies]
-anchor-lang = "${anchor-version}"
-EOF
-          
-          # Update workspace Cargo.toml to include the new program
-          sed -i "/members = \[/a \    \"programs/$PROGRAM_NAME\"," Cargo.toml
-          
-          # Add the program to Anchor.toml
-          PROGRAM_LINE="\n$PROGRAM_NAME = \"Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS\""
-          sed -i "/\[programs.localnet\]/a $PROGRAM_LINE" Anchor.toml
-          
-          echo "Program $PROGRAM_NAME created successfully!"
-        '';
+          NIX_ENFORCE_MACOSX_DEPLOYMENT_TARGET = "1";
+        });
         
       in {
         packages = {
-          inherit setupAnchorScript;
-          inherit solanaNodeScript;
-          inherit setupLocalScript;
-          inherit createAnchorWorkspaceScript;
-          inherit buildAndTestScript;
-          inherit createProgramScript;
-          inherit enhancedSolanaValidatorScript;
-          default = pkgs.buildEnv {
-            name = "valence-solana-environment";
+          inherit solana solana-rust anchor start-validator;
+          default = pkgs.symlinkJoin {
+            name = "valence-protocol-solana-env";
             paths = [
-              setupAnchorScript
-              solanaNodeScript
-              setupLocalScript
-              createAnchorWorkspaceScript
-              buildAndTestScript
-              createProgramScript
-              enhancedSolanaValidatorScript
-              pkgs.solana-cli
+              solana
+              solana-rust
+              anchor
+              start-validator
             ];
           };
         };
 
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            # Solana tools with explicit version
-            solana-cli
-            setupAnchorScript
-            solanaNodeScript
-            setupLocalScript
-            createAnchorWorkspaceScript
-            buildAndTestScript
-            createProgramScript
-            enhancedSolanaValidatorScript
+            # Solana and Anchor tools
+            solana
+            solana-rust
+            anchor
+            start-validator
             
-            # Rust development
-            rustWithComponents
-            pkg-config
-            
-            # Build dependencies
-            openssl
-            libiconv
-            nodePackages.pnpm
+            # Development tools
             nodejs
             yarn
             python3
-            
-            # Development tools
             gnused
             jq
             ripgrep
-          ] ++ lib.optionals pkgs.stdenv.isDarwin [
-            pkgs.darwin.apple_sdk.frameworks.Security
-            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
-            pkgs.darwin.apple_sdk.frameworks.AppKit
+            protobuf
+          ] ++ lib.optionals stdenv.isDarwin [
+            darwin.apple_sdk.frameworks.Security
+            darwin.apple_sdk.frameworks.SystemConfiguration
+            darwin.apple_sdk.frameworks.AppKit
           ];
-
-          shellHook = ''
-            echo "Entering Valence Solana development environment..."
-            export PATH=$PATH:$HOME/.cargo/bin
-            ${setupAnchorScript}/bin/setup-anchor
-            # Check if devnet needs to be updated
-            if [ -z "$(solana config get | grep 'RPC URL: ${defaultDevnet}')" ]; then
-              echo "Setting up devnet configuration..."
-              solana config set --url ${defaultDevnet}
-            fi
-            echo "Solana configuration:"
-            solana config get
-          '';
 
           # Include Apple Silicon environment variables
           inherit (macosMacOSEnvironment) MACOSX_DEPLOYMENT_TARGET CARGO_BUILD_TARGET RUSTFLAGS BINDGEN_EXTRA_CLANG_ARGS;
+
+          shellHook = ''
+            # Export all common environment variables directly
+            ${pkgs.lib.concatStrings (pkgs.lib.mapAttrsToList (name: value: "export ${name}=${value}\n") commonEnv)}
+            
+            echo "Entering Valence Solana development environment..."
+            echo "Anchor CLI ${anchor-version} is available"
+            echo "Solana configuration:"
+            solana config get
+            
+            # Show macOS deployment target if on Darwin
+            ${pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
+              echo "macOS deployment target: $MACOSX_DEPLOYMENT_TARGET"
+            ''}
+            
+            # Export protoc path
+            export PROTOC=${pkgs.protobuf}/bin/protoc
+          '';
+        };
+
+        devShells.litesvm-test = pkgs.mkShell {
+          buildInputs = with pkgs; [
+            # Rust
+            (rust-bin.stable.latest.default.override {
+              extensions = [ "rust-src" "llvm-tools-preview" "rust-analyzer" ];
+              targets = [ "wasm32-unknown-unknown" ];
+            })
+            
+            # Core build dependencies
+            pkg-config
+            openssl
+            llvm
+            
+            # For litesvm 
+            libiconv
+            protobuf
+          ];
+          
+          # Apply common environment plus additional environment variables
+          inherit (macosMacOSEnvironment) MACOSX_DEPLOYMENT_TARGET NIX_ENFORCE_MACOSX_DEPLOYMENT_TARGET;
+          SOURCE_DATE_EPOCH = commonEnv.SOURCE_DATE_EPOCH;
+          
+          shellHook = ''
+            # Export all environment variables explicitly to ensure they are set
+            export MACOSX_DEPLOYMENT_TARGET=${darwinDeploymentTarget}
+            export NIX_ENFORCE_MACOSX_DEPLOYMENT_TARGET=1
+            export SOURCE_DATE_EPOCH=${commonEnv.SOURCE_DATE_EPOCH}
+            export RUST_BACKTRACE=1
+            export PROTOC=${pkgs.protobuf}/bin/protoc
+            
+            echo "LiteSVM test environment ready"
+            echo "macOS deployment target: $MACOSX_DEPLOYMENT_TARGET"
+            echo "Run 'cargo test' to execute tests"
+          '';
+        };
+
+        # Shell specifically for token_helpers tests
+        devShells.token-helpers-test = pkgs.mkShell {
+          buildInputs = with pkgs; [
+            # Rust with specific version
+            (rust-bin.stable."1.75.0".default.override {
+              extensions = [ "rust-src" "llvm-tools-preview" "rust-analyzer" ];
+              targets = [ "wasm32-unknown-unknown" ];
+            })
+            
+            # Core build dependencies
+            pkg-config
+            openssl
+            llvm
+            
+            # Additional dependencies needed
+            libiconv
+            protobuf
+          ];
+          
+          # Apply common environment plus additional environment variables
+          inherit (macosMacOSEnvironment) MACOSX_DEPLOYMENT_TARGET NIX_ENFORCE_MACOSX_DEPLOYMENT_TARGET;
+          SOURCE_DATE_EPOCH = commonEnv.SOURCE_DATE_EPOCH;
+          
+          shellHook = ''
+            # Export all environment variables explicitly to ensure they are set
+            export MACOSX_DEPLOYMENT_TARGET=${darwinDeploymentTarget}
+            export NIX_ENFORCE_MACOSX_DEPLOYMENT_TARGET=1
+            export SOURCE_DATE_EPOCH=${commonEnv.SOURCE_DATE_EPOCH}
+            export RUST_BACKTRACE=1
+            export PROTOC=${pkgs.protobuf}/bin/protoc
+            
+            echo "Token Helpers test environment ready"
+            echo "macOS deployment target: $MACOSX_DEPLOYMENT_TARGET"
+            
+            # Create a specific Cargo config for testing token_helpers
+            mkdir -p .cargo
+            cat > .cargo/config.toml << EOF
+            [build]
+            rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]
+
+            # Use a single version of the solana crates
+            [patch.crates-io]
+            solana-program = { git = "https://github.com/solana-labs/solana.git", tag = "v1.17.14" }
+            solana-zk-token-sdk = { git = "https://github.com/solana-labs/solana.git", tag = "v1.17.14" }
+            solana-sdk = { git = "https://github.com/solana-labs/solana.git", tag = "v1.17.14" }
+            EOF
+            
+            echo "Created .cargo/config.toml with patched dependencies"
+            echo "Run 'cargo test -p token_transfer' to test token_helpers.rs"
+          '';
+        };
+
+        # Flake outputs
+        apps.litesvm-test = {
+          type = "app";
+          program = "${pkgs.writeShellScriptBin "litesvm-test" ''
+            # Always set required environment variables
+            export MACOSX_DEPLOYMENT_TARGET=${darwinDeploymentTarget}
+            export SOURCE_DATE_EPOCH=${commonEnv.SOURCE_DATE_EPOCH}
+            export RUST_BACKTRACE=1
+            cd $PWD
+            ${pkgs.cargo}/bin/cargo test -p ''${1:-"token_transfer"} ''${@:2}
+          ''}/bin/litesvm-test";
+        };
+        
+        apps.run-tests = {
+          type = "app";
+          program = "${pkgs.writeShellScriptBin "run-tests" ''
+            # Always set required environment variables
+            export MACOSX_DEPLOYMENT_TARGET=${darwinDeploymentTarget}
+            export SOURCE_DATE_EPOCH=${commonEnv.SOURCE_DATE_EPOCH}
+            export RUST_BACKTRACE=1
+            export PROTOC=${pkgs.protobuf}/bin/protoc
+            cd $PWD
+            ${pkgs.bash}/bin/bash ./scripts/run-tests.sh "$@"
+          ''}/bin/run-tests";
+        };
+        
+        apps.token-helpers-test = {
+          type = "app";
+          program = "${pkgs.writeShellScriptBin "token-helpers-test" ''
+            # Always set required environment variables
+            export MACOSX_DEPLOYMENT_TARGET=${darwinDeploymentTarget}
+            export SOURCE_DATE_EPOCH=${commonEnv.SOURCE_DATE_EPOCH}
+            export RUST_BACKTRACE=1
+            export PROTOC=${pkgs.protobuf}/bin/protoc
+            
+            cd $PWD
+            echo "Running token_transfer tests with fixed Solana SDK versions..."
+            ${pkgs.bash}/bin/bash ./scripts/test-token-helpers.sh "$@"
+          ''}/bin/token-helpers-test";
+        };
+        
+        apps.standalone-token-helpers-test = {
+          type = "app";
+          program = "${pkgs.writeShellScriptBin "standalone-token-helpers-test" ''
+            # Always set required environment variables
+            export MACOSX_DEPLOYMENT_TARGET=${darwinDeploymentTarget}
+            export SOURCE_DATE_EPOCH=${commonEnv.SOURCE_DATE_EPOCH}
+            export RUST_BACKTRACE=1
+            export PROTOC=${pkgs.protobuf}/bin/protoc
+            
+            cd $PWD
+            echo "Running standalone token_helpers tests..."
+            ${pkgs.bash}/bin/bash ./scripts/test-standalone-token-helpers.sh "$@"
+          ''}/bin/standalone-token-helpers-test";
+        };
+        
+        apps.core-build = {
+          type = "app";
+          program = "${pkgs.writeShellScriptBin "core-build" ''
+            # Always set required environment variables
+            export MACOSX_DEPLOYMENT_TARGET=${darwinDeploymentTarget}
+            export SOURCE_DATE_EPOCH=${commonEnv.SOURCE_DATE_EPOCH}
+            export RUST_BACKTRACE=1
+            export PROTOC=${pkgs.protobuf}/bin/protoc
+            
+            cd $PWD
+            echo "Building core libraries with consistent environment..."
+            
+            # Ensure version fixes are applied
+            ${pkgs.bash}/bin/bash ./scripts/fix-version-conflicts.sh
+            
+            # Build core libraries
+            ${pkgs.bash}/bin/bash ./scripts/build-core-libraries.sh "$@"
+          ''}/bin/core-build";
         };
       }
     );

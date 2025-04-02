@@ -17,6 +17,17 @@ pub mod processor {
     }
 }
 
+impl<'info> Empty<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, Empty<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
+
 #[derive(Accounts)]
 pub struct Empty<'info> {
     #[account(mut)]

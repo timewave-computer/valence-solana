@@ -8,6 +8,17 @@ pub fn handler(ctx: Context<EnableAuthorization>) -> Result<()> {
     Ok(())
 }
 
+impl<'info> EnableAuthorization<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, EnableAuthorization<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
+
 #[derive(Accounts)]
 pub struct EnableAuthorization<'info> {
     #[account(

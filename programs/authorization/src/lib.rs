@@ -296,6 +296,25 @@ pub mod authorization {
     }
 }
 
+impl<'info> Initialize
+ModifyAuthorization
+DisableAuthorization
+EnableAuthorization
+LookupAuthorization<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, Initialize
+ModifyAuthorization
+DisableAuthorization
+EnableAuthorization
+LookupAuthorization<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
+
 // Include all the account validation structs at the end of the file
 // This is an alternative to using the instructions module
 

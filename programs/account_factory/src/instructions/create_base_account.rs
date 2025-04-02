@@ -13,6 +13,17 @@ pub struct CreateBaseAccountParams {
     pub fund_amount: Option<u64>,
 }
 
+impl<'info> CreateBaseAccount<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, CreateBaseAccount<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
+
 #[derive(Accounts)]
 pub struct CreateBaseAccount<'info> {
     #[account(mut)]

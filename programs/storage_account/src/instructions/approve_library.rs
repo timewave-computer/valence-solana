@@ -16,6 +16,17 @@ pub struct ApproveLibrary<'info> {
     pub storage_account: Account<'info, StorageAccount>,
 }
 
+impl<'info> ApproveLibrary<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, ApproveLibrary<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
+
 pub fn handler(ctx: Context<ApproveLibrary>, library: Pubkey) -> Result<()> {
     let storage_account = &mut ctx.accounts.storage_account;
     

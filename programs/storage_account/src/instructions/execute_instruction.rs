@@ -9,6 +9,17 @@ pub struct SerializableAccountMeta {
     pub is_writable: bool,
 }
 
+impl<'info> ExecuteInstruction<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, ExecuteInstruction<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ExecuteInstructionParams {
     pub library: Pubkey,

@@ -9,13 +9,36 @@ pub struct TransferSolParams {
     pub memo: Option<String>,
 }
 
+impl<'info> TransferSol<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, TransferSol<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Validate library is active
+        if !ctx.accounts.library_config.is_active {
+            return Err(TokenTransferError::LibraryInactive.into());
+        }
+        
+        // Validate processor program
+        if ctx.accounts.library_config.processor_program_id != Some(ctx.accounts.processor_program.key()) {
+            return Err(TokenTransferError::InvalidProcessorProgram.into());
+        }
+        
+        // Validate recipient is allowed
+        if !ctx.accounts.library_config.is_recipient_allowed(&ctx.accounts.recipient.key()) {
+            return Err(TokenTransferError::UnauthorizedRecipient.into());
+        }
+        
+        Ok(())
+    }
+}
+
+
 #[derive(Accounts)]
 pub struct TransferSol<'info> {
     #[account(
         seeds = [b"library_config"],
         bump,
-        constraint = library_config.is_active @ TokenTransferError::LibraryInactive,
-        constraint = library_config.processor_program_id == Some(processor_program.key()) @ TokenTransferError::InvalidProcessorProgram,
     )]
     pub library_config: Account<'info, LibraryConfig>,
 
@@ -26,10 +49,7 @@ pub struct TransferSol<'info> {
     pub source: Signer<'info>,
 
     /// CHECK: The SOL recipient
-    #[account(
-        mut,
-        constraint = library_config.is_recipient_allowed(&recipient.key()) @ TokenTransferError::UnauthorizedRecipient
-    )]
+    #[account(mut)]
     pub recipient: UncheckedAccount<'info>,
 
     /// CHECK: Optional fee collector account

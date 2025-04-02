@@ -1,7 +1,8 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, TokenAccount, Token, Transfer};
+use anchor_spl::token_2022::{self, TokenAccount, Token2022, Transfer};
 use crate::state::LibraryConfig;
 use crate::error::TokenTransferError;
+use crate::utils::token_helpers;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct TransferTokenParams {
@@ -15,38 +16,73 @@ pub struct TransferTokenParams {
     pub memo: Option<String>,
 }
 
+impl<'info> TransferToken<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, TransferToken<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Validate library is active
+        if !ctx.accounts.library_config.is_active {
+            return Err(TokenTransferError::LibraryInactive.into());
+        }
+        
+        // Validate processor program
+        if ctx.accounts.processor_program.key() != ctx.accounts.library_config.processor_program_id.expect("processor not set") {
+            return Err(TokenTransferError::InvalidProcessorProgram.into());
+        }
+
+        // Validate source account owner
+        if ctx.accounts.source_account.owner != *ctx.accounts.authority.key {
+            return Err(TokenTransferError::OwnerMismatch.into());
+        }
+        
+        // Validate mint match
+        if ctx.accounts.source_account.mint != ctx.accounts.mint.key() {
+            return Err(TokenTransferError::MintMismatch.into());
+        }
+        
+        // Validate destination mint match
+        if ctx.accounts.destination_account.mint != ctx.accounts.mint.key() {
+            return Err(TokenTransferError::MintMismatch.into());
+        }
+        
+        // Validate source is allowed
+        if !ctx.accounts.library_config.is_source_allowed(&ctx.accounts.source_account.key()) {
+            return Err(TokenTransferError::UnauthorizedSource.into());
+        }
+        
+        // Validate recipient is allowed
+        if !ctx.accounts.library_config.is_recipient_allowed(&ctx.accounts.destination_account.key()) {
+            return Err(TokenTransferError::UnauthorizedRecipient.into());
+        }
+        
+        // Validate mint is allowed
+        if !ctx.accounts.library_config.is_mint_allowed(ctx.accounts.mint.key) {
+            return Err(TokenTransferError::UnauthorizedMint.into());
+        }
+        
+        Ok(())
+    }
+}
+
 #[derive(Accounts)]
 pub struct TransferToken<'info> {
     #[account(
         seeds = [b"library_config"],
         bump,
-        constraint = library_config.is_active @ TokenTransferError::LibraryInactive,
-        constraint = processor_program.key() == library_config.processor_program_id.expect("processor not set") @ TokenTransferError::InvalidProcessorProgram
     )]
     pub library_config: Account<'info, LibraryConfig>,
 
     /// CHECK: The processor program that is calling this library
     pub processor_program: UncheckedAccount<'info>,
 
-    #[account(
-        mut,
-        constraint = source_account.owner == *authority.key @ TokenTransferError::OwnerMismatch,
-        constraint = source_account.mint == mint.key() @ TokenTransferError::MintMismatch,
-        constraint = library_config.is_source_allowed(&source_account.key()) @ TokenTransferError::UnauthorizedSource
-    )]
+    #[account(mut)]
     pub source_account: Account<'info, TokenAccount>,
 
-    #[account(
-        mut,
-        constraint = destination_account.mint == mint.key() @ TokenTransferError::MintMismatch,
-        constraint = library_config.is_recipient_allowed(&destination_account.key()) @ TokenTransferError::UnauthorizedRecipient
-    )]
+    #[account(mut)]
     pub destination_account: Account<'info, TokenAccount>,
 
     /// CHECK: The mint of the token being transferred
-    #[account(
-        constraint = library_config.is_mint_allowed(mint.key) @ TokenTransferError::UnauthorizedMint
-    )]
     pub mint: UncheckedAccount<'info>,
 
     /// The authority that can authorize the transfer
@@ -56,7 +92,8 @@ pub struct TransferToken<'info> {
     #[account(mut)]
     pub fee_collector: Option<Account<'info, TokenAccount>>,
 
-    pub token_program: Program<'info, Token>,
+    /// The token program (Token-2022)
+    pub token_program: Program<'info, Token2022>,
 }
 
 pub fn handler(ctx: Context<TransferToken>, params: TransferTokenParams) -> Result<()> {
@@ -125,7 +162,7 @@ pub fn handler(ctx: Context<TransferToken>, params: TransferTokenParams) -> Resu
     let cpi_program = ctx.accounts.token_program.to_account_info();
     let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
     
-    token::transfer(cpi_ctx, amount)?;
+    token_helpers::transfer_tokens(cpi_ctx, amount)?;
 
     // Transfer fee if specified
     if fee_amount > 0 && ctx.accounts.fee_collector.is_some() {
@@ -143,7 +180,7 @@ pub fn handler(ctx: Context<TransferToken>, params: TransferTokenParams) -> Resu
         };
         
         let fee_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), fee_accounts);
-        token::transfer(fee_ctx, fee_amount)?;
+        token_helpers::transfer_tokens(fee_ctx, fee_amount)?;
         
         // Update fee collection stats
         library_config.add_fees_collected(fee_amount);

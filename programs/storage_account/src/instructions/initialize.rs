@@ -24,6 +24,16 @@ pub struct Initialize<'info> {
     pub system_program: Program<'info, System>,
 }
 
+impl<'info> Initialize<'info> {
+    pub fn try_accounts(
+        ctx: &Context<'_, '_, '_, 'info, Initialize<'info>>,
+        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+    ) -> Result<()> {
+        // Additional validation logic can be added here if needed
+        Ok(())
+    }
+}
+
 pub fn handler(ctx: Context<Initialize>, params: InitializeParams) -> Result<()> {
     let storage_account = &mut ctx.accounts.storage_account;
     let authority = ctx.accounts.authority.key();
