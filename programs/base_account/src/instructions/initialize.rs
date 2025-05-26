@@ -1,7 +1,5 @@
 use anchor_lang::prelude::*;
-use std::collections::BTreeMap;
 use crate::state::AccountState;
-use crate::error::BaseAccountError;
 
 pub fn handler(
     ctx: Context<Initialize>,
@@ -31,17 +29,6 @@ pub fn handler(
     msg!("Base account initialized with owner: {}", account_state.owner);
     Ok(())
 }
-
-impl<'info> Initialize<'info> {
-    pub fn try_accounts(
-        ctx: &Context<'_, '_, '_, 'info, Initialize<'info>>,
-        _bumps: &BTreeMap<String, u8>,
-    ) -> Result<()> {
-        // Additional validation logic can be added here if needed
-        Ok(())
-    }
-}
-
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {

@@ -8,15 +8,7 @@ pub fn handler(ctx: Context<DisableAuthorization>) -> Result<()> {
     Ok(())
 }
 
-impl<'info> DisableAuthorization<'info> {
-    pub fn try_accounts(
-        ctx: &Context<'_, '_, '_, 'info, DisableAuthorization<'info>>,
-        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
-    ) -> Result<()> {
-        // Additional validation logic can be added here if needed
-        Ok(())
-    }
-}
+
 
 
 #[derive(Accounts)]
@@ -29,7 +21,7 @@ pub struct DisableAuthorization<'info> {
     
     #[account(
         mut,
-        seeds = [b"authorization".as_ref(), &authorization.label[..authorization.label_length as usize]],
+        seeds = [b"authorization".as_ref(), authorization.label.as_bytes()],
         bump = authorization.bump,
         constraint = authorization.owner == owner.key() || authorization_state.owner == owner.key() || authorization_state.sub_owners.contains(&owner.key()) @ AuthorizationError::NotAuthorized,
     )]

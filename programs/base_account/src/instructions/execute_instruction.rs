@@ -1,10 +1,8 @@
 use anchor_lang::prelude::*;
-use anchor_lang::InstructionData;
-use solana_program::program::{invoke_signed};
-use solana_program::instruction::Instruction;
+use anchor_lang::solana_program::program::{invoke_signed};
+use anchor_lang::solana_program::instruction::Instruction;
 use crate::state::{AccountState, ApprovalNonce};
 use crate::error::BaseAccountError;
-use std::collections::BTreeMap;
 
 pub fn handler(ctx: Context<ExecuteInstruction>, ix_data: Vec<u8>) -> Result<()> {
     let account_state = &mut ctx.accounts.account;
@@ -93,15 +91,7 @@ pub fn handler(ctx: Context<ExecuteInstruction>, ix_data: Vec<u8>) -> Result<()>
     Ok(())
 }
 
-impl<'info> ExecuteInstruction<'info> {
-    pub fn try_accounts(
-        ctx: &Context<'_, '_, '_, 'info, ExecuteInstruction<'info>>,
-        _bumps: &BTreeMap<String, u8>,
-    ) -> Result<()> {
-        // Additional validation logic can be added here if needed
-        Ok(())
-    }
-}
+
 
 
 #[derive(Accounts)]

@@ -1,0 +1,40 @@
+[package]
+name = "valence-tests"
+version = "0.1.0"
+description = "Rust integration tests for Valence Protocol"
+edition = "2021"
+
+[dependencies]
+# Anchor framework
+anchor-lang = "0.31.1"
+anchor-spl = { version = "0.31.1", features = ["token", "token_2022"] }
+
+# Minimal dependencies for unit tests only
+# solana-program-test = { version = "2.0", default-features = false }
+# solana-sdk = { version = "2.0", default-features = false }
+# solana-program = { version = "2.0", default-features = false }
+# litesvm = "0.6.1"  # Temporarily disabled due to version conflicts
+
+# SPL programs - temporarily disabled to avoid OpenSSL issues
+# spl-token = { version = "7.0", features = ["no-entrypoint"] }
+# spl-token-2022 = { version = "6.0", features = ["no-entrypoint"] }
+# spl-associated-token-account = { version = "6.0", features = ["no-entrypoint"] }
+# spl-memo = { version = "6.0", features = ["no-entrypoint"] }
+
+# Local programs
+authorization = { path = "../programs/authorization", features = ["cpi"] }
+registry = { path = "../programs/registry", features = ["cpi"] }
+processor = { path = "../programs/processor", features = ["cpi"] }
+base_account = { path = "../programs/base_account", features = ["cpi"] }
+storage_account = { path = "../programs/storage_account", features = ["cpi"] }
+zk_verifier = { path = "../programs/zk_verifier", features = ["cpi"] }
+
+# Test utilities
+# token-helpers-test = { path = "../test-helpers" }
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# Utilities
+borsh = "0.10.0"
+thiserror = "1.0.56" 

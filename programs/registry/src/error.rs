@@ -28,4 +28,22 @@ pub enum RegistryError {
     
     #[msg("Library already registered")]
     LibraryAlreadyRegistered,
+    
+    #[msg("Arithmetic overflow")]
+    ArithmeticOverflow,
+    
+    #[msg("Dependency already exists")]
+    DependencyAlreadyExists,
+    
+    #[msg("Dependency not found")]
+    DependencyNotFound,
+    
+    #[msg("Circular dependency detected")]
+    CircularDependency,
+    
+    #[msg("Invalid dependency version")]
+    InvalidDependencyVersion,
+    
+    #[msg("Dependency graph too large")]
+    DependencyGraphTooLarge,
 } 

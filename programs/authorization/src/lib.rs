@@ -1,37 +1,39 @@
 use anchor_lang::prelude::*;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("11111111111111111111111111111112");
 
 pub mod error;
 pub mod state;
 
-use error::AuthorizationError;
 use state::*;
+use error::*;
 
 #[program]
 pub mod authorization {
     use super::*;
-    
-    /// Initialize the authorization program with the owner, processor program ID, and registry.
+
+    /// Initialize the authorization system
     pub fn initialize(
-        ctx: Context<Initialize>, 
-        processor_id: Pubkey,
-        registry_id: Pubkey
+        ctx: Context<Initialize>,
+        processor_program_id: Pubkey,
+        registry_program_id: Pubkey,
     ) -> Result<()> {
-        msg!("Initializing authorization program");
-        
         let state = &mut ctx.accounts.authorization_state;
         state.owner = ctx.accounts.owner.key();
         state.sub_owners = Vec::new();
-        state.processor_program_id = processor_id;
+        state.processor_id = processor_program_id;
+        state.registry_id = registry_program_id;
         state.execution_counter = 0;
-        state.valence_registry = registry_id;
-        state.bump = *ctx.bumps.get("authorization_state").unwrap();
+        state.last_zk_sequence = 0;
+        state.zk_sequence_counter = 0;
+        state.bump = ctx.bumps.authorization_state;
+        state.reserved = [0; 64];
         
+        msg!("Authorization system initialized");
         Ok(())
     }
-    
-    /// Create a new authorization with the given parameters
+
+    /// Create a new authorization
     pub fn create_authorization(
         ctx: Context<CreateAuthorization>,
         label: String,
@@ -43,21 +45,9 @@ pub mod authorization {
         priority: Priority,
         subroutine_type: SubroutineType,
     ) -> Result<()> {
-        // Validate parameters
-        if label.is_empty() || label.len() > 32 {
-            return Err(AuthorizationError::InvalidParameters.into());
-        }
-
-        if let Some(exp) = expiration {
-            if exp <= not_before {
-                return Err(AuthorizationError::InvalidParameters.into());
-            }
-        }
-        
         let auth = &mut ctx.accounts.authorization;
         
-        // Initialize authorization using the new method
-        auth.set_label(&label);
+        auth.label = label.clone();
         auth.owner = ctx.accounts.owner.key();
         auth.is_active = true;
         auth.permission_type = permission_type;
@@ -68,116 +58,24 @@ pub mod authorization {
         auth.priority = priority;
         auth.subroutine_type = subroutine_type;
         auth.current_executions = 0;
-        auth.bump = *ctx.bumps.get("authorization").unwrap();
+        auth.bump = ctx.bumps.authorization;
         
-        msg!("Created new authorization with label: {}", label);
-        
+        msg!("Created authorization: {}", label);
         Ok(())
     }
-    
-    /// Modify an existing authorization
-    pub fn modify_authorization(
-        ctx: Context<ModifyAuthorization>,
-        permission_type: Option<PermissionType>,
-        allowed_users: Option<Vec<Pubkey>>,
-        not_before: Option<i64>,
-        expiration: Option<Option<i64>>,
-        max_concurrent_executions: Option<u32>,
-        priority: Option<Priority>,
-        subroutine_type: Option<SubroutineType>,
-    ) -> Result<()> {
-        let auth = &mut ctx.accounts.authorization;
-        
-        // Update fields if provided
-        if let Some(ptype) = permission_type {
-            auth.permission_type = ptype;
-        }
-        
-        if let Some(users) = allowed_users {
-            auth.allowed_users = users;
-        }
-        
-        if let Some(time) = not_before {
-            auth.not_before = time;
-        }
-        
-        if let Some(exp) = expiration {
-            auth.expiration = exp;
-        }
-        
-        if let Some(max) = max_concurrent_executions {
-            auth.max_concurrent_executions = max;
-        }
-        
-        if let Some(pri) = priority {
-            auth.priority = pri;
-        }
-        
-        if let Some(sub) = subroutine_type {
-            auth.subroutine_type = sub;
-        }
-        
-        // Validate updated state
-        if let Some(exp) = auth.expiration {
-            if exp <= auth.not_before {
-                return Err(AuthorizationError::InvalidParameters.into());
-            }
-        }
-        
-        msg!("Modified authorization: {}", auth.get_label());
-        
-        Ok(())
-    }
-    
-    /// Disable an authorization
-    pub fn disable_authorization(ctx: Context<DisableAuthorization>) -> Result<()> {
-        ctx.accounts.authorization.is_active = false;
-        msg!("Disabled authorization: {}", ctx.accounts.authorization.get_label());
-        Ok(())
-    }
-    
-    /// Enable an authorization
-    pub fn enable_authorization(ctx: Context<EnableAuthorization>) -> Result<()> {
-        ctx.accounts.authorization.is_active = true;
-        msg!("Enabled authorization: {}", ctx.accounts.authorization.get_label());
-        Ok(())
-    }
-    
-    /// Send messages using an authorization
+
+    /// Send messages for execution
     pub fn send_messages(
         ctx: Context<SendMessages>,
         authorization_label: String,
         messages: Vec<ProcessorMessage>,
     ) -> Result<()> {
-        // Validate parameters
-        if messages.is_empty() {
-            return Err(AuthorizationError::EmptyMessageBatch.into());
-        }
-        
-        // Validate authorization label length
-        if authorization_label.is_empty() || authorization_label.len() > 32 {
-            return Err(AuthorizationError::InvalidParameters.into());
-        }
-        
         let auth = &mut ctx.accounts.authorization;
         let state = &mut ctx.accounts.authorization_state;
         
-        // Check authorization status
+        // Basic validation
         if !auth.is_active {
             return Err(AuthorizationError::AuthorizationInactive.into());
-        }
-        
-        // Check timestamps
-        let current_time = Clock::get()?.unix_timestamp;
-        
-        if current_time < auth.not_before {
-            return Err(AuthorizationError::AuthorizationNotYetValid.into());
-        }
-        
-        if let Some(exp) = auth.expiration {
-            if current_time > exp {
-                return Err(AuthorizationError::AuthorizationExpired.into());
-            }
         }
         
         // Check permissions
@@ -195,39 +93,28 @@ pub mod authorization {
             }
         }
         
-        // Check concurrent executions
-        if auth.current_executions >= auth.max_concurrent_executions {
-            return Err(AuthorizationError::MaxConcurrentExecutionsReached.into());
-        }
-        
-        // Generate execution ID and increment counter
+        // Generate execution ID
         let execution_id = state.execution_counter;
         state.execution_counter = state.execution_counter.checked_add(1)
             .ok_or(AuthorizationError::InvalidParameters)?;
         
-        // Create execution record with new method
+        // Create execution record
         let execution = &mut ctx.accounts.current_execution;
         execution.id = execution_id;
-        execution.set_authorization_label(&authorization_label);
+        execution.authorization_label = authorization_label.clone();
         execution.sender = ctx.accounts.sender.key();
-        execution.start_time = current_time;
-        execution.bump = *ctx.bumps.get("current_execution").unwrap();
+        execution.start_time = Clock::get()?.unix_timestamp;
+        execution.bump = ctx.bumps.current_execution;
         
-        // Increment active executions counter
+        // Increment active executions
         auth.current_executions = auth.current_executions.checked_add(1)
             .ok_or(AuthorizationError::InvalidParameters)?;
         
-        // Forward messages to processor program via CPI
-        msg!("Sending {} messages to processor with execution ID: {}", 
-             messages.len(), execution_id);
-             
-        // For now we just log that we would send the messages
-        msg!("CPI to processor would be performed here with execution ID: {}", execution_id);
-        
+        msg!("Sending {} messages with execution ID: {}", messages.len(), execution_id);
         Ok(())
     }
-    
-    /// Process callback from the Processor Program
+
+    /// Receive callback from processor
     pub fn receive_callback(
         ctx: Context<ReceiveCallback>,
         execution_id: u64,
@@ -235,96 +122,23 @@ pub mod authorization {
         executed_count: u32,
         error_data: Option<Vec<u8>>,
     ) -> Result<()> {
-        // Verify callback is from processor program
-        if ctx.accounts.processor_program.key() != ctx.accounts.authorization_state.processor_program_id {
-            return Err(AuthorizationError::UnauthorizedCallback.into());
-        }
-        
-        // Verify execution ID matches
-        if ctx.accounts.current_execution.id != execution_id {
-            return Err(AuthorizationError::ExecutionNotFound.into());
-        }
-        
-        // Lookup authorization
         let auth = &mut ctx.accounts.authorization;
         
-        // Decrement active executions counter
-        auth.current_executions = auth.current_executions.checked_sub(1)
-            .unwrap_or(0);
+        // Decrement active executions
+        auth.current_executions = auth.current_executions.saturating_sub(1);
         
-        // Log result
-        match result {
-            ExecutionResult::Success => {
-                msg!("Execution {} completed successfully. Executed {} messages", 
-                    execution_id, executed_count);
-            },
-            ExecutionResult::Failure => {
-                msg!("Execution {} failed after executing {} messages", 
-                    execution_id, executed_count);
-                
-                if let Some(error) = error_data {
-                    msg!("Error data: {:?}", error);
-                }
-            }
-        }
-        
-        // The current_execution account is closed in the account validation
-        // which returns the lamports back to the original sender
-        
-        Ok(())
-    }
-    
-    /// Lookup an authorization by label and return its address
-    pub fn lookup_authorization(
-        ctx: Context<LookupAuthorization>,
-        label: String,
-    ) -> Result<Pubkey> {
-        // Validate label length
-        if label.is_empty() || label.len() > 32 {
-            return Err(AuthorizationError::InvalidParameters.into());
-        }
-        
-        // Compute the authorization PDA
-        let (auth_pda, _) = Pubkey::find_program_address(
-            &[b"authorization".as_ref(), label.as_bytes()],
-            ctx.program_id
-        );
-        
-        msg!("Found authorization at: {}", auth_pda);
-        
-        Ok(auth_pda)
-    }
-}
-
-impl<'info> Initialize
-ModifyAuthorization
-DisableAuthorization
-EnableAuthorization
-LookupAuthorization<'info> {
-    pub fn try_accounts(
-        ctx: &Context<'_, '_, '_, 'info, Initialize
-ModifyAuthorization
-DisableAuthorization
-EnableAuthorization
-LookupAuthorization<'info>>,
-        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
-    ) -> Result<()> {
-        // Additional validation logic can be added here if needed
+        msg!("Received callback for execution {}: {:?}", execution_id, result);
         Ok(())
     }
 }
-
-
-// Include all the account validation structs at the end of the file
-// This is an alternative to using the instructions module
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(
         init,
         payer = owner,
-        space = 8 + std::mem::size_of::<AuthorizationState>() + 32 * 10, // Extra space for sub_owners
-        seeds = [b"authorization_state".as_ref()],
+        space = AuthorizationState::space(0),
+        seeds = [b"authorization_state"],
         bump
     )]
     pub authorization_state: Account<'info, AuthorizationState>,
@@ -336,85 +150,36 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(label: String)]
+#[instruction(
+    label: String,
+    permission_type: PermissionType,
+    allowed_users: Option<Vec<Pubkey>>,
+    not_before: i64,
+    expiration: Option<i64>,
+    max_concurrent_executions: u32,
+    priority: Priority,
+    subroutine_type: SubroutineType
+)]
 pub struct CreateAuthorization<'info> {
+    #[account(
+        seeds = [b"authorization_state"],
+        bump = authorization_state.bump,
+    )]
+    pub authorization_state: Account<'info, AuthorizationState>,
+    
     #[account(
         init,
         payer = owner,
-        space = 8 + std::mem::size_of::<Authorization>() + 32 * 50, // Extra space for allowed_users
-        seeds = [b"authorization".as_ref(), label.as_bytes()],
-        bump
+        space = Authorization::space(label.len(), allowed_users.as_ref().map_or(0, |v| v.len())),
+        seeds = [b"authorization", label.as_bytes()],
+        bump,
     )]
     pub authorization: Account<'info, Authorization>,
     
-    #[account(
-        mut,
-        seeds = [b"authorization_state".as_ref()],
-        bump = authorization_state.bump
-    )]
-    pub authorization_state: Account<'info, AuthorizationState>,
-    
-    #[account(mut, constraint = owner.key() == authorization_state.owner || authorization_state.sub_owners.contains(&owner.key()))]
+    #[account(mut)]
     pub owner: Signer<'info>,
     
     pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-pub struct ModifyAuthorization<'info> {
-    #[account(
-        mut,
-        seeds = [b"authorization".as_ref(), authorization.get_label().as_bytes()],
-        bump = authorization.bump
-    )]
-    pub authorization: Account<'info, Authorization>,
-    
-    #[account(
-        seeds = [b"authorization_state".as_ref()],
-        bump = authorization_state.bump
-    )]
-    pub authorization_state: Account<'info, AuthorizationState>,
-    
-    #[account(constraint = owner.key() == authorization.owner || authorization_state.sub_owners.contains(&owner.key()))]
-    pub owner: Signer<'info>,
-}
-
-#[derive(Accounts)]
-pub struct DisableAuthorization<'info> {
-    #[account(
-        mut,
-        seeds = [b"authorization".as_ref(), authorization.get_label().as_bytes()],
-        bump = authorization.bump
-    )]
-    pub authorization: Account<'info, Authorization>,
-    
-    #[account(
-        seeds = [b"authorization_state".as_ref()],
-        bump = authorization_state.bump
-    )]
-    pub authorization_state: Account<'info, AuthorizationState>,
-    
-    #[account(constraint = owner.key() == authorization.owner || authorization_state.sub_owners.contains(&owner.key()))]
-    pub owner: Signer<'info>,
-}
-
-#[derive(Accounts)]
-pub struct EnableAuthorization<'info> {
-    #[account(
-        mut,
-        seeds = [b"authorization".as_ref(), authorization.get_label().as_bytes()],
-        bump = authorization.bump
-    )]
-    pub authorization: Account<'info, Authorization>,
-    
-    #[account(
-        seeds = [b"authorization_state".as_ref()],
-        bump = authorization_state.bump
-    )]
-    pub authorization_state: Account<'info, AuthorizationState>,
-    
-    #[account(constraint = owner.key() == authorization.owner || authorization_state.sub_owners.contains(&owner.key()))]
-    pub owner: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -422,26 +187,23 @@ pub struct EnableAuthorization<'info> {
 pub struct SendMessages<'info> {
     #[account(
         mut,
-        seeds = [b"authorization".as_ref(), authorization_label.as_bytes()],
-        bump = authorization.bump
-    )]
-    pub authorization: Account<'info, Authorization>,
-    
-    #[account(
-        mut,
-        seeds = [b"authorization_state".as_ref()],
-        bump = authorization_state.bump
+        seeds = [b"authorization_state"],
+        bump = authorization_state.bump,
     )]
     pub authorization_state: Account<'info, AuthorizationState>,
     
     #[account(
+        mut,
+        seeds = [b"authorization", authorization_label.as_bytes()],
+        bump = authorization.bump,
+    )]
+    pub authorization: Account<'info, Authorization>,
+    
+    #[account(
         init,
         payer = sender,
-        space = 8 + std::mem::size_of::<CurrentExecution>(),
-        seeds = [
-            b"execution".as_ref(),
-            authorization_state.execution_counter.to_le_bytes().as_ref()
-        ],
+        space = CurrentExecution::space(authorization_label.len()),
+        seeds = [b"execution", authorization_state.execution_counter.to_le_bytes().as_ref()],
         bump
     )]
     pub current_execution: Account<'info, CurrentExecution>,
@@ -453,46 +215,176 @@ pub struct SendMessages<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(execution_id: u64)]
 pub struct ReceiveCallback<'info> {
     #[account(
         mut,
-        seeds = [b"authorization".as_ref(), authorization.get_label().as_bytes()],
-        bump = authorization.bump
+        seeds = [b"authorization", authorization.label.as_bytes()],
+        bump = authorization.bump,
     )]
     pub authorization: Account<'info, Authorization>,
     
-    #[account(
-        seeds = [b"authorization_state".as_ref()],
-        bump = authorization_state.bump
-    )]
-    pub authorization_state: Account<'info, AuthorizationState>,
-    
-    #[account(
-        mut,
-        close = sender,
-        seeds = [
-            b"execution".as_ref(),
-            execution_id.to_le_bytes().as_ref()
-        ],
-        bump = current_execution.bump
-    )]
-    pub current_execution: Account<'info, CurrentExecution>,
-    
-    /// CHECK: We verify this account is the processor program in the handler
-    pub processor_program: UncheckedAccount<'info>,
-    
-    /// The original sender to receive lamports when closing the account
-    /// CHECK: Address is verified by the constraint
-    #[account(mut, address = current_execution.sender)]
-    pub sender: UncheckedAccount<'info>,
+    pub sender: Signer<'info>,
 }
 
-#[derive(Accounts)]
-pub struct LookupAuthorization<'info> {
-    #[account(
-        seeds = [b"authorization_state".as_ref()],
-        bump = authorization_state.bump
-    )]
-    pub authorization_state: Account<'info, AuthorizationState>,
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::*;
+    use crate::error::AuthorizationError;
+
+    #[test]
+    fn test_permission_type_variants() {
+        let public = PermissionType::Public;
+        let owner_only = PermissionType::OwnerOnly;
+        let allowlist = PermissionType::Allowlist;
+
+        assert_eq!(public, PermissionType::Public);
+        assert_eq!(owner_only, PermissionType::OwnerOnly);
+        assert_eq!(allowlist, PermissionType::Allowlist);
+        assert_ne!(public, owner_only);
+    }
+
+    #[test]
+    fn test_priority_levels() {
+        let high = Priority::High;
+        let medium = Priority::Medium;
+        let low = Priority::Low;
+
+        assert_eq!(high, Priority::High);
+        assert_eq!(medium, Priority::Medium);
+        assert_eq!(low, Priority::Low);
+        assert_ne!(high, medium);
+    }
+
+    #[test]
+    fn test_authorization_space_calculation() {
+        let space_no_users = Authorization::space(10, 0); // 10 char label, 0 users
+        let space_with_users = Authorization::space(10, 5); // 10 char label, 5 users
+        let space_max_label = Authorization::space(32, 10); // 32 char label, 10 users
+
+        // Base size should be reasonable
+        assert!(space_no_users > 0);
+        // More users should require more space
+        assert!(space_with_users > space_no_users);
+        assert!(space_max_label > space_with_users);
+        
+        // Each user adds 32 bytes (Pubkey)
+        let expected_diff = 5 * 32;
+        let actual_diff = space_with_users - space_no_users;
+        // The actual difference might be larger due to Vec overhead and alignment
+        assert!(actual_diff >= expected_diff);
+    }
+
+    #[test]
+    fn test_processor_message_serialization() {
+        let message = ProcessorMessage {
+            program_id: Pubkey::new_unique(),
+            data: vec![1, 2, 3, 4, 5],
+            accounts: vec![
+                AccountMetaData {
+                    pubkey: Pubkey::new_unique(),
+                    is_signer: true,
+                    is_writable: false,
+                }
+            ],
+        };
+
+        // Test that the structure can be serialized/deserialized
+        let serialized = message.try_to_vec().unwrap();
+        let deserialized: ProcessorMessage = ProcessorMessage::try_from_slice(&serialized).unwrap();
+
+        assert_eq!(deserialized.program_id, message.program_id);
+        assert_eq!(deserialized.data, vec![1, 2, 3, 4, 5]);
+        assert_eq!(deserialized.accounts.len(), 1);
+        assert_eq!(deserialized.accounts[0].pubkey, message.accounts[0].pubkey);
+        assert_eq!(deserialized.accounts[0].is_signer, true);
+        assert_eq!(deserialized.accounts[0].is_writable, false);
+    }
+
+    #[test]
+    fn test_authorization_state_space() {
+        let space_no_sub_owners = AuthorizationState::space(0);
+        let space_with_sub_owners = AuthorizationState::space(5);
+
+        assert!(space_no_sub_owners > 0);
+        assert!(space_with_sub_owners > space_no_sub_owners);
+        
+        // Each sub-owner adds 32 bytes (Pubkey)
+        let expected_diff = 5 * 32;
+        assert_eq!(space_with_sub_owners - space_no_sub_owners, expected_diff);
+    }
+
+    #[test]
+    fn test_current_execution_space() {
+        let space_short = CurrentExecution::space(5); // 5 char label
+        let space_long = CurrentExecution::space(32); // 32 char label
+
+        assert!(space_short > 0);
+        assert!(space_long > space_short);
+        
+        // Label length difference should be reflected in space
+        let expected_diff = 32 - 5;
+        assert_eq!(space_long - space_short, expected_diff);
+    }
+
+    #[test]
+    fn test_execution_result_variants() {
+        let success = ExecutionResult::Success;
+        let failure = ExecutionResult::Failure;
+
+        assert_eq!(success, ExecutionResult::Success);
+        assert_eq!(failure, ExecutionResult::Failure);
+        assert_ne!(success, failure);
+    }
+
+    #[test]
+    fn test_subroutine_type_variants() {
+        let atomic = SubroutineType::Atomic;
+        let non_atomic = SubroutineType::NonAtomic;
+
+        assert_eq!(atomic, SubroutineType::Atomic);
+        assert_eq!(non_atomic, SubroutineType::NonAtomic);
+        assert_ne!(atomic, non_atomic);
+    }
+
+    #[test]
+    fn test_authorization_serialization() {
+        let owner = Pubkey::new_unique();
+        let user1 = Pubkey::new_unique();
+        let user2 = Pubkey::new_unique();
+
+        let auth = Authorization {
+            label: "test_auth".to_string(),
+            owner,
+            is_active: true,
+            permission_type: PermissionType::Allowlist,
+            allowed_users: vec![user1, user2],
+            not_before: 1000,
+            expiration: Some(2000),
+            max_concurrent_executions: 5,
+            priority: Priority::High,
+            subroutine_type: SubroutineType::Atomic,
+            current_executions: 2,
+            bump: 255,
+        };
+
+        // Test that the structure can be serialized/deserialized
+        let serialized = auth.try_to_vec().unwrap();
+        let deserialized: Authorization = Authorization::try_from_slice(&serialized).unwrap();
+
+        assert_eq!(deserialized.label, "test_auth");
+        assert_eq!(deserialized.owner, owner);
+        assert_eq!(deserialized.is_active, true);
+        assert_eq!(deserialized.permission_type, PermissionType::Allowlist);
+        assert_eq!(deserialized.allowed_users.len(), 2);
+        assert_eq!(deserialized.allowed_users[0], user1);
+        assert_eq!(deserialized.allowed_users[1], user2);
+        assert_eq!(deserialized.not_before, 1000);
+        assert_eq!(deserialized.expiration, Some(2000));
+        assert_eq!(deserialized.max_concurrent_executions, 5);
+        assert_eq!(deserialized.priority, Priority::High);
+        assert_eq!(deserialized.subroutine_type, SubroutineType::Atomic);
+        assert_eq!(deserialized.current_executions, 2);
+        assert_eq!(deserialized.bump, 255);
+    }
 } 

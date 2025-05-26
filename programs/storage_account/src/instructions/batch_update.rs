@@ -11,7 +11,7 @@ pub struct BatchUpdateParams {
 impl<'info> BatchUpdate<'info> {
     pub fn try_accounts(
         ctx: &Context<'_, '_, '_, 'info, BatchUpdate<'info>>,
-        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+        _bumps: &std::collections::BTreeMap<String, u8>,
     ) -> Result<()> {
         // Additional validation logic can be added here if needed
         Ok(())

@@ -1,5 +1,13 @@
 use anchor_lang::prelude::*;
 
+/// Transfer destination for batch operations
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct TransferDestination {
+    pub destination: Pubkey,
+    pub amount: u64,
+    pub memo: Option<String>,
+}
+
 #[account]
 pub struct LibraryConfig {
     /// The authority that can update the configuration
@@ -8,10 +16,14 @@ pub struct LibraryConfig {
     pub is_active: bool,
     /// The processor program ID (if restricted)
     pub processor_program_id: Option<Pubkey>,
+    /// The processor program (new field for optimization)
+    pub processor_program: Pubkey,
     /// Maximum transfer size in tokens (0 for unlimited)
     pub max_transfer_amount: u64,
     /// Maximum batch transfer size (0 for unlimited)
     pub max_batch_size: u8,
+    /// Whether batch transfers are enabled
+    pub batch_transfers_enabled: bool,
     /// Whether to enforce recipient allowlisting
     pub enforce_recipient_allowlist: bool,
     /// List of allowed recipient addresses (if enforce_recipient_allowlist is true)
@@ -36,14 +48,18 @@ pub struct LibraryConfig {
     pub fee_collector: Option<Pubkey>,
     /// Number of transfers executed
     pub transfer_count: u64,
+    /// Number of batch transfers executed
+    pub batch_transfer_count: u64,
     /// Total volume transferred (raw sum of amounts)
     pub total_volume: u64,
     /// Total fees collected
     pub total_fees_collected: u64,
     /// Last updated timestamp
     pub last_updated: i64,
+    /// Bump seed for PDA
+    pub bump: u8,
     /// Reserved for future use
-    pub reserved: [u8; 64],
+    pub reserved: [u8; 63],
 }
 
 impl LibraryConfig {
@@ -51,8 +67,10 @@ impl LibraryConfig {
         32 + // authority
         1 + // is_active
         1 + 32 + // processor_program_id Option<Pubkey>
+        32 + // processor_program
         8 + // max_transfer_amount
         1 + // max_batch_size
+        1 + // batch_transfers_enabled
         1 + // enforce_recipient_allowlist
         4 + // allowed_recipients vector length
         1 + // enforce_source_allowlist
@@ -65,10 +83,12 @@ impl LibraryConfig {
         2 + // fee_bps
         1 + 32 + // fee_collector Option<Pubkey>
         8 + // transfer_count
+        8 + // batch_transfer_count
         8 + // total_volume
         8 + // total_fees_collected
         8 + // last_updated
-        64; // reserved
+        1 + // bump
+        63; // reserved
 
     pub fn size(
         allowed_recipients_len: usize,
@@ -83,6 +103,16 @@ impl LibraryConfig {
 
     pub fn increment_transfer_count(&mut self) {
         self.transfer_count = self.transfer_count.saturating_add(1);
+        self.last_updated = Clock::get().unwrap().unix_timestamp;
+    }
+
+    pub fn increment_instruction_count(&mut self) {
+        // For compatibility - maps to transfer count
+        self.increment_transfer_count();
+    }
+
+    pub fn record_batch_transfer(&mut self, count: u32) {
+        self.batch_transfer_count = self.batch_transfer_count.saturating_add(count as u64);
         self.last_updated = Clock::get().unwrap().unix_timestamp;
     }
 

@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use std::collections::HashMap;
+// use std::collections::HashMap; // Unused for now
 use crate::error::StorageAccountError;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
@@ -40,8 +40,6 @@ pub struct StorageAccount {
     pub max_capacity: u32,
     /// Current storage usage in bytes
     pub current_usage: u32,
-    /// Reserved for future use
-    pub reserved: [u8; 64],
 }
 
 #[account]
@@ -60,23 +58,23 @@ pub struct StorageItem {
     pub updated_at: i64,
     /// Version of the item (incremented on updates)
     pub version: u32,
-    /// Reserved for future use
-    pub reserved: [u8; 32],
 }
 
 impl StorageAccount {
-    pub const SIZE: usize = 8 + // discriminator
+    /// Calculate space needed for this account
+    pub fn space(max_libraries: usize) -> usize {
+        8 + // discriminator
         32 + // authority
         32 + // auth_token
-        8 + 32 * 10 + // approved_libraries (assuming max 10 libraries)
+        4 + (max_libraries * 32) + // approved_libraries vec
         4 + // token_account_count
         8 + // instruction_count
         8 + // last_activity
         32 + // storage_authority
         4 + // item_count
         4 + // max_capacity
-        4 + // current_usage
-        64; // reserved
+        4 // current_usage
+    }
     
     pub fn is_library_approved(&self, library: &Pubkey) -> bool {
         self.approved_libraries.contains(library)
@@ -89,7 +87,7 @@ impl StorageAccount {
         Ok(())
     }
     
-    pub fn increment_instruction_count(&mut self) {
+    pub fn record_instruction_execution(&mut self) {
         self.instruction_count = self.instruction_count.saturating_add(1);
         self.last_activity = Clock::get().unwrap().unix_timestamp;
     }
@@ -121,7 +119,8 @@ impl StorageAccount {
 }
 
 impl StorageItem {
-    pub fn get_size_estimate(key_length: usize, value_length: usize) -> usize {
+    /// Calculate space needed for this item
+    pub fn space(key_length: usize, value_length: usize) -> usize {
         8 + // discriminator
         32 + // storage_account
         4 + key_length + // key (string with length prefix)
@@ -129,18 +128,11 @@ impl StorageItem {
         4 + value_length + // value (vec with length prefix)
         8 + // created_at
         8 + // updated_at
-        4 + // version
-        32 // reserved
-    }
-    
-    pub fn get_space_requirement(key_length: usize, value_length: usize) -> usize {
-        let estimated_size = Self::get_size_estimate(key_length, value_length);
-        // Add some padding for alignment
-        estimated_size + 16
+        4 // version
     }
     
     pub fn get_size(&self) -> usize {
-        Self::get_size_estimate(self.key.len(), self.value.len())
+        Self::space(self.key.len(), self.value.len())
     }
     
     pub fn deserialize_value<T: anchor_lang::AnchorDeserialize>(&self) -> Result<T> {

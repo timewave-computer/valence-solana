@@ -20,7 +20,7 @@ pub fn handler(
     registry_state.account_factory = account_factory;
     
     // Store the bump seed
-    registry_state.bump = *ctx.bumps.get("registry_state").unwrap();
+    registry_state.bump = ctx.bumps.registry_state;
     
     // Log the initialization
     msg!(

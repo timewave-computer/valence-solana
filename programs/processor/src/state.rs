@@ -12,23 +12,6 @@ pub enum Priority {
     High,
 }
 
-impl<'info> Initialize
-ProcessTick
-PauseProcessor
-ResumeProcessor<'info> {
-    pub fn try_accounts(
-        ctx: &Context<'_, '_, '_, 'info, Initialize
-ProcessTick
-PauseProcessor
-ResumeProcessor<'info>>,
-        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
-    ) -> Result<()> {
-        // Additional validation logic can be added here if needed
-        Ok(())
-    }
-}
-
-
 impl From<u8> for Priority {
     fn from(val: u8) -> Self {
         match val {

@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_lang::Discriminator;
 use crate::state::*;
 use crate::error::RegistryError;
 use anchor_lang::solana_program::program_pack::Pack;
@@ -42,7 +41,7 @@ pub fn handler(
     let program_id = crate::ID;
     
     // Calculate discriminator for LibraryInfo accounts
-    let discriminator = LibraryInfo::discriminator();
+    let discriminator = LibraryInfo::DISCRIMINATOR;
     
     // Get all accounts of type LibraryInfo
     // To implement this in a production system, we would 
@@ -61,7 +60,7 @@ pub fn handler(
         
         // Check if account data starts with LibraryInfo discriminator
         let data = account_info.try_borrow_data()?;
-        if data.len() < 8 || data[0..8] != discriminator {
+        if data.len() < 8 || data[0..8] != *discriminator {
             continue;
         }
         

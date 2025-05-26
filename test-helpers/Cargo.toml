@@ -1,0 +1,10 @@
+[package]
+name = "token-helpers-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anchor-lang = "0.31.1"
+anchor-spl = { version = "0.31.1", features = ["token", "token_2022"] }
+solana-program = "2.2.1"
+thiserror = "1.0.56" 

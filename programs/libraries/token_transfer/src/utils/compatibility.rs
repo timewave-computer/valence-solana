@@ -1,4 +1,4 @@
-use solana_program::pubkey::Pubkey;
+use anchor_lang::solana_program::pubkey::Pubkey;
 
 /// Helper function to convert spl_memo's Pubkey to a solana_program's Pubkey
 pub fn convert_pubkey(pubkey: &spl_memo::solana_program::solana_pubkey::Pubkey) -> Pubkey {
