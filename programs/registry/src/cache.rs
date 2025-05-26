@@ -128,7 +128,7 @@ pub mod helpers {
     pub fn prefetch_libraries<'info>(
         cache: &mut LibraryCache,
         program_ids: &[Pubkey],
-        accounts: &[AccountInfo<'info>],
+        accounts: &'info [AccountInfo<'info>],
     ) -> Result<()> {
         for program_id in program_ids {
             for account in accounts {
@@ -167,6 +167,7 @@ mod tests {
             is_approved: true,
             version: "1.0.0".to_string(),
             last_updated: 0,
+            dependencies: Vec::new(),
             bump: 254,
         };
         

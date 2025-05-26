@@ -10,7 +10,7 @@ pub fn handler(
     error_data: Option<Vec<u8>>,
 ) -> Result<()> {
     // Verify callback is from processor program
-    if ctx.accounts.processor_program.key() != ctx.accounts.authorization_state.processor_program_id {
+    if ctx.accounts.processor_program.key() != ctx.accounts.authorization_state.processor_id {
         return Err(AuthorizationError::UnauthorizedCallback.into());
     }
     
@@ -59,7 +59,7 @@ pub struct ReceiveCallback<'info> {
     
     #[account(
         mut,
-        seeds = [b"authorization".as_ref(), &current_execution.authorization_label[..current_execution.label_length as usize]],
+        seeds = [b"authorization".as_ref(), current_execution.authorization_label.as_bytes()],
         bump = authorization.bump,
     )]
     pub authorization: Account<'info, Authorization>,

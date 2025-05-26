@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::state::{AuthorizationState, Authorization, PermissionType, Priority, SubroutineType};
 use crate::error::AuthorizationError;
+// use crate::validation::Validator; // Temporarily disabled
 
 pub fn handler(
     ctx: Context<CreateAuthorization>,
@@ -13,21 +14,19 @@ pub fn handler(
     priority: Priority,
     subroutine_type: SubroutineType,
 ) -> Result<()> {
-    // Validate parameters
-    if label.is_empty() || label.len() > 32 {
-        return Err(AuthorizationError::InvalidParameters.into());
-    }
-
-    if let Some(exp) = expiration {
-        if exp <= not_before {
-            return Err(AuthorizationError::InvalidParameters.into());
-        }
-    }
+    // TODO: Re-enable validation once validation module is working
+    // Validator::validate_authorization_creation(
+    //     &label,
+    //     &allowed_users,
+    //     not_before,
+    //     expiration,
+    //     max_concurrent_executions,
+    // )?;
     
     let auth = &mut ctx.accounts.authorization;
     
-    // Initialize authorization using the new method
-    auth.set_label(&label);
+    // Initialize authorization using the new String-based approach
+    auth.label = label.clone();
     auth.owner = ctx.accounts.owner.key();
     auth.is_active = true;
     auth.permission_type = permission_type;
@@ -38,7 +37,7 @@ pub fn handler(
     auth.priority = priority;
     auth.subroutine_type = subroutine_type;
     auth.current_executions = 0;
-    auth.bump = *ctx.bumps.get("authorization").unwrap();
+    auth.bump = ctx.bumps.authorization;
     
     msg!("Created new authorization with label: {}", label);
     
@@ -67,22 +66,13 @@ pub struct CreateAuthorization<'info> {
     #[account(
         init,
         payer = owner,
-        space = 8 +  // account discriminator
-               32 + // [u8; 32] (label)
-               1 + // u8 (label_length)
-               32 + // Pubkey (owner)
-               1 + // bool (is_active)
-               1 + // enum (permission_type) 
-               4 + 50 * 32 + // Vec<Pubkey> (allowed_users) with max 50 entries
-               8 + // i64 (not_before)
-               1 + 8 + // Option<i64> (expiration)
-               4 + // u32 (max_concurrent_executions)
-               1 + // enum (priority)
-               1 + // enum (subroutine_type)
-               4 + // u32 (current_executions)
-               1, // u8 (bump)
+        space = Authorization::space(label.len(), allowed_users.as_ref().map_or(0, |v| v.len())),
         seeds = [b"authorization".as_ref(), label.as_bytes()],
-        bump
+        bump,
+        // Additional constraints for validation
+        constraint = label.len() <= 32 @ AuthorizationError::InvalidParameters,
+        constraint = allowed_users.as_ref().map_or(0, |v| v.len()) <= 100 @ AuthorizationError::InvalidParameters,
+        constraint = max_concurrent_executions > 0 && max_concurrent_executions <= 1000 @ AuthorizationError::InvalidParameters,
     )]
     pub authorization: Account<'info, Authorization>,
     

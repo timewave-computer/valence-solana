@@ -7,23 +7,18 @@ pub fn handler(ctx: Context<Initialize>, processor_id: Pubkey, registry_id: Pubk
     let state = &mut ctx.accounts.authorization_state;
     state.owner = ctx.accounts.owner.key();
     state.sub_owners = Vec::new();
-    state.processor_program_id = processor_id;
+    state.processor_id = processor_id;
+    state.registry_id = registry_id;
     state.execution_counter = 0;
-    state.valence_registry = registry_id;
-    state.bump = *ctx.bumps.get("authorization_state").unwrap();
+    state.bump = ctx.bumps.authorization_state;
+    state.last_zk_sequence = 0;
+    state.zk_sequence_counter = 0;
+    state.reserved = [0u8; 64];
     
     Ok(())
 }
 
-impl<'info> Initialize<'info> {
-    pub fn try_accounts(
-        ctx: &Context<'_, '_, '_, 'info, Initialize<'info>>,
-        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
-    ) -> Result<()> {
-        // Additional validation logic can be added here if needed
-        Ok(())
-    }
-}
+
 
 
 #[derive(Accounts)]

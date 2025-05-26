@@ -42,7 +42,7 @@ pub struct SetItem<'info> {
 impl<'info> SetItem<'info> {
     pub fn try_accounts(
         ctx: &Context<'_, '_, '_, 'info, SetItem<'info>>,
-        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+        _bumps: &std::collections::BTreeMap<String, u8>,
     ) -> Result<()> {
         // Additional validation beyond the account constraints can be added here
         // For example, checking key length or value size limits

@@ -14,12 +14,11 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = { version = "0.29.0", features = ["init-if-needed"] }
-anchor-spl = { version = "0.29.0", features = ["token", "token_2022"] }
-solana-program = "1.18.26"
-spl-token = { version = "4.0.3", features = ["no-entrypoint"] }
-spl-token-2022 = { version = "1.0.0", features = ["no-entrypoint"] }
-spl-associated-token-account = { version = "2.3.0", features = ["no-entrypoint"] }
+anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
+anchor-spl = { version = "0.31.1", features = ["token", "token_2022"] }
+spl-token = { version = "7.0.0", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "6.0.0", features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "6.0.0", features = ["no-entrypoint"] }
 base_account = { path = "../base_account", features = ["cpi"] }
 borsh = "0.10.0"
-spl-memo = { version = "4.0.4", features = ["no-entrypoint"] } 
+spl-memo = { version = "6.0.0", features = ["no-entrypoint"] } 

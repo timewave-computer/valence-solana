@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use litesvm::LiteSVM;
-use solana_program::pubkey::Pubkey;
+use anchor_lang::solana_program::pubkey::Pubkey;
 use solana_sdk::{
     signature::{Keypair, Signer},
     system_instruction,

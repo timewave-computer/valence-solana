@@ -16,6 +16,6 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = { version = "0.29.0", features = ["init-if-needed"] }
-solana-program = "1.18.26"
-thiserror = "1.0.56" 
+anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
+thiserror = "1.0.56"
+valence-utils = { path = "../../utils" } 

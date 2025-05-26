@@ -42,6 +42,7 @@ pub fn handler(
         is_approved: library_info.is_approved,
         version: library_info.version.clone(),
         last_updated: library_info.last_updated,
+        dependencies: library_info.dependencies.clone(),
         bump: library_info.bump,
     })
 } 

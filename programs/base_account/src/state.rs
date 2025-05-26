@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use std::collections::HashSet;
 use crate::error::BaseAccountError;
 
 /// Base Account state - holds asset information and approved libraries
@@ -19,8 +18,6 @@ pub struct AccountState {
     pub instruction_count: u64,
     /// Timestamp of the last activity
     pub last_activity: i64,
-    /// Reserved for future use
-    pub reserved: [u8; 64],
 }
 
 impl Default for AccountState {
@@ -33,7 +30,6 @@ impl Default for AccountState {
             token_accounts: Vec::default(),
             instruction_count: 0,
             last_activity: 0,
-            reserved: [0; 64],
         }
     }
 }
@@ -59,14 +55,14 @@ pub struct ApprovalNonce {
 impl AccountState {
     /// Calculate space needed for account creation
     pub fn get_space(max_libraries: usize, max_token_accounts: usize) -> usize {
-        // Base size: owner + vault_authority + vault_bump_seed + instruction_count + last_activity + reserved
-        let base_size = 32 + 32 + 1 + 8 + 8 + 64;
-        
-        // Add space for vectors
-        let libraries_size = 4 + (max_libraries * 32); // 4 bytes for length + 32 bytes per pubkey
-        let token_accounts_size = 4 + (max_token_accounts * 32); // 4 bytes for length + 32 bytes per pubkey
-        
-        base_size + libraries_size + token_accounts_size
+        8 + // discriminator
+        32 + // owner
+        4 + (max_libraries * 32) + // approved_libraries vec
+        32 + // vault_authority
+        1 + // vault_bump_seed
+        4 + (max_token_accounts * 32) + // token_accounts vec
+        8 + // instruction_count
+        8 // last_activity
     }
     
     /// Check if a library is approved to operate on this account
@@ -118,7 +114,7 @@ impl AccountState {
 }
 
 impl ApprovalNonce {
-    pub const SPACE: usize = 32 + 8 + 32 + 8 + 1 + 1; // library + nonce + owner + expiration + is_used + bump
+    pub const SPACE: usize = 8 + 32 + 8 + 32 + 8 + 1 + 1; // discriminator + library + nonce + owner + expiration + is_used + bump
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]

@@ -31,7 +31,7 @@ pub fn handler(
     processor_state.is_paused = false;
     
     // Store the bump seed
-    processor_state.bump = *ctx.bumps.get("processor_state").unwrap();
+    processor_state.bump = ctx.bumps.processor_state;
     
     // Log the initialization
     msg!(

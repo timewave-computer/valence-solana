@@ -8,12 +8,12 @@ pub mod transfer_ownership;
 pub mod create_approval_nonce;
 pub mod execute_instruction;
 
-// Re-export instruction handlers
-pub use initialize::*;
-pub use approve_library::*;
-pub use revoke_library::*;
-pub use create_token_account::*;
-pub use close_token_account::*;
-pub use transfer_ownership::*;
-pub use create_approval_nonce::*;
-pub use execute_instruction::*; 
+// Re-export instruction structs
+pub use initialize::Initialize;
+pub use approve_library::ApproveLibrary;
+pub use revoke_library::RevokeLibrary;
+pub use create_token_account::CreateTokenAccount;
+pub use close_token_account::CloseTokenAccount;
+pub use transfer_ownership::TransferOwnership;
+pub use create_approval_nonce::CreateApprovalNonce;
+pub use execute_instruction::ExecuteInstruction; 

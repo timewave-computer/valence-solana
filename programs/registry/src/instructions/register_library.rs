@@ -38,8 +38,11 @@ pub fn handler(
     // Set last updated timestamp
     library_info.last_updated = Clock::get()?.unix_timestamp;
     
+    // Initialize empty dependencies
+    library_info.dependencies = Vec::new();
+    
     // Store the bump seed
-    library_info.bump = *ctx.bumps.get("library_info").unwrap();
+    library_info.bump = ctx.bumps.library_info;
     
     // Log the registration
     msg!(

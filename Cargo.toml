@@ -6,10 +6,9 @@ members = [
     "programs/processor",
     "programs/base_account",
     "programs/storage_account",
-    "programs/account_factory",
-    "programs/libraries/token_transfer", 
-    "minimal-test",
+    "programs/zk_verifier",
     "test-helpers",
+    "tests",
 ]
 
 [profile.release]
@@ -21,8 +20,8 @@ opt-level = 3
 incremental = false
 codegen-units = 1
 
-[profile.dev.package.litesvm]
-opt-level = 3
+# [profile.dev.package.litesvm]
+# opt-level = 3
 
 # We're using consistent versions in each Cargo.toml directly instead of patching
 # Patching was causing "patch points to the same source" errors

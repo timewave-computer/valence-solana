@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_2022::{Token2022, TokenAccount, Mint};
+use anchor_spl::token_2022::Token2022;
+use anchor_spl::token_interface::{TokenAccount, Mint};
 use anchor_spl::associated_token::AssociatedToken;
 use crate::state::StorageAccount;
 use crate::error::StorageAccountError;
@@ -32,7 +33,7 @@ pub struct CreateTokenAccount<'info> {
 impl<'info> CreateTokenAccount<'info> {
     pub fn try_accounts(
         ctx: &Context<'_, '_, '_, 'info, CreateTokenAccount<'info>>,
-        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
+        _bumps: &std::collections::BTreeMap<String, u8>,
     ) -> Result<()> {
         // Additional validation logic can be added here if needed
         Ok(())
