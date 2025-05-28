@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
 use crate::state::*;
-use crate::error::RegistryError;
-use crate::cache::{LibraryCache, helpers};
+use crate::cache::LibraryCache;
 use std::cell::RefCell;
 
 // Thread-local storage for the library cache

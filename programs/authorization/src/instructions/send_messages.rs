@@ -1,41 +1,16 @@
 use anchor_lang::prelude::*;
-use crate::state::{AuthorizationState, Authorization, CurrentExecution, ProcessorMessage, Priority, SubroutineType, PermissionType};
+use crate::state::{AuthorizationState, Authorization, CurrentExecution, ProcessorMessage, PermissionType};
 use crate::error::AuthorizationError;
-// use crate::validation::Validator; // Temporarily disabled
-use valence_utils::{ComputeBudgetEstimator, ComputeBudgetManager, ComputeBudgetMonitor, estimate_compute_budget, TransactionSizeOptimizer, CompactSerialize};
+use crate::validation::Validator;
 
 pub fn handler(
     ctx: Context<SendMessages>,
     authorization_label: String,
     messages: Vec<ProcessorMessage>,
 ) -> Result<()> {
-    // Estimate compute budget for this operation
-    let account_count = 4; // authorization_state, authorization, current_execution, sender
-    let cpi_count = 1; // CPI to processor program
-    let estimated_compute = estimate_compute_budget!(basic: account_count, cpi_count);
-    
-    // Validate compute budget requirements
-    ComputeBudgetManager::validate_compute_budget(estimated_compute, None)?;
-    
-    // Log compute budget estimation
-    ComputeBudgetMonitor::log_compute_usage(
-        "send_messages",
-        estimated_compute,
-        None,
-    );
-    
-    // Validate transaction size constraints
-    let estimated_instruction_size = 32 + authorization_label.len() + 
-        messages.iter().map(|m| m.compact_size()).sum::<usize>();
-    TransactionSizeOptimizer::validate_transaction_size(
-        estimated_instruction_size,
-        account_count as usize,
-        1, // Single signature
-    )?;
-    
-    // TODO: Re-enable validation once validation module is working
-    // Validator::validate_label(&authorization_label)?;
-    // Validator::validate_message_batch(&messages)?;
+    // Validate input parameters
+    Validator::validate_label(&authorization_label)?;
+    Validator::validate_message_batch(&messages)?;
     
     let auth = &mut ctx.accounts.authorization;
     let state = &mut ctx.accounts.authorization_state;
@@ -83,7 +58,7 @@ pub fn handler(
     state.execution_counter = state.execution_counter.checked_add(1)
         .ok_or(AuthorizationError::InvalidParameters)?;
     
-    // Create execution record with new String-based approach
+    // Create execution record
     let execution = &mut ctx.accounts.current_execution;
     execution.id = execution_id;
     execution.authorization_label = authorization_label.clone();
@@ -95,30 +70,12 @@ pub fn handler(
     auth.current_executions = auth.current_executions.checked_add(1)
         .ok_or(AuthorizationError::InvalidParameters)?;
     
-    // Forward messages to processor program via CPI
-    msg!("Sending {} messages to processor with execution ID: {}", 
+    // For now, just log the messages (like CosmWasm validation pattern)
+    msg!("Authorized {} messages for execution ID: {}", 
          messages.len(), execution_id);
-         
-    // Create the program address that we'll invoke via CPI
-    let processor_program_id = state.processor_id;
     
-    // Prepare the CPI call
-    // Note: In a production implementation, you would need to build a proper CPI call
-    // to the processor program with the messages. This is a placeholder for the actual implementation.
-    
-    // Sample code to perform the CPI:
-    // let processor_program = ctx.accounts.processor_program.to_account_info();
-    // let cpi_accounts = EnqueueMessages {
-    //     processor_state: processor_state.to_account_info(),
-    //     execution: execution.to_account_info(),
-    //     sender: sender.to_account_info(),
-    // };
-    // let cpi_program = processor_program;
-    // let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-    // processor::cpi::enqueue_messages(cpi_ctx, execution_id, auth.priority, auth.subroutine_type, messages)?;
-    
-    // For now we just log that we would send the messages
-    msg!("CPI to processor would be performed here with execution ID: {}", execution_id);
+    // In a full implementation, messages would be forwarded to processor
+    // But following the canonical pattern, authorization just validates and tracks
     
     Ok(())
 }
@@ -137,7 +94,6 @@ pub struct SendMessages<'info> {
         mut,
         seeds = [b"authorization".as_ref(), authorization_label.as_bytes()],
         bump = authorization.bump,
-        // Additional constraints for validation
         constraint = authorization_label.len() <= 32 @ AuthorizationError::InvalidParameters,
         constraint = !messages.is_empty() @ AuthorizationError::EmptyMessageBatch,
     )]
@@ -154,11 +110,6 @@ pub struct SendMessages<'info> {
     
     #[account(mut)]
     pub sender: Signer<'info>,
-    
-    // Uncomment for actual processor CPI implementation
-    // /// CHECK: This is the processor program that will be invoked via CPI
-    // #[account(address = authorization_state.processor_id)]
-    // pub processor_program: UncheckedAccount<'info>,
     
     pub system_program: Program<'info, System>,
 } 

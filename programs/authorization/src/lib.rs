@@ -1,14 +1,22 @@
+// Authorization Program for Valence Protocol
+// Manages user authorizations and permissions for protocol execution
+
+#![allow(clippy::too_many_arguments)]
+
 use anchor_lang::prelude::*;
 
-declare_id!("11111111111111111111111111111112");
+declare_id!("AUTHwqL7qxgqC8mT5kXxVPPbgU3eFFuwNJ5CKzrVR8Ed");
 
 pub mod error;
 pub mod state;
+pub mod instructions;
+pub mod validation;
 
 use state::*;
 use error::*;
 
 #[program]
+#[allow(clippy::too_many_arguments)]
 pub mod authorization {
     use super::*;
 
@@ -34,6 +42,7 @@ pub mod authorization {
     }
 
     /// Create a new authorization
+    #[allow(clippy::too_many_arguments)]
     pub fn create_authorization(
         ctx: Context<CreateAuthorization>,
         label: String,
@@ -45,8 +54,18 @@ pub mod authorization {
         priority: Priority,
         subroutine_type: SubroutineType,
     ) -> Result<()> {
+        // Validate authorization creation parameters
+        validation::Validator::validate_authorization_creation(
+            &label,
+            &allowed_users,
+            not_before,
+            expiration,
+            max_concurrent_executions,
+        )?;
+        
         let auth = &mut ctx.accounts.authorization;
         
+        // Initialize authorization
         auth.label = label.clone();
         auth.owner = ctx.accounts.owner.key();
         auth.is_active = true;
@@ -60,7 +79,7 @@ pub mod authorization {
         auth.current_executions = 0;
         auth.bump = ctx.bumps.authorization;
         
-        msg!("Created authorization: {}", label);
+        msg!("Created new authorization with label: {}", label);
         Ok(())
     }
 
@@ -119,8 +138,8 @@ pub mod authorization {
         ctx: Context<ReceiveCallback>,
         execution_id: u64,
         result: ExecutionResult,
-        executed_count: u32,
-        error_data: Option<Vec<u8>>,
+        _executed_count: u32,
+        _error_data: Option<Vec<u8>>,
     ) -> Result<()> {
         let auth = &mut ctx.accounts.authorization;
         
@@ -162,8 +181,9 @@ pub struct Initialize<'info> {
 )]
 pub struct CreateAuthorization<'info> {
     #[account(
-        seeds = [b"authorization_state"],
+        seeds = [b"authorization_state".as_ref()],
         bump = authorization_state.bump,
+        constraint = authorization_state.owner == owner.key() || authorization_state.sub_owners.contains(&owner.key()) @ AuthorizationError::NotAuthorized,
     )]
     pub authorization_state: Account<'info, AuthorizationState>,
     
@@ -171,8 +191,12 @@ pub struct CreateAuthorization<'info> {
         init,
         payer = owner,
         space = Authorization::space(label.len(), allowed_users.as_ref().map_or(0, |v| v.len())),
-        seeds = [b"authorization", label.as_bytes()],
+        seeds = [b"authorization".as_ref(), label.as_bytes()],
         bump,
+        // Additional constraints for validation
+        constraint = label.len() <= 32 @ AuthorizationError::InvalidParameters,
+        constraint = allowed_users.as_ref().map_or(0, |v| v.len()) <= 100 @ AuthorizationError::InvalidParameters,
+        constraint = max_concurrent_executions > 0 && max_concurrent_executions <= 1000 @ AuthorizationError::InvalidParameters,
     )]
     pub authorization: Account<'info, Authorization>,
     
@@ -229,8 +253,8 @@ pub struct ReceiveCallback<'info> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::*;
-    use crate::error::AuthorizationError;
+    
+    
 
     #[test]
     fn test_permission_type_variants() {
@@ -297,8 +321,8 @@ mod tests {
         assert_eq!(deserialized.data, vec![1, 2, 3, 4, 5]);
         assert_eq!(deserialized.accounts.len(), 1);
         assert_eq!(deserialized.accounts[0].pubkey, message.accounts[0].pubkey);
-        assert_eq!(deserialized.accounts[0].is_signer, true);
-        assert_eq!(deserialized.accounts[0].is_writable, false);
+        assert!(deserialized.accounts[0].is_signer);
+        assert!(!deserialized.accounts[0].is_writable);
     }
 
     #[test]
@@ -374,7 +398,7 @@ mod tests {
 
         assert_eq!(deserialized.label, "test_auth");
         assert_eq!(deserialized.owner, owner);
-        assert_eq!(deserialized.is_active, true);
+        assert!(deserialized.is_active);
         assert_eq!(deserialized.permission_type, PermissionType::Allowlist);
         assert_eq!(deserialized.allowed_users.len(), 2);
         assert_eq!(deserialized.allowed_users[0], user1);

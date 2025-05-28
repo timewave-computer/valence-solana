@@ -17,16 +17,6 @@ pub struct InitializeParams {
     pub allowed_mints: Option<Vec<Pubkey>>,
 }
 
-impl<'info> Initialize<'info> {
-    pub fn try_accounts(
-        ctx: &Context<'_, '_, '_, 'info, Initialize<'info>>,
-        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
-    ) -> Result<()> {
-        // No additional validation needed for initialization
-        Ok(())
-    }
-}
-
 #[derive(Accounts)]
 #[instruction(params: InitializeParams)]
 pub struct Initialize<'info> {
@@ -74,7 +64,7 @@ pub fn handler(ctx: Context<Initialize>, params: InitializeParams) -> Result<()>
     
     // Initialize library config
     library_config.authority = params.authority;
-    library_config.processor_program_id = Some(params.processor_program_id);
+    library_config.processor_program_id = Some(params.processor_program_id.into());
     library_config.is_active = true;
     library_config.max_transfer_amount = params.max_transfer_amount;
     library_config.max_batch_size = params.max_batch_size;

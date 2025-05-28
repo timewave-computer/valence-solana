@@ -78,6 +78,11 @@ impl LibraryCache {
         self.program_id_to_address.len()
     }
     
+    /// Check if the cache is empty
+    pub fn is_empty(&self) -> bool {
+        self.program_id_to_address.is_empty()
+    }
+    
     /// Clear the cache
     pub fn clear(&mut self) {
         self.program_id_to_address.clear();

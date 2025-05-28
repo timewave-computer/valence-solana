@@ -58,15 +58,15 @@ pub fn handler(ctx: Context<RegisterTemplate>, params: RegisterTemplateParams) -
     
     // Validate parameters
     if params.template_id.is_empty() || params.template_id.len() > 100 {
-        return Err(AccountFactoryError::InvalidTemplateParameters.into());
+        return Err(anchor_lang::error::Error::from(AccountFactoryError::InvalidTemplateParameters));
     }
     
     if params.description.len() > 500 {
-        return Err(AccountFactoryError::InvalidTemplateParameters.into());
+        return Err(anchor_lang::error::Error::from(AccountFactoryError::InvalidTemplateParameters));
     }
     
     if params.account_type > 1 {
-        return Err(AccountFactoryError::InvalidAccountType.into());
+        return Err(anchor_lang::error::Error::from(AccountFactoryError::InvalidAccountType));
     }
     
     // Initialize template

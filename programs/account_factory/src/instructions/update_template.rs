@@ -54,7 +54,7 @@ pub fn handler(ctx: Context<UpdateTemplate>, params: UpdateTemplateParams) -> Re
         if description.len() <= 500 {
             template.description = description;
         } else {
-            return Err(AccountFactoryError::InvalidTemplateParameters.into());
+            return Err(anchor_lang::error::Error::from(AccountFactoryError::InvalidTemplateParameters));
         }
     }
     

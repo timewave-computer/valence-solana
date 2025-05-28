@@ -9,36 +9,13 @@ pub struct TransferSolParams {
     pub memo: Option<String>,
 }
 
-impl<'info> TransferSol<'info> {
-    pub fn try_accounts(
-        ctx: &Context<'_, '_, '_, 'info, TransferSol<'info>>,
-        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
-    ) -> Result<()> {
-        // Validate library is active
-        if !ctx.accounts.library_config.is_active {
-            return Err(TokenTransferError::LibraryInactive.into());
-        }
-        
-        // Validate processor program
-        if ctx.accounts.library_config.processor_program_id != Some(ctx.accounts.processor_program.key()) {
-            return Err(TokenTransferError::InvalidProcessorProgram.into());
-        }
-        
-        // Validate recipient is allowed
-        if !ctx.accounts.library_config.is_recipient_allowed(&ctx.accounts.recipient.key()) {
-            return Err(TokenTransferError::UnauthorizedRecipient.into());
-        }
-        
-        Ok(())
-    }
-}
-
-
 #[derive(Accounts)]
 pub struct TransferSol<'info> {
     #[account(
         seeds = [b"library_config"],
         bump,
+        constraint = library_config.is_active @ TokenTransferError::LibraryInactive,
+        constraint = library_config.processor_program_id == Some(processor_program.key()) @ TokenTransferError::InvalidProcessorProgram,
     )]
     pub library_config: Account<'info, LibraryConfig>,
 
@@ -116,32 +93,31 @@ pub fn handler(ctx: Context<TransferSol>, params: TransferSolParams) -> Result<(
     )?;
 
     // Transfer fee if applicable
-    if fee_amount > 0 && ctx.accounts.fee_collector.is_some() {
-        let fee_collector = ctx.accounts.fee_collector.as_ref().unwrap();
-        
-        let fee_transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
-            ctx.accounts.source.key,
-            fee_collector.key,
-            fee_amount,
-        );
+    if fee_amount > 0 {
+        if let Some(fee_collector) = &ctx.accounts.fee_collector {
+            let fee_transfer_ix = anchor_lang::solana_program::system_instruction::transfer(
+                ctx.accounts.source.key,
+                fee_collector.key,
+                fee_amount,
+            );
 
-        anchor_lang::solana_program::program::invoke(
-            &fee_transfer_ix,
-            &[
-                ctx.accounts.source.to_account_info(),
-                fee_collector.to_account_info(),
-                ctx.accounts.system_program.to_account_info(),
-            ],
-        )?;
-        
-        // Update fee collection stats
-        library_config.add_fees_collected(fee_amount);
+            anchor_lang::solana_program::program::invoke(
+                &fee_transfer_ix,
+                &[
+                    ctx.accounts.source.to_account_info(),
+                    fee_collector.to_account_info(),
+                    ctx.accounts.system_program.to_account_info(),
+                ],
+            )?;
+            
+            // Update fee collection stats
+            library_config.add_fees_collected(fee_amount)?;
+        }
     }
 
     // Update library config transfer count and volume
-    library_config.increment_transfer_count();
-    library_config.add_volume(amount);
-    library_config.last_updated = Clock::get()?.unix_timestamp;
+    library_config.increment_transfer_count()?;
+    library_config.add_volume(amount)?;
 
     // Log the transfer details
     msg!("Transferred {} SOL from {} to {}", 

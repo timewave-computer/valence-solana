@@ -8,9 +8,6 @@ pub fn handler(ctx: Context<EnableAuthorization>) -> Result<()> {
     Ok(())
 }
 
-
-
-
 #[derive(Accounts)]
 pub struct EnableAuthorization<'info> {
     #[account(

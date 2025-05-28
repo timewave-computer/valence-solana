@@ -2,27 +2,15 @@ use anchor_lang::prelude::*;
 use crate::state::FactoryState;
 use crate::error::AccountFactoryError;
 use base_account::cpi::{accounts::Initialize, initialize};
-use base_account::program::BaseAccountProgram;
-use base_account::InitializeParams;
+use base_account::program::BaseAccount as BaseAccountProgram;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct CreateBaseAccountParams {
     pub owner: Pubkey,
-    pub auth_token: Pubkey,
-    pub auto_approve_libraries: Option<Vec<Pubkey>>,
+    pub max_libraries: u8,
+    pub max_token_accounts: u8,
     pub fund_amount: Option<u64>,
 }
-
-impl<'info> CreateBaseAccount<'info> {
-    pub fn try_accounts(
-        ctx: &Context<'_, '_, '_, 'info, CreateBaseAccount<'info>>,
-        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
-    ) -> Result<()> {
-        // Additional validation logic can be added here if needed
-        Ok(())
-    }
-}
-
 
 #[derive(Accounts)]
 pub struct CreateBaseAccount<'info> {
@@ -63,7 +51,7 @@ pub fn handler(ctx: Context<CreateBaseAccount>, params: CreateBaseAccountParams)
     
     // Verify fee receiver is correct
     if fee_receiver.key() != factory_state.fee_receiver {
-        return Err(AccountFactoryError::UnauthorizedOperation.into());
+        return Err(anchor_lang::error::Error::from(AccountFactoryError::UnauthorizedOperation));
     }
     
     // Collect fee if set
@@ -80,7 +68,7 @@ pub fn handler(ctx: Context<CreateBaseAccount>, params: CreateBaseAccountParams)
                 fee_receiver.to_account_info(),
                 ctx.accounts.system_program.to_account_info(),
             ],
-        ).map_err(|_| AccountFactoryError::InsufficientFunds.into())?;
+        ).map_err(|_| AccountFactoryError::InsufficientFunds)?;
         
         msg!("Fee of {} lamports collected", factory_state.creation_fee);
     }
@@ -88,17 +76,16 @@ pub fn handler(ctx: Context<CreateBaseAccount>, params: CreateBaseAccountParams)
     // Create the Base Account via CPI
     let cpi_program = ctx.accounts.base_account_program.to_account_info();
     let cpi_accounts = Initialize {
-        authority: ctx.accounts.owner.to_account_info(),
-        base_account: ctx.accounts.base_account.to_account_info(),
+        account: ctx.accounts.base_account.to_account_info(),
+        signer: ctx.accounts.owner.to_account_info(),
         system_program: ctx.accounts.system_program.to_account_info(),
     };
     let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
     
     initialize(
         cpi_ctx,
-        InitializeParams {
-            auth_token: params.auth_token,
-        },
+        params.max_libraries,
+        params.max_token_accounts,
     )?;
     
     // Fund the account if requested
@@ -117,18 +104,9 @@ pub fn handler(ctx: Context<CreateBaseAccount>, params: CreateBaseAccountParams)
                     ctx.accounts.base_account.to_account_info(),
                     ctx.accounts.system_program.to_account_info(),
                 ],
-            ).map_err(|_| AccountFactoryError::InsufficientFunds.into())?;
+            ).map_err(|_| AccountFactoryError::InsufficientFunds)?;
             
             msg!("Base account funded with {} lamports", fund_amount);
-        }
-    }
-    
-    // Auto-approve libraries if provided
-    if let Some(libraries) = &params.auto_approve_libraries {
-        if !libraries.is_empty() {
-            // Note: In a full implementation, we would iterate through the libraries
-            // and call the approve_library CPI for each one
-            msg!("Auto-approving {} libraries (CPI calls would happen here)", libraries.len());
         }
     }
     

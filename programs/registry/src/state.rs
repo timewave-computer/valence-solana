@@ -50,8 +50,10 @@ pub struct LibraryDependency {
 
 /// Types of dependencies
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Default)]
 pub enum DependencyType {
     /// Required at runtime
+    #[default]
     Runtime,
     /// Required for building/compilation
     Build,
@@ -61,11 +63,6 @@ pub enum DependencyType {
     Optional,
 }
 
-impl Default for DependencyType {
-    fn default() -> Self {
-        DependencyType::Runtime
-    }
-}
 
 /// Dependency graph for resolving library dependencies
 #[account]
@@ -135,13 +132,13 @@ pub struct RegisterLibrary<'info> {
                 library_type.len() + 
                 description.len() + 
                 32 + // Extra space for version
-                4 + 0, // Empty dependencies vector (4 bytes for length + 0 dependencies)
+                4, // Empty dependencies vector (4 bytes for length + 0 dependencies)
         seeds = [b"library_info".as_ref(), program_id.key().as_ref()],
         bump
     )]
     pub library_info: Account<'info, LibraryInfo>,
     
-    /// The program ID of the library being registered
+    /// CHECK: The program ID of the library being registered
     /// This is not a signer, just the public key
     pub program_id: UncheckedAccount<'info>,
     
@@ -234,7 +231,7 @@ pub struct QueryLibrary<'info> {
     )]
     pub library_info: Account<'info, LibraryInfo>,
     
-    /// The program ID to query
+    /// CHECK: The program ID to query
     pub program_id: UncheckedAccount<'info>,
 }
 
@@ -437,7 +434,7 @@ pub struct QueryZKProgram<'info> {
     )]
     pub zk_program_info: Account<'info, ZKProgramInfo>,
     
-    /// The program ID to query
+    /// CHECK: The program ID to query
     pub program_id: UncheckedAccount<'info>,
 }
 
@@ -459,6 +456,6 @@ pub struct VerifyZKProgram<'info> {
     )]
     pub zk_program_info: Account<'info, ZKProgramInfo>,
     
-    /// The program ID to verify
+    /// CHECK: The program ID to verify
     pub program_id: UncheckedAccount<'info>,
 } 

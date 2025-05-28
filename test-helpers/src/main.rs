@@ -11,6 +11,7 @@ mod token_helpers {
     }
 
     /// Transfer tokens using Token-2022
+    #[allow(dead_code)]
     pub fn transfer_tokens<'a, 'b, 'c, 'info>(
         ctx: CpiContext<'a, 'b, 'c, 'info, token_2022::TransferChecked<'info>>,
         amount: u64,
@@ -20,6 +21,7 @@ mod token_helpers {
     }
 
     /// Check if a token account exists
+    #[allow(dead_code)]
     pub fn token_account_exists(account_info: &AccountInfo) -> bool {
         account_info.data_len() > 0 && account_info.lamports() > 0
     }

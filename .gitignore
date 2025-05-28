@@ -47,6 +47,9 @@ docs/tests/
 # Examples (if they're generated/temporary)
 examples/
 
+# Anchor framework copy
+anchor/
+
 # Test artifacts
 test-helpers/target/
 utils/target/

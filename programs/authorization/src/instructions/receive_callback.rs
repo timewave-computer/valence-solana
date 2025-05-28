@@ -23,8 +23,7 @@ pub fn handler(
     let auth = &mut ctx.accounts.authorization;
     
     // Decrement active executions counter
-    auth.current_executions = auth.current_executions.checked_sub(1)
-        .unwrap_or(0);
+    auth.current_executions = auth.current_executions.saturating_sub(1);
     
     // Log result
     match result {
@@ -72,10 +71,10 @@ pub struct ReceiveCallback<'info> {
     )]
     pub current_execution: Account<'info, CurrentExecution>,
     
-    /// The processor program - must match the one in authorization state
+    /// CHECK: The processor program - must match the one in authorization state
     pub processor_program: UncheckedAccount<'info>,
     
-    /// The original sender of the messages, who will receive lamports back
+    /// CHECK: The original sender of the messages, who will receive lamports back
     #[account(mut, address = current_execution.sender)]
     pub sender: UncheckedAccount<'info>,
 } 

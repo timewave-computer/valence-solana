@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 use crate::state::*;
-use crate::error::RegistryError;
 
 /// Check if a library's dependencies are compatible with their current versions
 pub fn handler(

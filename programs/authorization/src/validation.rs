@@ -44,7 +44,7 @@ impl Validator {
     
     /// Validate timestamp range
     pub fn validate_timestamp(timestamp: i64) -> Result<()> {
-        if timestamp < ValidationConstants::MIN_TIMESTAMP || timestamp > ValidationConstants::MAX_TIMESTAMP {
+        if !(ValidationConstants::MIN_TIMESTAMP..=ValidationConstants::MAX_TIMESTAMP).contains(&timestamp) {
             return Err(AuthorizationError::InvalidParameters.into());
         }
         Ok(())
@@ -157,83 +157,6 @@ impl Validator {
         Ok(())
     }
 
-    /// Validate ZK-specific permissions for message execution
-    pub fn validate_zk_permissions(
-        zk_message_with_proof: &crate::zk_message::ZKMessageWithProof,
-        sender: &Pubkey,
-    ) -> Result<()> {
-        let message = &zk_message_with_proof.message;
-        let proof = &zk_message_with_proof.proof;
-        
-        // 1. Validate registry ID permissions
-        // Only allow messages from registered ZK programs
-        if message.registry_id == 0 {
-            msg!("Invalid registry ID: cannot be zero");
-            return Err(AuthorizationError::ZKProgramNotFound.into());
-        }
-        
-        // 2. Validate cross-chain permissions
-        // Ensure source and target chains are valid
-        if message.source_chain == 0 || message.target_chain == 0 {
-            msg!("Invalid chain IDs: source={}, target={}", message.source_chain, message.target_chain);
-            return Err(AuthorizationError::InvalidParameters.into());
-        }
-        
-        // 3. Validate payload size limits for ZK messages
-        if message.payload.len() > 8192 { // 8KB limit for ZK message payloads
-            msg!("ZK message payload too large: {} bytes", message.payload.len());
-            return Err(AuthorizationError::PayloadTooLarge.into());
-        }
-        
-        // 4. Validate proof size limits
-        if proof.proof.len() > 16384 { // 16KB limit for ZK proofs
-            msg!("ZK proof too large: {} bytes", proof.proof.len());
-            return Err(AuthorizationError::InvalidZKProof.into());
-        }
-        
-        // 5. Validate public inputs size
-        if proof.public_inputs.len() > 1024 { // 1KB limit for public inputs
-            msg!("ZK proof public inputs too large: {} bytes", proof.public_inputs.len());
-            return Err(AuthorizationError::InvalidZKProof.into());
-        }
-        
-        // 6. Validate nonce uniqueness (basic check)
-        if message.nonce == 0 {
-            msg!("Invalid nonce: cannot be zero");
-            return Err(AuthorizationError::InvalidParameters.into());
-        }
-        
-        // 7. Validate verification key ID format
-        if proof.verification_key_id == Pubkey::default() {
-            msg!("Invalid verification key ID: cannot be default pubkey");
-            return Err(AuthorizationError::VerificationKeyNotFound.into());
-        }
-        
-        // 8. Validate sender permissions for ZK messages
-        // For ZK messages, we can be more permissive since the proof validates authenticity
-        // But we still want to prevent spam from unauthorized senders
-        if sender == &Pubkey::default() {
-            msg!("Invalid sender: cannot be default pubkey");
-            return Err(AuthorizationError::UnauthorizedSender.into());
-        }
-        
-        // 9. Validate message structure integrity
-        if !message.verify_hash() {
-            msg!("ZK message hash verification failed");
-            return Err(AuthorizationError::InvalidMessageFormat.into());
-        }
-        
-        // 10. Additional ZK-specific validations
-        // Check for known malicious patterns or blacklisted registry IDs
-        let blacklisted_registries = [999999u64]; // Example blacklist
-        if blacklisted_registries.contains(&message.registry_id) {
-            msg!("Registry ID {} is blacklisted", message.registry_id);
-            return Err(AuthorizationError::ZKProgramInactive.into());
-        }
-        
-        msg!("ZK-specific permission validation passed for registry_id: {}, sender: {}", 
-             message.registry_id, sender);
-        
-        Ok(())
-    }
+    // ZK validation functions removed due to deleted zk_message module
+    // These can be re-implemented when ZK message functionality is needed
 } 

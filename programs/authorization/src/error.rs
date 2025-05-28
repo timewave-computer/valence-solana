@@ -205,9 +205,8 @@ pub trait ErrorContext<T> {
 
 impl<T> ErrorContext<T> for Result<T> {
     fn with_context(self, context: &str) -> Result<T> {
-        self.map_err(|e| {
+        self.inspect_err(|_e| {
             msg!("Error context: {}", context);
-            e
         })
     }
     

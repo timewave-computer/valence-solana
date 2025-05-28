@@ -1,8 +1,5 @@
 use anchor_lang::prelude::*;
 use crate::state::*;
-use crate::error::RegistryError;
-use anchor_lang::solana_program::program_pack::Pack;
-use std::convert::TryFrom;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct LibraryInfoResponse {

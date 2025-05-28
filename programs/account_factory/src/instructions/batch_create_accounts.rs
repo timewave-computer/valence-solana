@@ -66,16 +66,16 @@ pub fn handler(ctx: Context<BatchCreateAccounts>, params: BatchCreateAccountsPar
     
     // Verify fee receiver is correct
     if fee_receiver.key() != factory_state.fee_receiver {
-        return Err(AccountFactoryError::UnauthorizedOperation.into());
+        return Err(anchor_lang::error::Error::from(AccountFactoryError::UnauthorizedOperation));
     }
     
     // Check batch size limit
     if batch_size == 0 {
-        return Err(AccountFactoryError::InvalidAccountParameter.into());
+        return Err(anchor_lang::error::Error::from(AccountFactoryError::InvalidAccountParameter));
     }
     
     if batch_size > 10 {
-        return Err(AccountFactoryError::BatchSizeExceeded.into());
+        return Err(anchor_lang::error::Error::from(AccountFactoryError::BatchSizeExceeded));
     }
     
     // Collect total fee if set
@@ -94,7 +94,7 @@ pub fn handler(ctx: Context<BatchCreateAccounts>, params: BatchCreateAccountsPar
                 fee_receiver.to_account_info(),
                 ctx.accounts.system_program.to_account_info(),
             ],
-        ).map_err(|_| AccountFactoryError::InsufficientFunds.into())?;
+        ).map_err(|_| AccountFactoryError::InsufficientFunds)?;
         
         msg!("Total fee of {} lamports collected for batch creation", total_fee);
     }
@@ -104,8 +104,8 @@ pub fn handler(ctx: Context<BatchCreateAccounts>, params: BatchCreateAccountsPar
     
     for (i, batch_param) in params.batch_params.iter().enumerate() {
         // Determine account specific parameters
-        let owner = batch_param.owner.unwrap_or(payer);
-        let auth_token = batch_param.auth_token.unwrap_or_else(|| Pubkey::new_unique());
+        let _owner = batch_param.owner.unwrap_or(payer);
+        let _auth_token = batch_param.auth_token.unwrap_or_else(|| Pubkey::new_unique());
         let seed = batch_param.seed.as_ref().map(|s| s.as_str()).unwrap_or("");
         
         msg!("Creating account {}/{} with seed: {}", i + 1, batch_size, if seed.is_empty() { "default" } else { seed });

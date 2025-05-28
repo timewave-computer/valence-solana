@@ -12,6 +12,7 @@ no-entrypoint = []
 no-idl = []
 cpi = ["no-entrypoint"]
 default = []
+idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
 anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
@@ -19,6 +20,7 @@ anchor-spl = { version = "0.31.1", features = ["token", "token_2022"] }
 spl-token = { version = "7.0", features = ["no-entrypoint"] }
 spl-token-2022 = { version = "6.0", features = ["no-entrypoint"] }
 spl-associated-token-account = { version = "6.0", features = ["no-entrypoint"] }
+solana-program = "2.2.1"
 base_account = { path = "../base_account", features = ["cpi"] }
 storage_account = { path = "../storage_account", features = ["cpi"] }
 borsh = "0.10.0" 

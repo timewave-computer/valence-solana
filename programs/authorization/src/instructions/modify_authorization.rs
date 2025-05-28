@@ -55,9 +55,6 @@ pub fn handler(
     Ok(())
 }
 
-
-
-
 #[derive(Accounts)]
 pub struct ModifyAuthorization<'info> {
     #[account(

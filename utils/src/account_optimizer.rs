@@ -1,7 +1,7 @@
 // Account size optimization and rent efficiency utilities
 // Helps minimize account sizes and optimize rent costs for Valence Solana programs
 
-use anchor_lang::prelude::*;
+
 
 /// Rent optimization constants
 pub const RENT_EXEMPT_THRESHOLD: u64 = 890_880; // Minimum lamports for rent exemption
@@ -119,7 +119,7 @@ impl AccountOptimizer {
             BooleanPacking::U64(1)
         } else {
             // Use byte array for larger flag sets
-            let byte_count = (flag_count + 7) / 8;
+            let byte_count = flag_count.div_ceil(8);
             BooleanPacking::ByteArray(byte_count)
         }
     }
