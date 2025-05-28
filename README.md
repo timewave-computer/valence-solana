@@ -1,88 +1,74 @@
-# Valence Protocol for Solana
+# Valence Protocol SVM
 
-A trust-minimized cross-chain DeFi development environment with zero-knowledge proof capabilities for Solana.
-
-## Overview
-
-Valence Protocol enables secure, configurable cross-chain applications through a modular architecture of specialized programs. The protocol features ZK coprocessor integration for trustless cross-chain state verification and execution.
-
-Key Features:
-- ZK Integration: SP1 proof verification with Sparse Merkle Tree support
-- Modular Architecture: Composable programs for authorization, processing, and verification
-- Cross-Chain Ready: Built for trustless cross-chain coordination
-- Solana-Optimized: Efficient compute usage and transaction batching
+Valence is a unified development environment for building trust-minimized cross-chain DeFi applications. This Solana implementation features ZK coprocessor integration for trustless cross-chain state verification and pogram execution.
 
 ## Architecture
 
 ```
-Core Programs:
-├── Authorization Program    # Access control and message routing
-├── Processor Program       # Message execution engine  
-├── Registry Program        # Library and ZK program registry
-├── ZK Verifier Program     # SP1 proof verification
-├── Base Account Program    # Token custody and operations
-└── Storage Account Program # Key-value data storage
-
-Libraries:
-└── Token Transfer Library  # Optimized token operations
+programs
+├── authorization    # Permissioning with ZK support
+├── processor        # Message execution engine with priority queues
+├── registry         # Library and ZK program registry
+├── zk_verifier      # Proof verification
+├── base_account     # Token custody and vault operations
+├── storage_account  # Key-value data storage and persistence
+└── libraries        # Collection of utility libraries
 ```
+
+## Nix Environment
+
+The Nix environment provides a complete, reproducible Solana development setup with custom crate2nix derivations that enables incremental cached builds for various Rust toolchains, Solana CLI tools, Anchor framework, platform tools for SBF compilation, and all necessary dependencies. All packages are pinned to specific versions and automatically configured to work together.
 
 ## Quick Start
 
-### Setup
-
-1. Enter development environment:
-   ```bash
-   nix develop
-   ```
-
-2. Set up Solana tools (first time only):
-   ```bash
-   nix run .#setup-solana
-   ```
-
-3. Build all programs:
-   ```bash
-   nix run .#build
-   ```
-
-4. Run tests:
-   ```bash
-   nix run .#test
-   ```
-
-## Development
-
-### Available Commands
+Enter Nix development environment:
 
 ```bash
-# Development workflow
-nix run .#build              # Build all programs
-nix run .#test [program]     # Run tests (87 total tests)
-nix run .#format             # Format code
-nix run .#lint               # Lint code
-
-# Environment management  
-nix run .#env-info           # Show environment status
-nix run .#setup-solana       # Set up Solana platform tools
-nix run .#clear-cache        # Clear build caches
-
-# Deployment
-nix run .#deploy [network]   # Deploy to devnet/mainnet
+nix develop
 ```
 
-### Testing
+Set up Solana tools (first time only):
+```bash
+nix run .#setup-solana
+```
 
-The project includes comprehensive Rust unit tests:
+### Development Workflow
 
 ```bash
-# Run all tests (87 total)
-nix run .#test
+nix run .#build                  # Build with crate2nix + Anchor (recommended)
+nix run .#build-fast             # Fast incremental build (crate2nix only)
+nix run .#build-crate [name]     # Build individual crate with crate2nix
+nix run .#test [crate]           # Run tests (optionally specify crate)
+nix run .#generate-idls          # Generate IDLs with nightly Rust
+```
 
-# Run specific program tests
-nix run .#test authorization  # 10 tests
-nix run .#test registry      # 14 tests  
-nix run .#test processor     # 19 tests
-nix run .#test base_account  # 11 tests
-nix run .#test zk_verifier   # 23 tests
+### Environment Management
+
+```bash
+nix run .#env-info               # Show environment status
+nix run .#setup-solana           # Set up Solana unified node environment
+nix run .#clear-cache            # Clear build caches (Valence, Cargo, Anchor, Nix)
+```
+
+### Deployment
+
+```bash
+nix run .#deploy [network]       # Deploy to devnet/mainnet
+```
+
+### Solana Node Environment
+
+This flake packages the complete Solana development environment with all tools automatically configured to work together:
+
+```bash
+# Solana CLI tools
+solana                           # Main Solana CLI
+solana-keygen                    # Key generation utility
+solana-test-validator            # Local test validator
+# ... and other Solana CLI tools
+
+# Platform tools (custom Rust/Clang toolchain for SBF compilation)
+cargo-build-sbf                  # Build Solana programs with integrated platform tools
+rustc                           # Rust compiler (SBF-enabled)
+clang                           # Clang compiler (SBF-enabled)
 ```

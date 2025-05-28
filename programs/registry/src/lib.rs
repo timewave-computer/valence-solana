@@ -9,8 +9,6 @@ pub mod error;
 pub mod cache;
 
 use state::*;
-use instructions::*;
-use error::*;
 use instructions::list_libraries::LibraryInfoResponse;
 
 /// lib.rs - Main program entry point with instruction routing
@@ -147,9 +145,9 @@ pub mod registry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use anchor_lang::prelude::*;
-    use crate::state::*;
-    use crate::error::RegistryError;
+    
+    
+    
 
     #[test]
     fn test_library_dependency_creation() {

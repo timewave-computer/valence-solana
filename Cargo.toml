@@ -7,6 +7,9 @@ members = [
     "programs/base_account",
     "programs/storage_account",
     "programs/zk_verifier",
+    "programs/account_factory",
+    "programs/libraries/token_transfer",
+    "utils",
     "test-helpers",
     "tests",
 ]

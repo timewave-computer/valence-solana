@@ -11,17 +11,6 @@ pub struct CreateStorageAccountParams {
     pub fund_amount: Option<u64>,
 }
 
-impl<'info> CreateStorageAccount<'info> {
-    pub fn try_accounts(
-        ctx: &Context<'_, '_, '_, 'info, CreateStorageAccount<'info>>,
-        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
-    ) -> Result<()> {
-        // Additional validation logic can be added here if needed
-        Ok(())
-    }
-}
-
-
 #[derive(Accounts)]
 pub struct CreateStorageAccount<'info> {
     #[account(mut)]
@@ -60,7 +49,7 @@ pub fn handler(ctx: Context<CreateStorageAccount>, params: CreateStorageAccountP
     
     // Verify fee receiver is correct
     if fee_receiver.key() != factory_state.fee_receiver {
-        return Err(AccountFactoryError::UnauthorizedOperation.into());
+        return Err(anchor_lang::error::Error::from(AccountFactoryError::UnauthorizedOperation));
     }
     
     // Collect fee if set
@@ -77,7 +66,7 @@ pub fn handler(ctx: Context<CreateStorageAccount>, params: CreateStorageAccountP
                 fee_receiver.to_account_info(),
                 ctx.accounts.system_program.to_account_info(),
             ],
-        ).map_err(|_| AccountFactoryError::InsufficientFunds.into())?;
+        ).map_err(|_| AccountFactoryError::InsufficientFunds)?;
         
         msg!("Fee of {} lamports collected", factory_state.creation_fee);
     }
@@ -122,7 +111,7 @@ pub fn handler(ctx: Context<CreateStorageAccount>, params: CreateStorageAccountP
                     ctx.accounts.storage_account.to_account_info(),
                     ctx.accounts.system_program.to_account_info(),
                 ],
-            ).map_err(|_| AccountFactoryError::InsufficientFunds.into())?;
+            ).map_err(|_| AccountFactoryError::InsufficientFunds)?;
             
             msg!("Storage account funded with {} lamports", fund_amount);
         }

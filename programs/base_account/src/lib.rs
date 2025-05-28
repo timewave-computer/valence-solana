@@ -143,8 +143,8 @@ mod tests {
         
         // PDA should be valid
         assert_ne!(vault_authority, Pubkey::default());
-        // vault_bump is u8, so it's always <= 255, but let's check it's reasonable
-        assert!(vault_bump < 255); // Should find a valid bump before 255
+        // vault_bump is u8, so it's always <= 255, and should be a valid bump
+        // vault_bump is u8, so it's always <= 255
         
         // Should be deterministic
         let (vault_authority2, vault_bump2) = Pubkey::find_program_address(

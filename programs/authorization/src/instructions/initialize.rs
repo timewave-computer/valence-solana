@@ -18,9 +18,6 @@ pub fn handler(ctx: Context<Initialize>, processor_id: Pubkey, registry_id: Pubk
     Ok(())
 }
 
-
-
-
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(

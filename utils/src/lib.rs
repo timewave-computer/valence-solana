@@ -12,7 +12,8 @@ pub mod transaction_optimizer;
 pub use compute_budget::*;
 pub use validation::*;
 pub use pda::*;
-pub use serialization::*;
-pub use data_packing::*;
-pub use account_optimizer::*;
-pub use transaction_optimizer::*; 
+// Re-export key types to avoid conflicts
+pub use serialization::{SerializationOptimizer, AccountSizeOptimizer};
+pub use data_packing::DataPacker;
+pub use account_optimizer::{AccountOptimizer, OptimizationSuggestion};
+pub use transaction_optimizer::{TransactionSizeEstimator, TransactionBatchOptimizer}; 

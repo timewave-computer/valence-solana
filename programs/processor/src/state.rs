@@ -262,7 +262,7 @@ pub struct EnqueueMessages<'info> {
     /// The calling program (must be the authorization program)
     pub caller: Signer<'info>,
     
-    /// The callback address (where to send execution results)
+    /// CHECK: The callback address (where to send execution results)
     /// #[account()]
     pub callback_address: AccountInfo<'info>,
     
@@ -330,14 +330,14 @@ pub struct SendCallback<'info> {
     )]
     pub pending_callback: Account<'info, PendingCallback>,
     
-    /// The authorization program to send the callback to
+    /// CHECK: The authorization program to send the callback to
     /// #[account(
     ///     constraint = authorization_program.key() == processor_state.authorization_program_id 
     ///                   @ ProcessorError::InvalidAuthorizationProgram
     /// )]
     pub authorization_program: AccountInfo<'info>,
     
-    /// The callback recipient
+    /// CHECK: The callback recipient
     pub callback_recipient: AccountInfo<'info>,
     
     /// The account paying for transaction fees

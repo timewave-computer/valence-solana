@@ -89,11 +89,7 @@ impl TransactionSizeEstimator {
         let current_size = Self::estimate_transaction_size(current_instructions, signer_count);
         let target_size = (MAX_TRANSACTION_SIZE * config.target_size_percentage as usize) / 100;
         
-        if current_size >= target_size {
-            0
-        } else {
-            target_size - current_size
-        }
+        target_size.saturating_sub(current_size)
     }
 }
 
@@ -152,7 +148,7 @@ impl TransactionBatchOptimizer {
     ) {
         match optimization_strategy {
             OrderingStrategy::SizeAscending => {
-                instructions.sort_by_key(|inst| TransactionSizeEstimator::estimate_instruction_size(inst));
+                instructions.sort_by_key(TransactionSizeEstimator::estimate_instruction_size);
             },
             OrderingStrategy::SizeDescending => {
                 instructions.sort_by_key(|inst| std::cmp::Reverse(TransactionSizeEstimator::estimate_instruction_size(inst)));

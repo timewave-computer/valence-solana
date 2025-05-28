@@ -1,23 +1,11 @@
 use anchor_lang::prelude::*;
 use crate::state::FactoryState;
-use crate::error::AccountFactoryError;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct InitializeParams {
     pub creation_fee: u64,
     pub fee_receiver: Option<Pubkey>,
 }
-
-impl<'info> Initialize<'info> {
-    pub fn try_accounts(
-        ctx: &Context<'_, '_, '_, 'info, Initialize<'info>>,
-        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
-    ) -> Result<()> {
-        // Additional validation logic can be added here if needed
-        Ok(())
-    }
-}
-
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {

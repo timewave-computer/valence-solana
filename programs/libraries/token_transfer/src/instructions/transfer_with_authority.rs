@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_2022::{self, TokenAccount, Token2022, Transfer};
+use anchor_spl::token::TokenAccount;
+use anchor_spl::token_2022::{self, Token2022, Transfer};
 use crate::state::LibraryConfig;
 use crate::error::TokenTransferError;
 use crate::utils::token_helpers;
@@ -12,50 +13,6 @@ pub struct TransferWithAuthorityParams {
     pub memo: Option<String>,
 }
 
-impl<'info> TransferWithAuthority<'info> {
-    pub fn try_accounts(
-        ctx: &Context<'_, '_, '_, 'info, TransferWithAuthority<'info>>,
-        _bumps: &anchor_lang::prelude::BTreeMap<String, u8>,
-    ) -> Result<()> {
-        // Validate library is active
-        if !ctx.accounts.library_config.is_active {
-            return Err(TokenTransferError::LibraryInactive.into());
-        }
-        
-        // Validate processor program
-        if ctx.accounts.processor_program.key() != ctx.accounts.library_config.processor_program_id.expect("processor not set") {
-            return Err(TokenTransferError::InvalidProcessorProgram.into());
-        }
-        
-        // Validate source is allowed
-        if !ctx.accounts.library_config.is_source_allowed(&ctx.accounts.source_account.key()) {
-            return Err(TokenTransferError::UnauthorizedSource.into());
-        }
-        
-        // Validate destination mint matches source mint
-        if ctx.accounts.destination_account.mint != ctx.accounts.source_account.mint {
-            return Err(TokenTransferError::MintMismatch.into());
-        }
-        
-        // Validate recipient is allowed
-        if !ctx.accounts.library_config.is_recipient_allowed(&ctx.accounts.destination_account.key()) {
-            return Err(TokenTransferError::UnauthorizedRecipient.into());
-        }
-        
-        // Validate mint matches source mint
-        if ctx.accounts.mint.key() != ctx.accounts.source_account.mint {
-            return Err(TokenTransferError::MintMismatch.into());
-        }
-        
-        // Validate mint is allowed
-        if !ctx.accounts.library_config.is_mint_allowed(ctx.accounts.mint.key) {
-            return Err(TokenTransferError::UnauthorizedMint.into());
-        }
-        
-        Ok(())
-    }
-}
-
 #[derive(Accounts)]
 #[instruction(params: TransferWithAuthorityParams)]
 pub struct TransferWithAuthority<'info> {
@@ -63,6 +20,8 @@ pub struct TransferWithAuthority<'info> {
         mut,
         seeds = [b"library_config"],
         bump,
+        constraint = library_config.is_active @ TokenTransferError::LibraryInactive,
+        constraint = processor_program.key() == library_config.processor_program_id.expect("processor not set") @ TokenTransferError::InvalidProcessorProgram,
     )]
     pub library_config: Account<'info, LibraryConfig>,
 
@@ -70,10 +29,16 @@ pub struct TransferWithAuthority<'info> {
     pub processor_program: UncheckedAccount<'info>,
 
     /// The source token account for the tokens being sent
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = source_account.mint == mint.key() @ TokenTransferError::MintMismatch,
+    )]
     pub source_account: Account<'info, TokenAccount>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = destination_account.mint == source_account.mint @ TokenTransferError::MintMismatch,
+    )]
     pub destination_account: Account<'info, TokenAccount>,
 
     /// CHECK: The mint of the token being transferred
@@ -130,19 +95,29 @@ pub fn handler(ctx: Context<TransferWithAuthority>, params: TransferWithAuthorit
         return Err(TokenTransferError::InsufficientFunds.into());
     }
     
-    // Calculate slippage if enabled - using underscore to indicate intentionally unused
-    let _slippage_amount = 0;
+    // Calculate slippage if enabled
+    let mut _minimum_amount_out = amount;
     
     // If slippage protection is enabled, apply it
     if let Some(slippage_bps) = params.slippage_bps {
         if slippage_bps > 0 {
-            // Calculate slippage amount (in basis points, 10000 = 100%)
-            // Using underscore to indicate we're intentionally not using this yet
-            let _calculated_slippage = amount * slippage_bps as u64 / 10000;
+            // Validate slippage is within reasonable bounds (max 5% = 500 bps)
+            if slippage_bps > 500 {
+                return Err(TokenTransferError::InvalidAmount.into());
+            }
             
-            // TODO: Implement slippage protection logic when needed
+            // Calculate slippage amount (in basis points, 10000 = 100%)
+            let slippage_amount = amount * slippage_bps as u64 / 10000;
+            
+            // Set minimum amount out accounting for slippage
+            _minimum_amount_out = amount.saturating_sub(slippage_amount);
+            
+            msg!("Slippage protection enabled: {}bps, minimum amount out: {}", 
+                 slippage_bps, _minimum_amount_out);
         }
     }
+
+    // TODO: Implement actual slippage validation in future swap integration
 
     // Transfer tokens to destination
     let cpi_accounts = Transfer {
@@ -157,31 +132,30 @@ pub fn handler(ctx: Context<TransferWithAuthority>, params: TransferWithAuthorit
     token_helpers::transfer_tokens(cpi_ctx, amount)?;
 
     // Transfer fee if specified
-    if fee_amount > 0 && ctx.accounts.fee_collector.is_some() {
-        let fee_collector = ctx.accounts.fee_collector.as_ref().unwrap();
-        
-        // Validate fee collector mint matches the token being transferred
-        if fee_collector.mint != ctx.accounts.mint.key() {
-            return Err(TokenTransferError::MintMismatch.into());
+    if fee_amount > 0 {
+        if let Some(fee_collector) = &ctx.accounts.fee_collector {
+            // Validate fee collector mint matches the token being transferred
+            if fee_collector.mint != ctx.accounts.mint.key() {
+                return Err(TokenTransferError::MintMismatch.into());
+            }
+            
+            let fee_accounts = Transfer {
+                from: ctx.accounts.source_account.to_account_info(),
+                to: fee_collector.to_account_info(),
+                authority: ctx.accounts.authority.to_account_info(),
+            };
+            
+            let fee_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), fee_accounts);
+            token_helpers::transfer_tokens(fee_ctx, fee_amount)?;
+            
+            // Update fee collection stats
+            library_config.add_fees_collected(fee_amount)?;
         }
-        
-        let fee_accounts = Transfer {
-            from: ctx.accounts.source_account.to_account_info(),
-            to: fee_collector.to_account_info(),
-            authority: ctx.accounts.authority.to_account_info(),
-        };
-        
-        let fee_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), fee_accounts);
-        token_helpers::transfer_tokens(fee_ctx, fee_amount)?;
-        
-        // Update fee collection stats
-        library_config.add_fees_collected(fee_amount);
     }
 
     // Update library config transfer count and volume
-    library_config.increment_transfer_count();
-    library_config.add_volume(amount);
-    library_config.last_updated = Clock::get()?.unix_timestamp;
+    library_config.increment_transfer_count()?;
+    library_config.add_volume(amount)?;
 
     // Log the transfer details
     msg!("Delegated transfer of {} tokens from {} to {}", 

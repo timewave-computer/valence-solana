@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 use crate::state::*;
-use crate::error::ProcessorError;
 
 pub fn handler(ctx: Context<PauseProcessor>) -> Result<()> {
     // Get processor state

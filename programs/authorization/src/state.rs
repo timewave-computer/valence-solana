@@ -1,69 +1,58 @@
 use anchor_lang::prelude::*;
-use valence_utils::{AccountSizeOptimizer, CompactSerialize};
+use valence_utils::AccountSizeOptimizer;
+use valence_utils::serialization::CompactSerialize;
 
 /// Permission type for an authorization
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
+#[derive(Default)]
 pub enum PermissionType {
     /// Anyone can use this authorization
     Public,
     /// Only the owner can use this authorization
+    #[default]
     OwnerOnly,
     /// Only specified users can use this authorization
     Allowlist,
 }
 
-impl Default for PermissionType {
-    fn default() -> Self {
-        PermissionType::OwnerOnly
-    }
-}
 
 /// Priority level for messages
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
+#[derive(Default)]
 pub enum Priority {
     /// Low priority, processed last
     Low,
     /// Medium priority, processed after high
+    #[default]
     Medium,
     /// High priority, processed first
     High,
 }
 
-impl Default for Priority {
-    fn default() -> Self {
-        Priority::Medium
-    }
-}
 
 /// Subroutine execution type
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
+#[derive(Default)]
 pub enum SubroutineType {
     /// Atomic execution - all messages must succeed
+    #[default]
     Atomic,
     /// Non-atomic execution - messages can fail individually
     NonAtomic,
 }
 
-impl Default for SubroutineType {
-    fn default() -> Self {
-        SubroutineType::Atomic
-    }
-}
 
 /// Result of execution
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
+#[derive(Default)]
 pub enum ExecutionResult {
     /// Execution succeeded
+    #[default]
     Success,
     /// Execution failed
     Failure,
 }
 
-impl Default for ExecutionResult {
-    fn default() -> Self {
-        ExecutionResult::Success
-    }
-}
 
 /// Message to be processed
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
@@ -415,6 +404,7 @@ impl CurrentExecution {
 
 /// ZK Program type classification
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Default)]
 pub enum ZKProgramType {
     /// SP1 proof system program
     SP1,
@@ -425,14 +415,10 @@ pub enum ZKProgramType {
     /// SMT (Sparse Merkle Tree) program
     SMT,
     /// Custom ZK program
+    #[default]
     Custom,
 }
 
-impl Default for ZKProgramType {
-    fn default() -> Self {
-        ZKProgramType::Custom
-    }
-}
 
 /// ZK Registry entry for managing ZK programs
 #[account]

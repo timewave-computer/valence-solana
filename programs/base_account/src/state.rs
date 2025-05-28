@@ -3,6 +3,7 @@ use crate::error::BaseAccountError;
 
 /// Base Account state - holds asset information and approved libraries
 #[account]
+#[derive(Default)]
 pub struct AccountState {
     /// Account owner
     pub owner: Pubkey,
@@ -20,19 +21,6 @@ pub struct AccountState {
     pub last_activity: i64,
 }
 
-impl Default for AccountState {
-    fn default() -> Self {
-        Self {
-            owner: Pubkey::default(),
-            approved_libraries: Vec::default(),
-            vault_authority: Pubkey::default(),
-            vault_bump_seed: 0,
-            token_accounts: Vec::default(),
-            instruction_count: 0,
-            last_activity: 0,
-        }
-    }
-}
 
 /// Approval nonce for one-time operations
 #[account]

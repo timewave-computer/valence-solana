@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::state::{FactoryState, AccountTemplate, AccountType};
+use crate::state::{FactoryState, AccountTemplate};
 use crate::error::AccountFactoryError;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -63,7 +63,7 @@ pub fn handler(ctx: Context<CreateFromTemplate>, params: CreateFromTemplateParam
     
     // Verify fee receiver is correct
     if fee_receiver.key() != factory_state.fee_receiver {
-        return Err(AccountFactoryError::UnauthorizedOperation.into());
+        return Err(anchor_lang::error::Error::from(AccountFactoryError::UnauthorizedOperation));
     }
     
     // Collect fee if set
@@ -80,14 +80,14 @@ pub fn handler(ctx: Context<CreateFromTemplate>, params: CreateFromTemplateParam
                 fee_receiver.to_account_info(),
                 ctx.accounts.system_program.to_account_info(),
             ],
-        ).map_err(|_| AccountFactoryError::InsufficientFunds.into())?;
+        ).map_err(|_| AccountFactoryError::InsufficientFunds)?;
         
         msg!("Fee of {} lamports collected", factory_state.creation_fee);
     }
     
     // Determine which account type to create
-    let owner = params.owner.unwrap_or(payer);
-    let auth_token = params.auth_token.unwrap_or_else(|| Pubkey::new_unique());
+    let _owner = params.owner.unwrap_or(payer);
+    let _auth_token = params.auth_token.unwrap_or_else(|| Pubkey::new_unique());
     
     match template.account_type {
         0 => {
@@ -101,7 +101,7 @@ pub fn handler(ctx: Context<CreateFromTemplate>, params: CreateFromTemplateParam
             // Logic for creating the Storage Account via CPI would go here
         },
         _ => {
-            return Err(AccountFactoryError::InvalidAccountType.into());
+            return Err(anchor_lang::error::Error::from(AccountFactoryError::InvalidAccountType));
         }
     }
     

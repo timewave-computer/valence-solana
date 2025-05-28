@@ -1,6 +1,6 @@
 // Account serialization optimization utilities for minimizing transaction size
 use anchor_lang::prelude::*;
-use ::borsh::BorshSerialize;
+
 
 /// Maximum transaction size limit in Solana
 pub const MAX_TRANSACTION_SIZE: usize = 1_232;

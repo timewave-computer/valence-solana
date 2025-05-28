@@ -8,8 +8,6 @@ pub mod instructions;
 pub mod queue;
 
 use state::*;
-use instructions::*;
-use error::*;
 
 #[program]
 pub mod processor {
@@ -70,9 +68,9 @@ pub mod processor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::*;
-    use crate::queue::*;
-    use crate::error::ProcessorError;
+    
+    
+    
 
     #[test]
     fn test_execution_result_variants() {
@@ -142,8 +140,8 @@ mod tests {
         assert_eq!(deserialized.data, vec![1, 2, 3, 4, 5]);
         assert_eq!(deserialized.accounts.len(), 1);
         assert_eq!(deserialized.accounts[0].pubkey, message.accounts[0].pubkey);
-        assert_eq!(deserialized.accounts[0].is_signer, true);
-        assert_eq!(deserialized.accounts[0].is_writable, false);
+        assert!(deserialized.accounts[0].is_signer);
+        assert!(!deserialized.accounts[0].is_writable);
     }
 
     #[test]
@@ -250,7 +248,7 @@ mod queue_tests {
         
         // PDA should be valid
         assert_ne!(pda, Pubkey::default());
-        assert!(bump <= 255);
+        // bump is u8, so it's always <= 255
         
         // Should be deterministic
         let (pda2, bump2) = derive_message_batch_pda(execution_id, &program_id);
@@ -267,7 +265,7 @@ mod queue_tests {
         
         // PDA should be valid
         assert_ne!(pda, Pubkey::default());
-        assert!(bump <= 255);
+        // bump is u8, so it's always <= 255
         
         // Should be deterministic
         let (pda2, bump2) = derive_pending_callback_pda(execution_id, &program_id);
@@ -296,8 +294,8 @@ mod queue_tests {
 
 #[cfg(test)]
 mod error_tests {
-    use super::*;
-    use crate::error::ProcessorError;
+    
+    
 
     #[test]
     fn test_processor_error_variants() {

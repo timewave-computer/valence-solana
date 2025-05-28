@@ -43,6 +43,7 @@ mod tests {
     fn test_token_account_exists() {
         // Create mock AccountInfo with zero lamports
         let key = Pubkey::new_unique();
+        let owner = Pubkey::default();
         let mut lamports = 0;
         let mut data = vec![];
         
@@ -52,7 +53,7 @@ mod tests {
             false,
             &mut lamports,
             &mut data,
-            &Pubkey::default(),
+            &owner,
             false,
             0,
         );
@@ -70,7 +71,7 @@ mod tests {
             false,
             &mut lamports,
             &mut data,
-            &Pubkey::default(),
+            &owner,
             false,
             0,
         );

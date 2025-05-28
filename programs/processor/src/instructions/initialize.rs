@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
 use crate::state::*;
-use crate::error::ProcessorError;
-use crate::queue::{QueueManager, DEFAULT_QUEUE_CAPACITY};
+use crate::queue::DEFAULT_QUEUE_CAPACITY;
 
 pub fn handler(
     ctx: Context<Initialize>,

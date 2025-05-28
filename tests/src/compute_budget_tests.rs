@@ -1,9 +1,8 @@
 // Compute budget and transaction size tests for Valence Protocol
-use anchor_lang::prelude::*;
 
 #[cfg(test)]
-mod compute_budget_tests {
-    use super::*;
+mod tests {
+    
 
     /// Test compute budget calculations for different operations
     #[test]
@@ -74,9 +73,9 @@ mod compute_budget_tests {
     #[test]
     fn test_account_space_calculations() {
         // Test authorization account space
-        let auth_base_size = 8 + // discriminator
+        let auth_base_size = (8 + // discriminator
                            32 + // owner
-                           4 + 0 + // sub_owners vec (empty)
+                           4) + // sub_owners vec (empty)
                            32 + // processor_id
                            32 + // registry_id
                            8 + // execution_counter

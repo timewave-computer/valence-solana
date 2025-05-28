@@ -1,45 +1,30 @@
-// Error types for ZK Proof Verifier Program
+// Error types for ZK Verifier Program
 
 use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum VerifierError {
-    #[msg("Not authorized to perform this action")]
-    NotAuthorized,
-    
-    #[msg("Verifier is currently paused")]
-    VerifierPaused,
-    
-    #[msg("Verification key is inactive")]
+    #[msg("Verification key is not active")]
     VerificationKeyInactive,
-    
-    #[msg("Invalid verification key format")]
-    InvalidVerificationKey,
-    
-    #[msg("Invalid proof format")]
-    InvalidProof,
-    
-    #[msg("Invalid public inputs")]
-    InvalidPublicInputs,
-    
-    #[msg("Proof verification failed")]
-    ProofVerificationFailed,
     
     #[msg("Verification key not found")]
     VerificationKeyNotFound,
     
-    #[msg("Verification key already exists")]
-    VerificationKeyAlreadyExists,
+    #[msg("Invalid verification key")]
+    InvalidVerificationKey,
     
-    #[msg("Unsupported verification key type")]
-    UnsupportedKeyType,
-    
-    #[msg("Compute budget exceeded")]
-    ComputeBudgetExceeded,
+    #[msg("Invalid proof data")]
+    InvalidProof,
     
     #[msg("Invalid parameters")]
     InvalidParameters,
     
+    #[msg("Proof verification failed")]
+    ProofVerificationFailed,
+    
     #[msg("Arithmetic overflow")]
     ArithmeticOverflow,
+    
+    #[msg("Arithmetic underflow")]
+    ArithmeticUnderflow,
 } 

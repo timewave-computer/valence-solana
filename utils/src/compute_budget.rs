@@ -2,6 +2,12 @@
 use anchor_lang::prelude::*;
 use solana_program::instruction::Instruction;
 
+/// Compute Budget Program ID
+pub const COMPUTE_BUDGET_PROGRAM_ID: Pubkey = Pubkey::new_from_array([
+    3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+]);
+
 /// Default compute budget limits
 pub const DEFAULT_COMPUTE_UNITS: u32 = 200_000;
 pub const MAX_COMPUTE_UNITS: u32 = 1_400_000;
@@ -166,7 +172,6 @@ pub struct ComputeBudgetManager;
 
 impl ComputeBudgetManager {
     /// Create compute budget instruction with dynamic adjustment
-    /// Note: This is a placeholder - actual implementation would use ComputeBudgetInstruction
     pub fn create_compute_budget_instruction(
         estimated_units: u32,
         priority_fee_microlamports: Option<u64>,
@@ -175,24 +180,45 @@ impl ComputeBudgetManager {
         
         // Set compute unit limit if different from default
         if estimated_units != DEFAULT_COMPUTE_UNITS {
-            let adjusted_units = std::cmp::max(
-                std::cmp::min(estimated_units, MAX_COMPUTE_UNITS),
-                MIN_COMPUTE_UNITS,
-            );
+            let adjusted_units = estimated_units.clamp(MIN_COMPUTE_UNITS, MAX_COMPUTE_UNITS);
             
-            msg!("Would set compute unit limit to: {}", adjusted_units);
-            // TODO: Add actual ComputeBudgetInstruction when available
+            msg!("Setting compute unit limit to: {}", adjusted_units);
+            instructions.push(Self::create_set_compute_unit_limit_instruction(adjusted_units));
         }
         
         // Set priority fee if specified
         if let Some(fee) = priority_fee_microlamports {
             if fee > 0 {
-                msg!("Would set priority fee to: {} microlamports", fee);
-                // TODO: Add actual ComputeBudgetInstruction when available
+                msg!("Setting priority fee to: {} microlamports", fee);
+                instructions.push(Self::create_set_compute_unit_price_instruction(fee));
             }
         }
         
         instructions
+    }
+    
+    /// Create set compute unit limit instruction
+    fn create_set_compute_unit_limit_instruction(units: u32) -> Instruction {
+        let mut data = vec![0u8]; // Instruction discriminator 0
+        data.extend_from_slice(&units.to_le_bytes());
+        
+        Instruction {
+            program_id: COMPUTE_BUDGET_PROGRAM_ID,
+            accounts: vec![],
+            data,
+        }
+    }
+    
+    /// Create set compute unit price instruction  
+    fn create_set_compute_unit_price_instruction(microlamports: u64) -> Instruction {
+        let mut data = vec![1u8]; // Instruction discriminator 1  
+        data.extend_from_slice(&microlamports.to_le_bytes());
+        
+        Instruction {
+            program_id: COMPUTE_BUDGET_PROGRAM_ID,
+            accounts: vec![],
+            data,
+        }
     }
     
     /// Dynamically adjust compute budget based on operation complexity
@@ -225,10 +251,7 @@ impl ComputeBudgetManager {
         adjusted = (adjusted as f32 * congestion_multiplier) as u32;
         
         // Ensure within bounds
-        std::cmp::max(
-            std::cmp::min(adjusted, MAX_COMPUTE_UNITS),
-            MIN_COMPUTE_UNITS,
-        )
+        adjusted.clamp(MIN_COMPUTE_UNITS, MAX_COMPUTE_UNITS)
     }
     
     /// Calculate optimal priority fee based on urgency and network conditions
@@ -298,10 +321,7 @@ impl ComputeBudgetManager {
         // Add 15% buffer for safety
         let buffered = (estimated as f32 * 1.15) as u32;
         
-        std::cmp::max(
-            std::cmp::min(buffered, MAX_COMPUTE_UNITS),
-            MIN_COMPUTE_UNITS,
-        )
+        buffered.clamp(MIN_COMPUTE_UNITS, MAX_COMPUTE_UNITS)
     }
     
     /// Fallback estimation when no history is available
@@ -477,6 +497,27 @@ macro_rules! create_compute_budget {
     ($units:expr, $priority:expr) => {
         ComputeBudgetManager::create_compute_budget_instruction($units, Some($priority))
     };
+}
+
+/// Transaction size optimizer
+pub struct TransactionSizeOptimizer;
+
+impl TransactionSizeOptimizer {
+    /// Validate transaction size constraints
+    pub fn validate_transaction_size(
+        estimated_instruction_size: usize,
+        account_count: usize,
+        signature_count: usize,
+    ) -> Result<()> {
+        let max_tx_size = 1232; // Solana transaction size limit
+        let estimated_total = estimated_instruction_size + (account_count * 32) + (signature_count * 64);
+        
+        if estimated_total > max_tx_size {
+            return Err(ProgramError::InvalidInstructionData.into());
+        }
+        
+        Ok(())
+    }
 }
 
 #[cfg(test)]

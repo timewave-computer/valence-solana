@@ -13,6 +13,7 @@ members = [
     "programs/base_account",
     "programs/storage_account",
     "programs/zk_verifier",
+    "programs/libraries/token_transfer",
 ]
 
 [programs.localnet]
@@ -22,6 +23,7 @@ processor = "3YX6iPrpB9yQab1BoBEmRBfjRehJkZnuBZdn69pi6eLu"
 base_account = "BaseSixYBPg1K1xjRXVBvd7LVLmATG2sFjUXzVZrfG6"
 storage_account = "StrgAcntpYbpLUXMvUb8ZuUjQBnMLFZnBxwxrRjrYJU"
 zk_verifier = "5xk7TofwN46GUpkRoLAtJVaGkfHGYY7wm3aGWAzBAmq7"
+token_transfer = "TknTrfzGGGtAL3YxG8TKvoa2Yo2uXxn6SYgZ5C3fHNB"
 
 [programs.testnet]
 authorization = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
@@ -30,6 +32,7 @@ processor = "3YX6iPrpB9yQab1BoBEmRBfjRehJkZnuBZdn69pi6eLu"
 base_account = "BaseSixYBPg1K1xjRXVBvd7LVLmATG2sFjUXzVZrfG6"
 storage_account = "StrgAcntpYbpLUXMvUb8ZuUjQBnMLFZnBxwxrRjrYJU"
 zk_verifier = "5xk7TofwN46GUpkRoLAtJVaGkfHGYY7wm3aGWAzBAmq7"
+token_transfer = "TknTrfzGGGtAL3YxG8TKvoa2Yo2uXxn6SYgZ5C3fHNB"
 
 [registry]
 url = "https://api.apr.dev"
@@ -39,4 +42,4 @@ cluster = "localnet"
 wallet = "/Users/hxrts/keypair.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts" 
+test = "cargo test --workspace" 

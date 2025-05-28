@@ -1,5 +1,4 @@
 #![allow(clippy::result_large_err)]
-#![allow(warnings)]
 
 use anchor_lang::prelude::*;
 
@@ -16,23 +15,23 @@ use instructions::*;
 pub mod token_transfer {
     use super::*;
 
-    pub fn initialize(ctx: Context<initialize::Initialize>, params: initialize::InitializeParams) -> Result<()> {
-        initialize::handler(ctx, params)
+    pub fn initialize(ctx: Context<Initialize>, params: InitializeParams) -> Result<()> {
+        instructions::initialize::handler(ctx, params)
     }
 
-    pub fn transfer_token(ctx: Context<transfer_token::TransferToken>, params: transfer_token::TransferTokenParams) -> Result<()> {
-        transfer_token::handler(ctx, params)
+    pub fn transfer_token(ctx: Context<TransferToken>, params: TransferTokenParams) -> Result<()> {
+        instructions::transfer_token::handler(ctx, params)
     }
 
-    pub fn transfer_sol(ctx: Context<transfer_sol::TransferSol>, params: transfer_sol::TransferSolParams) -> Result<()> {
-        transfer_sol::handler(ctx, params)
+    pub fn transfer_sol(ctx: Context<TransferSol>, params: TransferSolParams) -> Result<()> {
+        instructions::transfer_sol::handler(ctx, params)
     }
 
-    pub fn batch_transfer(ctx: Context<batch_transfer::BatchTransfer>, params: batch_transfer::BatchTransferParams) -> Result<()> {
-        batch_transfer::handler(ctx, params)
+    pub fn batch_transfer<'info>(ctx: Context<'_, '_, '_, 'info, BatchTransfer<'info>>, params: BatchTransferParams) -> Result<()> {
+        instructions::batch_transfer::handler(ctx, params)
     }
 
-    pub fn transfer_with_authority(ctx: Context<transfer_with_authority::TransferWithAuthority>, params: transfer_with_authority::TransferWithAuthorityParams) -> Result<()> {
-        transfer_with_authority::handler(ctx, params)
+    pub fn transfer_with_authority(ctx: Context<TransferWithAuthority>, params: TransferWithAuthorityParams) -> Result<()> {
+        instructions::transfer_with_authority::handler(ctx, params)
     }
 } 

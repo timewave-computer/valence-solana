@@ -143,7 +143,7 @@ pub struct BitField {
 impl BitField {
     /// Create a new bit field with specified capacity
     pub fn new(bit_count: usize) -> Self {
-        let byte_count = (bit_count + 7) / 8;
+        let byte_count = bit_count.div_ceil(8);
         Self {
             data: vec![0; byte_count],
             bit_count,

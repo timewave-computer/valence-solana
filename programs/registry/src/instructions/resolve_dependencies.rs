@@ -43,7 +43,7 @@ pub fn topological_sort(
     // Build graph from dependencies
     for dep in dependencies {
         all_nodes.insert(dep.program_id);
-        graph.entry(dep.program_id).or_insert_with(Vec::new).push(root_library);
+        graph.entry(dep.program_id).or_default().push(root_library);
         *in_degree.entry(root_library).or_insert(0) += 1;
         in_degree.entry(dep.program_id).or_insert(0);
     }

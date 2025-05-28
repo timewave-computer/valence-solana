@@ -2,7 +2,6 @@
 
 use anchor_lang::prelude::*;
 use crate::state::*;
-use crate::error::RegistryError;
 
 pub fn handler(
     ctx: Context<UpdateZKProgramStatus>,

@@ -17,6 +17,7 @@ pub struct LibraryConfig {
     /// The processor program ID (if restricted)
     pub processor_program_id: Option<Pubkey>,
     /// The processor program (new field for optimization)
+    #[allow(dead_code)]
     pub processor_program: Pubkey,
     /// Maximum transfer size in tokens (0 for unlimited)
     pub max_transfer_amount: u64,
@@ -101,29 +102,33 @@ impl LibraryConfig {
             + (allowed_mints_len * 32) // Size of each Pubkey in allowed_mints
     }
 
-    pub fn increment_transfer_count(&mut self) {
+    pub fn increment_transfer_count(&mut self) -> Result<()> {
         self.transfer_count = self.transfer_count.saturating_add(1);
-        self.last_updated = Clock::get().unwrap().unix_timestamp;
+        self.last_updated = Clock::get()?.unix_timestamp;
+        Ok(())
     }
 
-    pub fn increment_instruction_count(&mut self) {
+    pub fn increment_instruction_count(&mut self) -> Result<()> {
         // For compatibility - maps to transfer count
-        self.increment_transfer_count();
+        self.increment_transfer_count()
     }
 
-    pub fn record_batch_transfer(&mut self, count: u32) {
+    pub fn record_batch_transfer(&mut self, count: u32) -> Result<()> {
         self.batch_transfer_count = self.batch_transfer_count.saturating_add(count as u64);
-        self.last_updated = Clock::get().unwrap().unix_timestamp;
+        self.last_updated = Clock::get()?.unix_timestamp;
+        Ok(())
     }
 
-    pub fn add_volume(&mut self, amount: u64) {
+    pub fn add_volume(&mut self, amount: u64) -> Result<()> {
         self.total_volume = self.total_volume.saturating_add(amount);
-        self.last_updated = Clock::get().unwrap().unix_timestamp;
+        self.last_updated = Clock::get()?.unix_timestamp;
+        Ok(())
     }
 
-    pub fn add_fees_collected(&mut self, amount: u64) {
+    pub fn add_fees_collected(&mut self, amount: u64) -> Result<()> {
         self.total_fees_collected = self.total_fees_collected.saturating_add(amount);
-        self.last_updated = Clock::get().unwrap().unix_timestamp;
+        self.last_updated = Clock::get()?.unix_timestamp;
+        Ok(())
     }
     
     pub fn is_recipient_allowed(&self, recipient: &Pubkey) -> bool {
