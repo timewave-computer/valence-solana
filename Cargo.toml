@@ -1,37 +1,45 @@
 [workspace]
-resolver = "2"
 members = [
-    "programs/authorization",
-    "programs/registry", 
-    "programs/processor",
-    "programs/base_account",
-    "programs/storage_account",
-    "programs/zk_verifier",
-    "programs/account_factory",
-    "programs/libraries/token_transfer",
-    "utils",
-    "test-helpers",
+    "programs/kernel",
+    "programs/sdk",
+    "programs/services/session_builder",
     "tests",
 ]
+resolver = "2"
+
+[workspace.dependencies]
+anchor-lang = "0.31.1"
+anchor-spl = "0.31.1"
+borsh = "0.10.3"
+sha2 = "0.10.8"
+bytemuck = "1.14.0"
+spl-token = { version = "6.0", features = ["no-entrypoint"] }
+spl-associated-token-account = "6.0"
+bs58 = "0.5.1"
+base64 = "0.22.1"
+# solana-program = "2.0" # Use anchor-lang's re-export instead
+solana-sdk = "2.0"
+solana-client = "2.0"
+tokio = { version = "1.0", features = ["full"] }
+anyhow = "1.0.75"
+rand = "0.8.5"
+num-bigint = "0.4.4"
+num-traits = "0.2.17"
+thiserror = "1.0.50"
+uuid = { version = "1.0", default-features = false, features = ["serde"] }
+# Pin base64ct to avoid edition 2024 requirement
+base64ct = "1.6.0"
 
 [profile.release]
 overflow-checks = true
 lto = "fat"
 codegen-units = 1
+
 [profile.release.build-override]
 opt-level = 3
 incremental = false
 codegen-units = 1
 
-# [profile.dev.package.litesvm]
-# opt-level = 3
 
-# We're using consistent versions in each Cargo.toml directly instead of patching
-# Patching was causing "patch points to the same source" errors
-# [patch.crates-io]
-# solana-program = { version = "1.18.26" }
-# solana-sdk = { version = "1.18.26" }
-# spl-token = { version = "4.0.3" }
-# spl-token-2022 = { version = "1.0.0" }
-# spl-memo = { version = "4.0.4" }
-# spl-associated-token-account = { version = "2.3.0" }
+
+

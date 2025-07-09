@@ -23,6 +23,7 @@ yarn-error.log*
 # Editor directories and files
 .idea/
 .vscode/
+.claude/
 .cursor/
 *.suo
 *.ntvs*
@@ -36,10 +37,15 @@ yarn-error.log*
 
 # Working files
 work/
-scripts/
 result/
 app/
-docs/
+
+# Local environment files
+.env.local
+deployment.env
+valence.env
+*.key
+*.keypair
 
 # Documentation build artifacts
 docs/tests/

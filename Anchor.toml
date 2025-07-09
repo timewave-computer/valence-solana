@@ -7,32 +7,17 @@ anchor_version = "0.31.1"
 
 [workspace]
 members = [
-    "programs/authorization",
-    "programs/registry", 
-    "programs/processor",
-    "programs/base_account",
-    "programs/storage_account",
-    "programs/zk_verifier",
-    "programs/libraries/token_transfer",
+    "programs/kernel",
+    "programs/services/session_builder",
 ]
 
 [programs.localnet]
-authorization = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-registry = "VaLRegGhzqJwVmQhciS9JT6czSZJzBGmyReBt3SXXyL"
-processor = "3YX6iPrpB9yQab1BoBEmRBfjRehJkZnuBZdn69pi6eLu"
-base_account = "BaseSixYBPg1K1xjRXVBvd7LVLmATG2sFjUXzVZrfG6"
-storage_account = "StrgAcntpYbpLUXMvUb8ZuUjQBnMLFZnBxwxrRjrYJU"
-zk_verifier = "5xk7TofwN46GUpkRoLAtJVaGkfHGYY7wm3aGWAzBAmq7"
-token_transfer = "TknTrfzGGGtAL3YxG8TKvoa2Yo2uXxn6SYgZ5C3fHNB"
+valence-kernel = "11111111111111111111111111111112"
+session_builder = "11111111111111111111111111111114"
 
 [programs.testnet]
-authorization = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-registry = "VaLRegGhzqJwVmQhciS9JT6czSZJzBGmyReBt3SXXyL"
-processor = "3YX6iPrpB9yQab1BoBEmRBfjRehJkZnuBZdn69pi6eLu"
-base_account = "BaseSixYBPg1K1xjRXVBvd7LVLmATG2sFjUXzVZrfG6"
-storage_account = "StrgAcntpYbpLUXMvUb8ZuUjQBnMLFZnBxwxrRjrYJU"
-zk_verifier = "5xk7TofwN46GUpkRoLAtJVaGkfHGYY7wm3aGWAzBAmq7"
-token_transfer = "TknTrfzGGGtAL3YxG8TKvoa2Yo2uXxn6SYgZ5C3fHNB"
+valence-kernel = "11111111111111111111111111111112"
+session_builder = "11111111111111111111111111111114"
 
 [registry]
 url = "https://api.apr.dev"

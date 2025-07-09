@@ -1,6 +1,0 @@
-[build]
-rustflags = ["-C", "link-arg=-undefined", "-C", "link-arg=dynamic_lookup"]
-
-[env]
-MACOSX_DEPLOYMENT_TARGET = "11.0"
-SOURCE_DATE_EPOCH = "1577836800"

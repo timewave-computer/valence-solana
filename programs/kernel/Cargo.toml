@@ -1,0 +1,29 @@
+[package]
+name = "valence-kernel"
+version = "0.1.0"
+description = "Valence Protocol Kernel - Unified kernel protocol implementation"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "valence_kernel"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = ["no-idl"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+anchor-debug = []
+
+[dependencies]
+# Use workspace dependencies for version consistency
+anchor-lang.workspace = true
+anchor-spl.workspace = true
+spl-token.workspace = true
+spl-associated-token-account.workspace = true
+# solana-program.workspace = true # Use anchor-lang's re-export instead
+borsh.workspace = true
+sha2.workspace = true
+uuid.workspace = true
