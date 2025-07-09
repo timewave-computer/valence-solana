@@ -196,7 +196,7 @@ impl SessionNamespaceIntegration {
             
         for object in accessible_objects {
             let namespace = object.namespace.clone().unwrap_or("default".to_string());
-            objects_by_namespace.entry(namespace).or_insert_with(Vec::new).push(object);
+            objects_by_namespace.entry(namespace).or_default().push(object);
         }
         
         // Create a capability for each namespace

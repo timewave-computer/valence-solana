@@ -283,23 +283,23 @@ impl OrderingCoordinator {
                     OrderingConstraint::Before { capability_a, capability_b } |
                     OrderingConstraint::After { capability_a, capability_b } => {
                         capability_owners.entry(capability_a.clone())
-                            .or_insert_with(Vec::new)
+                            .or_default()
                             .push(order.shard_id);
                         capability_owners.entry(capability_b.clone())
-                            .or_insert_with(Vec::new)
+                            .or_default()
                             .push(order.shard_id);
                     }
                     OrderingConstraint::Sequential { capabilities } |
                     OrderingConstraint::Concurrent { capabilities } => {
                         for cap in capabilities {
                             capability_owners.entry(cap.clone())
-                                .or_insert_with(Vec::new)
+                                .or_default()
                                 .push(order.shard_id);
                         }
                     }
                     OrderingConstraint::Priority { capability, .. } => {
                         capability_owners.entry(capability.clone())
-                            .or_insert_with(Vec::new)
+                            .or_default()
                             .push(order.shard_id);
                     }
                 }
@@ -377,18 +377,18 @@ impl OrderingCoordinator {
                 match constraint {
                     OrderingConstraint::Before { capability_a, capability_b } => {
                         graph.entry(capability_a.clone())
-                            .or_insert_with(HashSet::new)
+                            .or_default()
                             .insert(capability_b.clone());
                     }
                     OrderingConstraint::After { capability_a, capability_b } => {
                         graph.entry(capability_b.clone())
-                            .or_insert_with(HashSet::new)
+                            .or_default()
                             .insert(capability_a.clone());
                     }
                     OrderingConstraint::Sequential { capabilities } => {
                         for i in 0..capabilities.len() - 1 {
                             graph.entry(capabilities[i].clone())
-                                .or_insert_with(HashSet::new)
+                                .or_default()
                                 .insert(capabilities[i + 1].clone());
                         }
                     }

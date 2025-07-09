@@ -32,9 +32,33 @@
         ...
       }: {
         devshells.default = {pkgs, ...}: {
+          packages = with pkgs; [
+            openssl
+            pkg-config
+          ];
+          
           commands = [
             {package = inputs'.zero-nix.packages.solana-tools;}
             {package = inputs'.zero-nix.packages.setup-solana;}
+          ];
+          
+          env = [
+            {
+              name = "PKG_CONFIG_PATH";
+              value = "${pkgs.openssl.dev}/lib/pkgconfig";
+            }
+            {
+              name = "OPENSSL_DIR";
+              value = "${pkgs.openssl.dev}";
+            }
+            {
+              name = "OPENSSL_LIB_DIR";
+              value = "${pkgs.openssl.out}/lib";
+            }
+            {
+              name = "OPENSSL_INCLUDE_DIR";
+              value = "${pkgs.openssl.dev}/include";
+            }
           ];
           
           devshell.startup.setup-solana = {

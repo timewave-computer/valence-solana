@@ -1,6 +1,5 @@
 /// Event system and coordination for Valence Protocol
 /// This module provides event handling, coordination, and messaging capabilities
-
 use anchor_lang::prelude::*;
 
 // Module declarations

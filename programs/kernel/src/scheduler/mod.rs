@@ -1,6 +1,5 @@
 // Valence Protocol Scheduler - Multi-shard coordination and execution ordering
 // This module provides scheduling algorithms and partial order composition
-
 pub mod instructions;
 pub mod state;
 pub mod queue_manager;

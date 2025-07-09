@@ -326,24 +326,24 @@ impl PartialOrder {
 
     /// Build dependency graph from constraints
     fn build_dependency_graph(&self) -> Result<HashMap<String, HashSet<String>>> {
-        let mut graph = HashMap::new();
+        let mut graph: HashMap<String, HashSet<String>> = HashMap::new();
 
         for constraint in &self.constraints {
             match constraint {
                 OrderingConstraint::Before { capability_a, capability_b } => {
                     graph.entry(capability_b.clone())
-                        .or_insert_with(HashSet::new)
+                        .or_default()
                         .insert(capability_a.clone());
                 }
                 OrderingConstraint::After { capability_a, capability_b } => {
                     graph.entry(capability_a.clone())
-                        .or_insert_with(HashSet::new)
+                        .or_default()
                         .insert(capability_b.clone());
                 }
                 OrderingConstraint::Sequential { capabilities } => {
                     for i in 1..capabilities.len() {
                         graph.entry(capabilities[i].clone())
-                            .or_insert_with(HashSet::new)
+                            .or_default()
                             .insert(capabilities[i - 1].clone());
                     }
                 }

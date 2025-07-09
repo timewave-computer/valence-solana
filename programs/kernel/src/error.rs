@@ -1,6 +1,5 @@
 /// Unified error definitions for the Valence system
 /// This module consolidates all error types from various modules into a single namespace
-
 use anchor_lang::prelude::*;
 
 #[error_code]

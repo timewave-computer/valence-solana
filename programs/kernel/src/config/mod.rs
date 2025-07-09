@@ -1,6 +1,5 @@
 /// Configuration and registry management for Valence Protocol
 /// This module provides configuration management and registry functionality
-
 use anchor_lang::prelude::*;
 
 // ========== DEFAULT VERIFICATION HASHES ==========

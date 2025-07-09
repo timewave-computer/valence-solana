@@ -1,6 +1,5 @@
 /// Function registry and execution for the Valence Protocol
 /// This module provides comprehensive function management capabilities
-
 pub mod instructions;
 pub mod verification;
 pub mod registry;

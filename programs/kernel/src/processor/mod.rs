@@ -1,8 +1,6 @@
 // Valence Protocol Processor - Stateless execution shared functionality
 // This module provides common execution machinery for capability processing
 
-
-
 pub mod instructions;
 pub mod state;
 pub mod execution_engine;

@@ -112,7 +112,7 @@ impl TopologicalScheduler {
         for (dependent, dependencies) in &composed_order.dependency_graph {
             for dependency in dependencies {
                 graph.entry(dependency.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(dependent.clone());
                 *in_degree.entry(dependent.clone()).or_insert(0) += 1;
             }

@@ -1,6 +1,5 @@
 /// Capability definitions with namespace scoping
 /// This module handles capability account structures, instruction handlers, and namespace access logic
-
 pub mod state;
 pub mod instructions;
 pub mod namespace;

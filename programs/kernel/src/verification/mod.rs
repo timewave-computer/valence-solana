@@ -1,6 +1,5 @@
 /// Verification function execution
 /// This module handles verification instruction handlers, predicates, and common verification functions
-
 pub mod instructions;
 pub mod predicates;
 pub mod basic_verifications;

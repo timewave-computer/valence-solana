@@ -1,7 +1,6 @@
 /// State definitions for the unified Registry program
 /// This module handles library and ZK program registration, dependency management,
 /// and verification using the standardized Valence patterns.
-
 use anchor_lang::prelude::*;
 // Core protocol state definitions
 
