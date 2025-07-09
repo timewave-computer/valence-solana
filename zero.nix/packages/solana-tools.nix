@@ -330,9 +330,28 @@ EOF
     
     # Check if this is for IDL generation and use nightly rust
     if [[ "$*" == *"idl"* ]]; then
-      export PATH="${nightly-rust}/bin:${solana-node}/bin:$PATH"
+      # Create a temporary directory for our cargo wrapper
+      WRAPPER_DIR=$(mktemp -d)
+      
+      # Create a cargo wrapper that intercepts +nightly calls
+      cat > "$WRAPPER_DIR/cargo" <<'CARGO_WRAPPER'
+#!/usr/bin/env bash
+if [[ "$1" == "+nightly" ]]; then
+  shift
+  exec "${nightly-rust}/bin/cargo" "$@"
+else
+  exec "${solana-node}/platform-tools/rust/bin/cargo" "$@"
+fi
+CARGO_WRAPPER
+      
+      chmod +x "$WRAPPER_DIR/cargo"
+      
+      # Put our wrapper first in PATH
+      export PATH="$WRAPPER_DIR:${nightly-rust}/bin:${solana-node}/bin:$PATH"
       export RUSTC="${nightly-rust}/bin/rustc"
-      export CARGO="${nightly-rust}/bin/cargo"
+      
+      # Clean up wrapper on exit
+      trap "rm -rf $WRAPPER_DIR" EXIT
     fi
     
     # Run anchor with platform tools environment

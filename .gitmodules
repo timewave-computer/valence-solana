@@ -1,0 +1,3 @@
+[submodule "submodules/valence-domain-clients"]
+	path = submodules/valence-domain-clients
+	url = https://github.com/timewave-computer/valence-domain-clients.git
