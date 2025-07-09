@@ -177,22 +177,3 @@ if requires_scheduling {
     processor::cpi::process_capability(processor_ctx, capability_id, input)?;
 }
 ```
-
-## Migration Guide
-
-For programs migrating from the old architecture:
-
-1. Replace direct eval calls with processor CPI
-2. Replace queue management with scheduler CPI
-3. Replace optimization calls with diff CPI
-4. Update account contexts to include singleton program accounts
-5. Test CPI integration thoroughly
-
-## Troubleshooting
-
-Common issues and solutions:
-
-- **Account not found**: Ensure singleton is initialized
-- **Insufficient compute units**: Increase compute budget
-- **CPI depth exceeded**: Reduce nested CPI calls
-- **Program not executable**: Verify program deployment

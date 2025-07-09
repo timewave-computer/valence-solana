@@ -27,7 +27,7 @@ solana-sdk = "2.0"
 anchor-lang = "0.31.1"
 
 # Valence domain client for Solana interaction
-valence-domain-clients = { path = "../../../submodules/valence-domain-clients" }
+valence-domain-clients = { path = "../../../submodules/valence-domain-clients", features = ["solana"] }
 
 # Configuration and environment
 clap = { version = "4.4", features = ["derive"] }
