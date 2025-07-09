@@ -305,8 +305,8 @@ EOF
     export PLATFORM_TOOLS_DIR=${solana-node}/platform-tools
     export SBF_SDK_PATH=${solana-node}/platform-tools
     
-    # Use nightly rust by default to support edition2024
-    export PATH="${nightly-rust}/bin:${solana-node}/bin:$PATH"
+    # Default to platform tools rust for SBF compilation
+    export PATH="${solana-node}/platform-tools/rust/bin:${solana-node}/bin:$PATH"
     
     # Set required environment variables
     export SOURCE_DATE_EPOCH="${commonEnv.SOURCE_DATE_EPOCH}" 
@@ -330,27 +330,30 @@ EOF
     # Ensure cache directories exist
     mkdir -p "$CARGO_HOME" "$RUSTUP_HOME"
     
-    # Create a cargo wrapper that intercepts +nightly calls
-    WRAPPER_DIR=$(mktemp -d)
-    
-    cat > "$WRAPPER_DIR/cargo" <<CARGO_WRAPPER
+    # Only use nightly rust for IDL generation
+    if [[ "$*" == *"idl"* ]]; then
+      # Create a cargo wrapper that intercepts +nightly calls
+      WRAPPER_DIR=$(mktemp -d)
+      
+      cat > "$WRAPPER_DIR/cargo" <<CARGO_WRAPPER
 #!/usr/bin/env bash
 if [[ "\$1" == "+nightly" ]]; then
   shift
   exec "${nightly-rust}/bin/cargo" "\$@"
 else
-  exec "${nightly-rust}/bin/cargo" "\$@"
+  exec "${solana-node}/platform-tools/rust/bin/cargo" "\$@"
 fi
 CARGO_WRAPPER
-    
-    chmod +x "$WRAPPER_DIR/cargo"
-    
-    # Put our wrapper first in PATH
-    export PATH="$WRAPPER_DIR:$PATH"
-    export RUSTC="${nightly-rust}/bin/rustc"
-    
-    # Clean up wrapper on exit
-    trap "rm -rf $WRAPPER_DIR" EXIT
+      
+      chmod +x "$WRAPPER_DIR/cargo"
+      
+      # Put our wrapper first in PATH
+      export PATH="$WRAPPER_DIR:$PATH"
+      export RUSTC="${nightly-rust}/bin/rustc"
+      
+      # Clean up wrapper on exit
+      trap "rm -rf $WRAPPER_DIR" EXIT
+    fi
     
     # Run anchor with platform tools environment
     exec "${anchor}/bin/anchor" "$@"
