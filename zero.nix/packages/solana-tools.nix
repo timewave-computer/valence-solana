@@ -27,7 +27,7 @@ let
   };
 
   # Nightly Rust environment specifically for IDL generation
-  nightly-rust = rustPkgs.rust-bin.nightly."2024-12-01".default.override {
+  nightly-rust = rustPkgs.rust-bin.nightly."2025-01-01".default.override {
     extensions = [ "rust-src" "llvm-tools-preview" ];
   };
 
@@ -304,7 +304,9 @@ EOF
     # Set up platform tools environment for SBF compilation  
     export PLATFORM_TOOLS_DIR=${solana-node}/platform-tools
     export SBF_SDK_PATH=${solana-node}/platform-tools
-    export PATH="${solana-node}/platform-tools/rust/bin:${solana-node}/bin:$PATH"
+    
+    # Use nightly rust by default to support edition2024
+    export PATH="${nightly-rust}/bin:${solana-node}/bin:$PATH"
     
     # Set required environment variables
     export SOURCE_DATE_EPOCH="${commonEnv.SOURCE_DATE_EPOCH}" 
@@ -328,31 +330,27 @@ EOF
     # Ensure cache directories exist
     mkdir -p "$CARGO_HOME" "$RUSTUP_HOME"
     
-    # Check if this is for IDL generation and use nightly rust
-    if [[ "$*" == *"idl"* ]]; then
-      # Create a temporary directory for our cargo wrapper
-      WRAPPER_DIR=$(mktemp -d)
-      
-      # Create a cargo wrapper that intercepts +nightly calls
-      cat > "$WRAPPER_DIR/cargo" <<'CARGO_WRAPPER'
+    # Create a cargo wrapper that intercepts +nightly calls
+    WRAPPER_DIR=$(mktemp -d)
+    
+    cat > "$WRAPPER_DIR/cargo" <<CARGO_WRAPPER
 #!/usr/bin/env bash
-if [[ "$1" == "+nightly" ]]; then
+if [[ "\$1" == "+nightly" ]]; then
   shift
-  exec "${nightly-rust}/bin/cargo" "$@"
+  exec "${nightly-rust}/bin/cargo" "\$@"
 else
-  exec "${solana-node}/platform-tools/rust/bin/cargo" "$@"
+  exec "${nightly-rust}/bin/cargo" "\$@"
 fi
 CARGO_WRAPPER
-      
-      chmod +x "$WRAPPER_DIR/cargo"
-      
-      # Put our wrapper first in PATH
-      export PATH="$WRAPPER_DIR:${nightly-rust}/bin:${solana-node}/bin:$PATH"
-      export RUSTC="${nightly-rust}/bin/rustc"
-      
-      # Clean up wrapper on exit
-      trap "rm -rf $WRAPPER_DIR" EXIT
-    fi
+    
+    chmod +x "$WRAPPER_DIR/cargo"
+    
+    # Put our wrapper first in PATH
+    export PATH="$WRAPPER_DIR:$PATH"
+    export RUSTC="${nightly-rust}/bin/rustc"
+    
+    # Clean up wrapper on exit
+    trap "rm -rf $WRAPPER_DIR" EXIT
     
     # Run anchor with platform tools environment
     exec "${anchor}/bin/anchor" "$@"
