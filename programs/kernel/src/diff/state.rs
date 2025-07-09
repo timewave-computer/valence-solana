@@ -1,6 +1,7 @@
 // Diff state definitions
 
 use anchor_lang::prelude::*;
+use crate::error::DiffError;
 
 #[account]
 pub struct DiffState {
@@ -63,7 +64,7 @@ impl DiffState {
     /// Check if diff size is within allowed limits
     pub fn validate_diff_size(&self, diff_size: usize) -> Result<()> {
         if diff_size > self.max_diff_size as usize {
-            return Err(crate::DiffError::DiffSizeExceeded.into());
+            return Err(DiffError::DiffSizeExceeded.into());
         }
         Ok(())
     }

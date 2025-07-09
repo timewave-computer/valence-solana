@@ -2442,14 +2442,18 @@
         "valence-contracts-v0_1_2": "valence-contracts-v0_1_2"
       },
       "locked": {
-        "path": "./zero.nix",
-        "type": "path"
+        "lastModified": 1752064821,
+        "narHash": "sha256-EJ1rcUJ4kNVjavoUIwBHCeuP0fm5/KsyD1DvGsgCGag=",
+        "ref": "refs/heads/pr-4",
+        "rev": "3fee51e44edaba10726b4e983887badb70dc1dcd",
+        "revCount": 65,
+        "type": "git",
+        "url": "file:///Users/hxrts/projects/timewave/valence-solana/submodules/zero.nix"
       },
       "original": {
-        "path": "./zero.nix",
-        "type": "path"
-      },
-      "parent": []
+        "type": "git",
+        "url": "file:///Users/hxrts/projects/timewave/valence-solana/submodules/zero.nix"
+      }
     }
   },
   "root": "root",

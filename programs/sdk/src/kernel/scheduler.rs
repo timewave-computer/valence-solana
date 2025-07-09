@@ -1,9 +1,7 @@
 /// Scheduler module for SDK kernel operations
 
-use anchor_lang::prelude::*;
 use crate::{ValenceClient, ValenceResult, ValenceError};
-use solana_sdk::signature::Signature;
-use std::collections::HashMap;
+use solana_sdk::{signature::Signature, pubkey::Pubkey};
 
 impl ValenceClient {
     /// Get the scheduler state PDA
@@ -18,9 +16,9 @@ impl ValenceClient {
     /// Initialize the scheduler singleton
     pub async fn initialize_scheduler(
         &self,
-        authority: &Pubkey,
-        max_shards: u32,
-        max_queue_size: u32,
+        _authority: &Pubkey,
+        _max_shards: u32,
+        _max_queue_size: u32,
     ) -> ValenceResult<Signature> {
         // Note: The actual implementation would require proper account setup
         // This is a placeholder that shows the structure
@@ -30,9 +28,9 @@ impl ValenceClient {
     /// Schedule execution for a shard
     pub async fn schedule_execution(
         &self,
-        shard_id: String,
-        capabilities: Vec<String>,
-        priority: u8,
+        _shard_id: String,
+        _capabilities: Vec<String>,
+        _priority: u8,
     ) -> ValenceResult<Signature> {
         // Note: The actual implementation would require proper account setup
         // This is a placeholder that shows the structure
@@ -40,7 +38,7 @@ impl ValenceClient {
     }
     
     /// Process the scheduler queue
-    pub async fn process_queue(&self, max_items: u32) -> ValenceResult<Signature> {
+    pub async fn process_queue(&self, _max_items: u32) -> ValenceResult<Signature> {
         // Note: The actual implementation would require proper account setup
         // This is a placeholder that shows the structure
         Err(ValenceError::NotImplemented("Process queue not yet implemented".to_string()))
@@ -49,8 +47,8 @@ impl ValenceClient {
     /// Update execution priority
     pub async fn update_priority(
         &self,
-        shard_id: String,
-        new_priority: u8,
+        _shard_id: String,
+        _new_priority: u8,
     ) -> ValenceResult<Signature> {
         // Note: The actual implementation would require proper account setup
         // This is a placeholder that shows the structure
@@ -66,7 +64,7 @@ impl ValenceClient {
     /// Set ordering constraints
     pub async fn set_ordering_constraints(
         &self,
-        constraints: Vec<OrderingConstraint>,
+        _constraints: Vec<OrderingConstraint>,
     ) -> ValenceResult<Signature> {
         // Note: The actual implementation would require proper account setup
         // This is a placeholder that shows the structure

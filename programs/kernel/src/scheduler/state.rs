@@ -1,6 +1,7 @@
 // Scheduler state definitions
 
 use anchor_lang::prelude::*;
+use crate::error::SchedulerError;
 
 #[account]
 pub struct SchedulerState {
@@ -67,7 +68,7 @@ impl SchedulerState {
     /// Register a new shard
     pub fn register_shard(&mut self) -> Result<()> {
         if self.active_shard_count >= self.max_shards {
-            return Err(crate::SchedulerError::MaxCapacityReached.into());
+            return Err(SchedulerError::MaxCapacityReached.into());
         }
         self.active_shard_count += 1;
         Ok(())

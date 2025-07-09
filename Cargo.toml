@@ -1,11 +1,22 @@
 [workspace]
 members = [
+    # On-chain programs (built with cargo build-sbf)
     "programs/kernel",
+    
+    # Off-chain components (built with regular cargo)
     "programs/sdk",
     "programs/services/session_builder",
     "tests",
 ]
 resolver = "2"
+
+# Exclude on-chain programs from workspace builds to avoid conflicts
+# Use scripts/build-onchain.sh to build these
+default-members = [
+    "programs/sdk",
+    "programs/services/session_builder",
+    "tests",
+]
 
 [workspace.dependencies]
 anchor-lang = "0.31.1"
@@ -43,6 +54,24 @@ codegen-units = 1
 opt-level = 3
 incremental = false
 codegen-units = 1
+
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(test)'] }
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"
+# Allow some pedantic lints that are too strict
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+too_many_lines = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
+
+
 
 
 

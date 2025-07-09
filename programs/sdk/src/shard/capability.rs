@@ -1,7 +1,5 @@
 /// Capability management for shards
 
-use anchor_lang::prelude::*;
-use crate::{ValenceResult, ValenceError};
 
 /// Capability configuration
 #[derive(Debug, Clone)]

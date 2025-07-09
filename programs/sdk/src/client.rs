@@ -8,21 +8,20 @@ use crate::{
     error::*,
     ValenceClient,
 };
-use anchor_lang::prelude::*;
 use solana_sdk::{
     signature::Signature,
-    transaction::Transaction,
+    pubkey::Pubkey,
 };
 
 impl ValenceClient {
     /// Grant a capability on a shard
     pub async fn grant_capability(
         &self,
-        authority: &Pubkey,
-        shard_state: &Pubkey,
-        capability_id: &str,
-        verification_functions: Vec<[u8; 32]>,
-        description: &str,
+        _authority: &Pubkey,
+        _shard_state: &Pubkey,
+        _capability_id: &str,
+        _verification_functions: Vec<[u8; 32]>,
+        _description: &str,
     ) -> ValenceResult<Signature> {
         // Note: This is a placeholder implementation
         // The actual implementation would use anchor-client to build and send transactions
@@ -32,11 +31,11 @@ impl ValenceClient {
     /// Update a capability
     pub async fn update_capability(
         &self,
-        authority: &Pubkey,
-        shard_state: &Pubkey,
-        capability: &Pubkey,
-        new_verification_functions: Option<Vec<[u8; 32]>>,
-        new_description: Option<String>,
+        _authority: &Pubkey,
+        _shard_state: &Pubkey,
+        _capability: &Pubkey,
+        _new_verification_functions: Option<Vec<[u8; 32]>>,
+        _new_description: Option<String>,
     ) -> ValenceResult<Signature> {
         // Note: This is a placeholder implementation
         Err(ValenceError::NotImplemented("update_capability not yet implemented".to_string()))
@@ -45,9 +44,9 @@ impl ValenceClient {
     /// Revoke a capability
     pub async fn revoke_capability(
         &self,
-        authority: &Pubkey,
-        shard_state: &Pubkey,
-        capability: &Pubkey,
+        _authority: &Pubkey,
+        _shard_state: &Pubkey,
+        _capability: &Pubkey,
     ) -> ValenceResult<Signature> {
         // Note: This is a placeholder implementation
         Err(ValenceError::NotImplemented("revoke_capability not yet implemented".to_string()))
@@ -56,8 +55,8 @@ impl ValenceClient {
     /// Execute a capability
     pub async fn execute_capability(
         &self,
-        context: &ValenceExecutionContext,
-        config: &ExecutionConfig,
+        _context: &ValenceExecutionContext,
+        _config: &ExecutionConfig,
     ) -> ValenceResult<ExecutionResult> {
         // Note: This is a placeholder implementation
         Err(ValenceError::NotImplemented("execute_capability not yet implemented".to_string()))
@@ -66,11 +65,11 @@ impl ValenceClient {
     /// Create a new session
     pub async fn create_session(
         &self,
-        session_id: &str,
-        owner: &Pubkey,
-        eval_program: &Pubkey,
-        shard_id: &str,
-        namespaces: Vec<String>,
+        _session_id: &str,
+        _owner: &Pubkey,
+        _eval_program: &Pubkey,
+        _shard_id: &str,
+        _namespaces: Vec<String>,
     ) -> ValenceResult<Pubkey> {
         // Note: This is a placeholder implementation
         Err(ValenceError::NotImplemented("create_session not yet implemented".to_string()))
@@ -79,8 +78,8 @@ impl ValenceClient {
     /// Close a session
     pub async fn close_session(
         &self,
-        session_pda: &Pubkey,
-        authority: &Pubkey,
+        _session_pda: &Pubkey,
+        _authority: &Pubkey,
     ) -> ValenceResult<Signature> {
         // Note: This is a placeholder implementation
         Err(ValenceError::NotImplemented("close_session not yet implemented".to_string()))
@@ -89,7 +88,7 @@ impl ValenceClient {
     /// Get session info
     pub async fn get_session(
         &self,
-        session_pda: &Pubkey,
+        _session_pda: &Pubkey,
     ) -> ValenceResult<SessionInfo> {
         // Note: This is a placeholder implementation
         Err(ValenceError::NotImplemented("get_session not yet implemented".to_string()))
@@ -98,9 +97,9 @@ impl ValenceClient {
     /// Register a library
     pub async fn register_library(
         &self,
-        library_id: &str,
-        code_hash: [u8; 32],
-        version: &str,
+        _library_id: &str,
+        _code_hash: [u8; 32],
+        _version: &str,
         _metadata: LibraryMetadata,
     ) -> ValenceResult<Signature> {
         // Note: This is a placeholder implementation
@@ -110,9 +109,9 @@ impl ValenceClient {
     /// Register a ZK program
     pub async fn register_zk_program(
         &self,
-        program_id: &str,
-        verification_key: Vec<u8>,
-        proving_system: &str,
+        _program_id: &str,
+        _verification_key: Vec<u8>,
+        _proving_system: &str,
         _metadata: ZkProgramMetadata,
     ) -> ValenceResult<Signature> {
         // Note: This is a placeholder implementation
@@ -122,7 +121,7 @@ impl ValenceClient {
     /// Query a library
     pub async fn query_library(
         &self,
-        library_id: &str,
+        _library_id: &str,
     ) -> ValenceResult<LibraryInfo> {
         // Note: This is a placeholder implementation
         Err(ValenceError::NotImplemented("query_library not yet implemented".to_string()))
@@ -131,7 +130,7 @@ impl ValenceClient {
     /// Query a ZK program
     pub async fn query_zk_program(
         &self,
-        program_id: &str,
+        _program_id: &str,
     ) -> ValenceResult<ZkProgramInfo> {
         // Note: This is a placeholder implementation
         Err(ValenceError::NotImplemented("query_zk_program not yet implemented".to_string()))
@@ -158,7 +157,7 @@ impl ValenceClient {
     /// Batch execute multiple capabilities
     pub async fn batch_execute(
         &self,
-        executions: Vec<ExecutionRequest>,
+        _executions: Vec<ExecutionRequest>,
     ) -> ValenceResult<Vec<ExecutionResult>> {
         // Note: This is a placeholder implementation
         Err(ValenceError::NotImplemented("batch_execute not yet implemented".to_string()))
@@ -167,7 +166,7 @@ impl ValenceClient {
     /// Subscribe to capability execution events
     pub async fn subscribe_capability_events<F>(
         &self,
-        capability_id: Option<String>,
+        _capability_id: Option<String>,
         _callback: F,
     ) -> ValenceResult<()>
     where
@@ -180,7 +179,7 @@ impl ValenceClient {
     /// Subscribe to session creation events
     pub async fn subscribe_session_events<F>(
         &self,
-        shard_id: Option<String>,
+        _shard_id: Option<String>,
         _callback: F,
     ) -> ValenceResult<()>
     where

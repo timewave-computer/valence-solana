@@ -13,41 +13,45 @@ graph TD
     A --> D[pause]
     A --> E[resume]
     
-    B --> B1[Initialize system state]
+    B --> B1[Initialize shard state]
     C --> C1[Execute capability with verification]
-    D --> D1[Pause system operations]
-    E --> E1[Resume system operations]
+    D --> D1[Pause shard operations]
+    E --> E1[Resume shard operations]
 ```
 
 #### initialize
-Initializes the kernel protocol system.
+Initializes the kernel shard with eval capabilities.
 
 **Signature:**
 ```rust
-pub fn initialize(ctx: Context<Initialize>) -> Result<()>
+pub fn initialize(
+    ctx: Context<Initialize>,
+    processor_program: Pubkey
+) -> Result<()>
 ```
 
 **Accounts:**
 ```rust
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(mut)]
-    pub authority: Signer<'info>,
-    
     #[account(
         init,
         payer = authority,
-        space = 8 + RegistryState::INIT_SPACE,
-        seeds = [b"registry"],
+        space = ShardState::SPACE,
+        seeds = [b"shard_state"],
         bump
     )]
-    pub registry: Account<'info, RegistryState>,
+    pub shard_state: Account<'info, ShardState>,
+    
+    #[account(mut)]
+    pub authority: Signer<'info>,
     
     pub system_program: Program<'info, System>,
 }
 ```
 
-**Parameters:** None
+**Parameters:**
+- `processor_program: Pubkey` - Address of the processor program
 
 **Returns:** `Result<()>`
 
@@ -58,7 +62,7 @@ Executes a capability with full verification chain.
 ```rust
 pub fn execute_capability(
     ctx: Context<ExecuteCapability>,
-    capability_id: String,
+    capability_definition: CapabilityDefinition,
     input_data: Vec<u8>
 ) -> Result<()>
 ```
@@ -67,30 +71,25 @@ pub fn execute_capability(
 ```rust
 #[derive(Accounts)]
 pub struct ExecuteCapability<'info> {
-    pub caller: Signer<'info>,
+    #[account(mut)]
+    pub shard_state: Account<'info, ShardState>,
+    
+    /// CHECK: Session account - verified by capability verification
+    pub session: AccountInfo<'info>,
     
     #[account(mut)]
-    pub session: Account<'info, SessionState>,
-    
-    #[account(
-        mut,
-        seeds = [b"registry"],
-        bump
-    )]
-    pub registry: Account<'info, RegistryState>,
-    
-    pub system_program: Program<'info, System>,
+    pub executor: Signer<'info>,
 }
 ```
 
 **Parameters:**
-- `capability_id: String` - Unique identifier for the capability to execute
+- `capability_definition: CapabilityDefinition` - Definition of the capability to execute
 - `input_data: Vec<u8>` - Serialized input data for the capability
 
 **Returns:** `Result<()>`
 
 #### pause
-Pauses system operations.
+Pauses shard operations.
 
 **Signature:**
 ```rust
@@ -101,14 +100,15 @@ pub fn pause(ctx: Context<Pause>) -> Result<()>
 ```rust
 #[derive(Accounts)]
 pub struct Pause<'info> {
-    pub authority: Signer<'info>,
-    
     #[account(
         mut,
-        seeds = [b"registry"],
-        bump
+        has_one = authority,
+        seeds = [b"shard_state"],
+        bump = shard_state.bump
     )]
-    pub registry: Account<'info, RegistryState>,
+    pub shard_state: Account<'info, ShardState>,
+    
+    pub authority: Signer<'info>,
 }
 ```
 
@@ -117,7 +117,7 @@ pub struct Pause<'info> {
 **Returns:** `Result<()>`
 
 #### resume
-Resumes system operations.
+Resumes shard operations.
 
 **Signature:**
 ```rust
@@ -128,14 +128,15 @@ pub fn resume(ctx: Context<Resume>) -> Result<()>
 ```rust
 #[derive(Accounts)]
 pub struct Resume<'info> {
-    pub authority: Signer<'info>,
-    
     #[account(
         mut,
-        seeds = [b"registry"],
-        bump
+        has_one = authority,
+        seeds = [b"shard_state"],
+        bump = shard_state.bump
     )]
-    pub registry: Account<'info, RegistryState>,
+    pub shard_state: Account<'info, ShardState>,
+    
+    pub authority: Signer<'info>,
 }
 ```
 
@@ -145,32 +146,52 @@ pub struct Resume<'info> {
 
 ## Account Structures
 
-### RegistryState
-Main system state account.
+### ShardState
+Main shard state account with embedded evaluation configuration.
 
 ```rust
 #[account]
-pub struct RegistryState {
-    /// Authority pubkey
+pub struct ShardState {
+    /// Authority that can manage the shard
     pub authority: Pubkey,
     
-    /// Registry of available libraries
-    pub libraries: Vec<LibraryEntry>,
+    /// Processor program that handles execution
+    pub processor_program: Pubkey,
     
-    /// Registry of ZK programs
-    pub zk_programs: Vec<ZkProgramEntry>,
+    /// Whether the shard is paused
+    pub is_paused: bool,
     
-    /// Dependencies between libraries
-    pub dependencies: Vec<DependencyEntry>,
+    /// Total number of capabilities executed
+    pub total_executions: u64,
     
-    /// System paused state
-    pub paused: bool,
+    /// Shard version
+    pub version: u8,
     
-    /// Creation timestamp
-    pub created_at: i64,
+    /// PDA bump seed
+    pub bump: u8,
     
-    /// Last update timestamp
-    pub updated_at: i64,
+    /// Evaluation configuration
+    pub eval_config: EvalConfig,
+}
+```
+
+### EvalConfig
+Evaluation configuration embedded in shard.
+
+```rust
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, Default)]
+pub struct EvalConfig {
+    /// Maximum execution time allowed (seconds)
+    pub max_execution_time: u64,
+    
+    /// Maximum compute units allowed
+    pub max_compute_units: u64,
+    
+    /// Whether to record execution results
+    pub record_execution: bool,
+    
+    /// Default verification function requirements
+    pub default_verification_functions: Vec<[u8; 32]>,
 }
 ```
 
@@ -560,40 +581,62 @@ let library = libraries.iter()
     .ok_or(RegistryError::LibraryNotFound)?;
 ```
 
-## Singleton Programs
+## Singleton Modules
 
-### Processor Singleton
+### processor:: Module
 
-Handles stateless execution orchestration.
+Handles stateless execution orchestration within the kernel.
 
-**Instructions:**
-- `initialize`: Initialize processor singleton
-- `process_capability`: Process a capability execution
-- `pause`: Pause processor operations
-- `resume`: Resume processor operations
+**Key Components:**
+- `execution_engine`: Core execution logic
+- `verification_orchestrator`: Manages verification chains
+- `context_builder`: Builds execution contexts
+- `state`: Processor state management
 
-**State:**
+**Main Types:**
 ```rust
-pub struct ProcessorState {
-    pub authority: Pubkey,
-    pub is_paused: bool,
-    pub total_processed: u64,
-    pub bump: u8,
+pub struct ExecutionContext {
+    /// Capability being executed
+    pub capability_id: String,
+    /// Session identifier
+    pub session_id: String,
+    /// Session account (optional)
+    pub session: Option<Pubkey>,
+    /// Caller pubkey
+    pub caller: Pubkey,
+    /// Current block height
+    pub block_height: u64,
+    /// Current timestamp
+    pub timestamp: i64,
+    /// Remaining compute budget
+    pub remaining_compute: u32,
+    /// Input data for execution
+    pub input_data: Vec<u8>,
+}
+
+pub struct ExecutionResult {
+    /// Whether execution succeeded
+    pub success: bool,
+    /// Result data
+    pub result_data: Vec<u8>,
+    /// Gas consumed
+    pub gas_consumed: u32,
+    /// Execution logs
+    pub logs: Vec<String>,
 }
 ```
 
-### Scheduler Singleton
+### scheduler:: Module
 
-Manages multi-shard scheduling and queue management.
+Manages multi-shard scheduling and queue management within the kernel.
 
-**Instructions:**
-- `initialize`: Initialize scheduler singleton
-- `schedule_execution`: Schedule an operation
-- `process_queue`: Process pending operations
-- `register_shard`: Register shard with ordering rules
-- `pause/resume`: Control scheduler operations
+**Key Components:**
+- `partial_order_composer`: Composes partial orders from constraints
+- `queue_manager`: Manages execution queues
+- `priority_scheduler`: Priority-based scheduling
+- `state`: Scheduler state management
 
-**State:**
+**Main Types:**
 ```rust
 pub struct SchedulerState {
     pub authority: Pubkey,
@@ -606,21 +649,28 @@ pub struct SchedulerState {
     pub total_processed: u64,
     pub bump: u8,
 }
+
+pub struct PartialOrder {
+    /// Unique identifier for this partial order
+    pub id: String,
+    /// List of ordering constraints
+    pub constraints: Vec<OrderingConstraint>,
+    /// Priority level
+    pub priority: u8,
+}
 ```
 
-### Diff Singleton
+### diff:: Module
 
-Calculates and optimizes state diffs.
+Calculates and optimizes state diffs within the kernel.
 
-**Instructions:**
-- `initialize`: Initialize diff singleton
-- `calculate_diff`: Calculate diff between states
-- `process_diff_batch`: Process batch of diffs
-- `optimize_batch`: Optimize diff batch
-- `verify_diff_integrity`: Verify diff integrity
-- `pause/resume`: Control diff operations
+**Key Components:**
+- `diff_calculator`: Calculates state differences
+- `batch_processor`: Processes diff batches
+- `optimizer`: Optimizes diff operations
+- `state`: Diff state management
 
-**State:**
+**Main Types:**
 ```rust
 pub struct DiffState {
     pub authority: Pubkey,
@@ -630,5 +680,11 @@ pub struct DiffState {
     pub total_diffs_processed: u64,
     pub total_batches_optimized: u64,
     pub bump: u8,
+}
+
+pub enum OptimizationLevel {
+    None,
+    Basic,
+    Advanced,
 }
 ``` 

@@ -2,7 +2,8 @@
 // Combines atomic processing, batch optimization, and performance optimization
 
 use anchor_lang::prelude::*;
-use crate::{DiffError, diff::instructions::{DiffOperation, DiffBatch, DiffResult}};
+use crate::error::DiffError;
+use crate::diff::instructions::{DiffOperation, DiffBatch};
 use std::collections::HashMap;
 
 // ======================= ATOMIC PROCESSOR =======================

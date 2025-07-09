@@ -92,9 +92,9 @@ impl ValenceClient {
     /// Initialize the kernel program with a shard
     pub async fn initialize_kernel(
         &self,
-        authority: &Pubkey,
-        shard_id: String,
-        max_compute_units: u64,
+        _authority: &Pubkey,
+        _shard_id: String,
+        _max_compute_units: u64,
     ) -> ValenceResult<Signature> {
         Err(ValenceError::NotImplemented("initialize_kernel not yet implemented".to_string()))
     }
@@ -108,28 +108,8 @@ impl ValenceClient {
         pda
     }
     
-    /// Initialize the processor singleton
-    pub async fn initialize_processor(&self, authority: &Pubkey) -> ValenceResult<Signature> {
-        Err(ValenceError::NotImplemented("initialize_processor not yet implemented".to_string()))
-    }
-    
-    /// Initialize the scheduler singleton
-    pub async fn initialize_scheduler(
-        &self,
-        authority: &Pubkey,
-        max_shards: u32,
-        max_queue_size: u32,
-    ) -> ValenceResult<Signature> {
-        Err(ValenceError::NotImplemented("initialize_scheduler not yet implemented".to_string()))
-    }
-    
-    /// Initialize the diff singleton
-    pub async fn initialize_diff(&self, authority: &Pubkey) -> ValenceResult<Signature> {
-        Err(ValenceError::NotImplemented("initialize_diff not yet implemented".to_string()))
-    }
-    
     /// Initialize the registry
-    pub async fn initialize_registry(&self, authority: &Pubkey) -> ValenceResult<Signature> {
+    pub async fn initialize_registry(&self, _authority: &Pubkey) -> ValenceResult<Signature> {
         Err(ValenceError::NotImplemented("initialize_registry not yet implemented".to_string()))
     }
 } 

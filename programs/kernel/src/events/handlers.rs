@@ -1,6 +1,5 @@
 /// Specialized event handlers for different categories of events
 /// This module contains focused handlers for system, singleton, capability, and verification events
-
 use anchor_lang::prelude::*;
 use super::{EventHandler, EventData, EventType};
 

@@ -1,7 +1,7 @@
 // Verification chain orchestration logic
 
 use anchor_lang::prelude::*;
-use crate::ProcessorError;
+use crate::error::ProcessorError;
 
 /// Orchestrates verification function execution
 pub struct VerificationOrchestrator;

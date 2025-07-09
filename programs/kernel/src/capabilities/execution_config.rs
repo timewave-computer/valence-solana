@@ -41,24 +41,28 @@ impl ExecutionConfig {
     }
     
     /// Set maximum execution time
+    #[must_use]
     pub fn with_max_execution_time(mut self, max_time: u64) -> Self {
         self.max_execution_time = Some(max_time);
         self
     }
     
     /// Set maximum compute units
+    #[must_use]
     pub fn with_max_compute_units(mut self, max_compute: u64) -> Self {
         self.max_compute_units = Some(max_compute);
         self
     }
     
     /// Enable execution recording
+    #[must_use]
     pub fn with_recording(mut self, record: bool) -> Self {
         self.record_execution = record;
         self
     }
     
     /// Set execution parameters
+    #[must_use]
     pub fn with_parameters(mut self, params: Vec<u8>) -> Self {
         self.parameters = Some(params);
         self
@@ -109,6 +113,7 @@ impl ExecutionConfig {
     }
     
     /// Merge with another configuration (self takes precedence)
+    #[must_use]
     pub fn merge_with(&self, other: &ExecutionConfig) -> ExecutionConfig {
         ExecutionConfig {
             max_execution_time: self.max_execution_time.or(other.max_execution_time),
@@ -130,9 +135,10 @@ impl Default for ExecutionConfig {
 }
 
 /// Configuration for different execution modes
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, Default)]
 pub enum ExecutionMode {
     /// Synchronous execution - wait for completion
+    #[default]
     Synchronous,
     /// Asynchronous execution - return immediately
     Asynchronous,
@@ -140,12 +146,6 @@ pub enum ExecutionMode {
     Batch { batch_size: u8 },
     /// Streaming execution - process in chunks
     Streaming { chunk_size: u32 },
-}
-
-impl Default for ExecutionMode {
-    fn default() -> Self {
-        ExecutionMode::Synchronous
-    }
 }
 
 /// Resource limits for execution

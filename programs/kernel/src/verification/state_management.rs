@@ -1,14 +1,314 @@
-// Core verification predicates
+/// Verification state management
+/// This module contains all account state and configuration management for verification functions
 use anchor_lang::prelude::*;
-use crate::capabilities::{ExecutionContext};
-use crate::error::ValenceError as VerificationError;
+use crate::capabilities::ExecutionContext;
+use crate::verification::VerificationError;
 use crate::sessions::{SessionEntry, SessionFactoryState};
 
-/// Block Height Verifier
-/// This default verification function prevents replay attacks by ensuring
-/// monotonic execution ordering based on block heights
+// ======================= PERMISSION CONFIGURATION =======================
 
-// Convert from // Convert from #[program] to regular module to regular module
+// Basic Permission Verifier Module
+pub mod basic_permission_verifier {
+    use super::*;
+
+    /// Verify that the sender has permission to execute the capability
+    /// This is a pure function that returns success/failure based on permission checks
+    pub fn verify(
+        ctx: Context<Verify>,
+        execution_context: ExecutionContext,
+    ) -> Result<()> {
+        let permission_config = &ctx.accounts.permission_config;
+        
+        // Check if the sender is in the allowlist
+        let is_allowed = permission_config.allowed_senders.iter()
+            .any(|allowed| allowed == &execution_context.caller);
+        
+        // Check if verification is enabled
+        require!(
+            permission_config.is_active,
+            VerificationError::VerificationPermissionConfigNotActive
+        );
+        
+        // Verify the sender has permission
+        require!(
+            is_allowed,
+            VerificationError::VerificationSenderNotAuthorized
+        );
+        
+        msg!(
+            "Basic permission verified for sender: {} on capability: {}",
+            execution_context.caller,
+            execution_context.capability_id
+        );
+        
+        Ok(())
+    }
+
+    /// Initialize permission configuration for a capability
+    pub fn initialize_config(
+        ctx: Context<InitializeConfig>,
+        capability_id: String,
+        allowed_senders: Vec<Pubkey>,
+    ) -> Result<()> {
+        let permission_config = &mut ctx.accounts.permission_config;
+        
+        permission_config.capability_id = capability_id;
+        permission_config.allowed_senders = allowed_senders;
+        permission_config.is_active = true;
+        permission_config.authority = ctx.accounts.authority.key();
+        permission_config.bump = ctx.bumps.permission_config;
+        
+        msg!(
+            "Permission config initialized for capability: {} with {} allowed senders",
+            permission_config.capability_id,
+            permission_config.allowed_senders.len()
+        );
+        
+        Ok(())
+    }
+
+    /// Update the allowed senders list
+    pub fn update_allowed_senders(
+        ctx: Context<UpdateConfig>,
+        allowed_senders: Vec<Pubkey>,
+    ) -> Result<()> {
+        let permission_config = &mut ctx.accounts.permission_config;
+        
+        permission_config.allowed_senders = allowed_senders;
+        
+        msg!(
+            "Updated allowed senders for capability: {} to {} senders",
+            permission_config.capability_id,
+            permission_config.allowed_senders.len()
+        );
+        
+        Ok(())
+    }
+}
+
+#[derive(Accounts)]
+pub struct Verify<'info> {
+    /// The permission configuration for this capability
+    #[account(
+        seeds = [
+            b"permission_config",
+            permission_config.capability_id.as_bytes()
+        ],
+        bump = permission_config.bump
+    )]
+    pub permission_config: Account<'info, PermissionConfig>,
+}
+
+#[derive(Accounts)]
+#[instruction(capability_id: String)]
+pub struct InitializeConfig<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    
+    #[account(
+        init,
+        payer = authority,
+        space = PermissionConfig::get_space(&capability_id, 10), // Max 10 allowed senders
+        seeds = [
+            b"permission_config",
+            capability_id.as_bytes()
+        ],
+        bump
+    )]
+    pub permission_config: Account<'info, PermissionConfig>,
+    
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateConfig<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    
+    #[account(
+        mut,
+        seeds = [
+            b"permission_config",
+            permission_config.capability_id.as_bytes()
+        ],
+        bump = permission_config.bump,
+        has_one = authority
+    )]
+    pub permission_config: Account<'info, PermissionConfig>,
+}
+
+/// Permission configuration state
+#[account]
+pub struct PermissionConfig {
+    /// The capability ID this config is for
+    pub capability_id: String,
+    /// List of allowed senders
+    pub allowed_senders: Vec<Pubkey>,
+    /// Whether this config is active
+    pub is_active: bool,
+    /// The authority that can update this config
+    pub authority: Pubkey,
+    /// PDA bump
+    pub bump: u8,
+}
+
+impl PermissionConfig {
+    pub fn get_space(capability_id: &str, max_senders: usize) -> usize {
+        8 + // discriminator
+        4 + capability_id.len() + // capability_id
+        4 + (32 * max_senders) + // allowed_senders vec
+        1 + // is_active
+        32 + // authority
+        1 // bump
+    }
+}
+
+// ======================= AUTHENTICATION STATE =======================
+
+/// Verify entrypoint-level authentication
+#[allow(dead_code)]
+fn verify_entrypoint_auth(
+    execution_context: &ExecutionContext,
+    _auth_state: &AuthState,
+) -> Result<()> {
+    // At entrypoint level, we validate that the call is coming from the correct context
+    // This would typically check that the entrypoint program is being invoked correctly
+    
+    msg!("Entrypoint auth validated for caller: {}", execution_context.caller);
+    Ok(())
+}
+
+/// Verify eval-level authentication  
+#[allow(dead_code)]
+fn verify_eval_auth(
+    execution_context: &ExecutionContext,
+    _auth_state: &AuthState,
+) -> Result<()> {
+    // At eval level, validate that the caller is the authorized entrypoint
+    msg!(
+        "Eval auth validated: caller {} (not fully implemented)",
+        execution_context.caller
+    );
+    
+    Ok(())
+}
+
+/// Verify shard-level authentication
+#[allow(dead_code)]
+fn verify_shard_auth(
+    execution_context: &ExecutionContext,
+    _auth_state: &AuthState,
+) -> Result<()> {
+    // At shard level, validate that the caller is the authorized eval
+    msg!(
+        "Shard auth validated: caller {} (not fully implemented)",
+        execution_context.caller
+    );
+    
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct VerifyAuth<'info> {
+    /// The authentication configuration for this capability
+    #[account(
+        seeds = [
+            b"auth_state",
+            auth_state.capability_id.as_bytes()
+        ],
+        bump = auth_state.bump
+    )]
+    pub auth_state: Account<'info, AuthState>,
+}
+
+#[derive(Accounts)]
+#[instruction(capability_id: String)]
+pub struct InitializeAuthConfig<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    
+    #[account(
+        init,
+        payer = authority,
+        space = AuthState::get_space(&capability_id),
+        seeds = [
+            b"auth_state",
+            capability_id.as_bytes()
+        ],
+        bump
+    )]
+    pub auth_state: Account<'info, AuthState>,
+    
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateAuthConfig<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    
+    #[account(
+        mut,
+        seeds = [
+            b"auth_state",
+            auth_state.capability_id.as_bytes()
+        ],
+        bump = auth_state.bump,
+        has_one = authority
+    )]
+    pub auth_state: Account<'info, AuthState>,
+}
+
+/// Authentication state for system verification
+#[account]
+pub struct AuthState {
+    /// The capability ID this auth is for
+    pub capability_id: String,
+    /// Authorized entrypoint program
+    pub authorized_entrypoint: Pubkey,
+    /// Authorized eval program
+    pub authorized_eval: Pubkey,
+    /// Authorized shard program
+    pub authorized_shard: Pubkey,
+    /// Whether this auth is active
+    pub is_active: bool,
+    /// The authority that can update this auth
+    pub authority: Pubkey,
+    /// PDA bump
+    pub bump: u8,
+}
+
+impl AuthState {
+    pub fn get_space(capability_id: &str) -> usize {
+        8 + // discriminator
+        4 + capability_id.len() + // capability_id
+        32 + // authorized_entrypoint
+        32 + // authorized_eval
+        32 + // authorized_shard
+        1 + // is_active
+        32 + // authority
+        1 // bump
+    }
+}
+
+/// Authentication configuration for execution context
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct AuthConfig {
+    /// The execution level this verification is being run at
+    pub execution_level: ExecutionLevel,
+}
+
+/// Execution level in the system hierarchy
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub enum ExecutionLevel {
+    Entrypoint,
+    Eval,
+    Shard,
+}
+
+// ======================= BLOCK HEIGHT STATE =======================
+
+// Block Height Verifier Module
 pub mod block_height_verifier {
     use super::*;
 
@@ -66,7 +366,7 @@ pub mod block_height_verifier {
 
     /// Initialize block state configuration for a capability
     pub fn initialize_config(
-        ctx: Context<InitializeConfig>,
+        ctx: Context<InitializeBlockConfig>,
         capability_id: String,
         max_block_staleness: Option<u64>,
     ) -> Result<()> {
@@ -91,7 +391,7 @@ pub mod block_height_verifier {
 
     /// Update block height configuration
     pub fn update_config(
-        ctx: Context<UpdateConfig>,
+        ctx: Context<UpdateBlockConfig>,
         max_block_staleness: Option<u64>,
         reset_block_height: bool,
     ) -> Result<()> {
@@ -116,7 +416,7 @@ pub mod block_height_verifier {
     
     /// Emergency pause/resume function
     pub fn set_active_state(
-        ctx: Context<UpdateConfig>,
+        ctx: Context<UpdateBlockConfig>,
         is_active: bool,
     ) -> Result<()> {
         let block_state = &mut ctx.accounts.block_state;
@@ -149,7 +449,7 @@ pub struct VerifyBlockHeight<'info> {
 
 #[derive(Accounts)]
 #[instruction(capability_id: String)]
-pub struct InitializeConfig<'info> {
+pub struct InitializeBlockConfig<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
     
@@ -169,7 +469,7 @@ pub struct InitializeConfig<'info> {
 }
 
 #[derive(Accounts)]
-pub struct UpdateConfig<'info> {
+pub struct UpdateBlockConfig<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
     
@@ -222,12 +522,9 @@ impl BlockState {
     }
 }
 
+// ======================= PARAMETER CONSTRAINT STATE =======================
 
-// Parameter Constraint Verifier
-// This verification function validates that call parameters meet specific constraints
-// such as amounts within limits, addresses in allowlists, and slippage tolerances
-
-// Convert from // Convert from #[program] to regular module to regular module
+// Parameter Constraint Verifier Module
 pub mod parameter_constraint_verifier {
     use super::*;
 
@@ -439,8 +736,7 @@ pub struct CallParameters {
     pub token_mint: Option<Pubkey>,
 }
 
-// Session Creation Verification Function for Valence Protocol
-// This is a pure verification function that validates session creation attestations
+// ======================= SESSION VERIFICATION STATE =======================
 
 /// Basic verification context (no external accounts needed)
 #[derive(Accounts)]
@@ -450,28 +746,12 @@ pub struct VerifySessionCreation<'info> {
 }
 
 /// Extended verification context with factory registry check
-// TODO: Define SessionCreationContext
-/*
-#[derive(Accounts)]
-#[instruction(session_creation_ctx: SessionCreationContext)]
-pub struct VerifyWithRegistry<'info> {*/
 #[derive(Accounts)]
 pub struct VerifyWithRegistry<'info> {
     /// The verifier (can be anyone)
     pub verifier: Signer<'info>,
     
     /// The session entry in the session factory's registry
-    // TODO: Fix session_creation_ctx reference
-    /*
-    #[account(
-        seeds = [
-            b"session_entry",
-            session_creation_ctx.session_address.as_ref(),
-            session_creation_ctx.session_id.as_bytes()
-        ],
-        bump = session_entry.bump
-    )]
-    */
     pub session_entry: Account<'info, SessionEntry>,
     
     /// The session factory state
@@ -480,125 +760,4 @@ pub struct VerifyWithRegistry<'info> {
         bump = factory_state.bump
     )]
     pub factory_state: Account<'info, SessionFactoryState>,
-}
-
-/// Error types for session creation verification
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_valid_session_creation() {
-        let _session_id = "test_session".to_string();
-        let _session_address = Pubkey::new_unique();
-        let _factory_address = Pubkey::new_unique();
-        let _eval_address = Pubkey::new_unique();
-        
-        // CreationParameters is not imported - commenting out
-        /*
-        let creation_parameters = CreationParameters {
-            template_id: None,
-            custom_config: None,
-            requested_namespaces: vec![],
-            metadata: vec![],
-        };
-        */
-        
-        // Test code commented out due to API changes
-        /*
-        let attestation = SessionCreationAttestation {
-            session_id: session_id.clone(),
-            session_account: session_address,
-            factory: factory_address,
-            timestamp: 0,
-            creation_params: creation_parameters,
-            verification_signature: [0u8; 64],
-            verification_functions_executed: vec![],
-            nonce: 0,
-        };
-        */
-        
-        // Skip old test logic since verify_session_creation API has changed
-        /*
-            session_address,
-            session_id.clone(),
-            eval_address,
-            creation_parameters,
-            12345,
-        );
-        
-        let ctx = SessionCreationContext {
-            session_id,
-            session_address,
-            factory_address,
-            eval_address,
-            attestation,
-        };
-        
-        let result = verify_session_creation(ctx);
-        assert!(matches!(result, VerificationResult::Valid));
-        */
-    }
-    
-    #[test]
-    fn test_invalid_session_id_mismatch() {
-        // Commented out due to API changes in consolidated verification
-        /*
-        let session_id = "test_session".to_string();
-        let wrong_id = "wrong_session".to_string();
-        let session_address = Pubkey::new_unique();
-        let factory_address = Pubkey::new_unique();
-        let eval_address = Pubkey::new_unique();
-        
-        let attestation = session_factory::SessionCreationAttestation::new(
-            wrong_id, // Different from session_id
-            session_address,
-            factory_address,
-            eval_address,
-            12345,
-        );
-        
-        let ctx = SessionCreationContext {
-            session_id,
-            session_address,
-            factory_address,
-            eval_address,
-            attestation,
-        };
-        
-        let result = verify_session_creation(ctx);
-        assert!(matches!(result, VerificationResult::Invalid { .. }));
-        */
-    }
-    
-    #[test]
-    fn test_invalid_empty_session_id() {
-        // Commented out due to API changes in consolidated verification
-        /*
-        let session_id = "".to_string(); // Empty session ID
-        let session_address = Pubkey::new_unique();
-        let factory_address = Pubkey::new_unique();
-        let eval_address = Pubkey::new_unique();
-        
-        let attestation = session_factory::SessionCreationAttestation::new(
-            session_id.clone(),
-            session_address,
-            factory_address,
-            eval_address,
-            12345,
-        );
-        
-        let ctx = SessionCreationContext {
-            session_id,
-            session_address,
-            factory_address,
-            eval_address,
-            attestation,
-        };
-        
-        let result = verify_session_creation(ctx);
-        assert!(matches!(result, VerificationResult::Invalid { .. }));
-        */
-    }
 } 

@@ -10,17 +10,22 @@ graph TB
         Program[#program kernel]
     end
     
-    subgraph "Primary Modules"
-        Capabilities[capabilities::*<br/>Capability Definitions & Embedded Eval]
+    subgraph "Core Modules"
+        Capabilities[capabilities::*<br/>Capability Definitions & Shards]
         Sessions[sessions::*<br/>Session Management]
         Functions[functions::*<br/>Function Registry]
         Verification[verification::*<br/>Verification System]
     end
     
+    subgraph "Singleton Modules"
+        Processor[processor::*<br/>Execution Engine]
+        Scheduler[scheduler::*<br/>Multi-Shard Scheduling]
+        Diff[diff::*<br/>State Diff Operations]
+    end
+    
     subgraph "Supporting Systems"
         Events[events::*<br/>Event Coordination]
         Config[config::*<br/>Configuration]
-        Optimization[optimization::*<br/>Performance]
         State[state::*<br/>Shared State]
         Error[error::*<br/>Error Handling]
     end
@@ -29,22 +34,20 @@ graph TB
     Capabilities --> Sessions
     Capabilities --> Functions
     Capabilities --> Verification
-    Capabilities --> Processor[Processor Singleton]
+    Capabilities --> Processor
+    Capabilities --> Scheduler
+    Capabilities --> Diff
     
-    Events -.-> Capabilities
-    Events -.-> Sessions
-    Events -.-> Functions
-    
-    Config -.-> All[All Modules]
-    Optimization -.-> All
+    Events -.-> All[All Modules]
+    Config -.-> All
     State -.-> All
     Error -.-> All
 ```
 
 ## Module Responsibilities
 
-### capabilities:: Capability Definitions & Embedded Eval
-The capabilities module defines capabilities and manages execution with embedded eval logic. It includes capability definition and namespace scoping in state.rs, execution rules and ordering constraints in eval_rules.rs, app-specific execution configuration in execution_config.rs, and capability-related instructions in instructions.rs. The module manages capability definition and validation, embedded execution logic, ordering rules for multi-shard coordination, and permission boundary enforcement.
+### capabilities:: Capability Definitions & Shards
+The capabilities module defines capabilities and manages shard-based execution. It includes shard state management in state.rs, capability scoping and permissions in scoping.rs, execution context and results in execution.rs, and capability-related instructions in instructions.rs. The module manages capability definition and validation, shard-based state management, execution context building, and permission boundary enforcement.
 
 ### sessions:: Session Lifecycle Management
 The sessions module manages session creation, activation, and lifecycle. It includes session configuration and permissions in state.rs, session factory and management in lifecycle.rs, session isolation and security in isolation.rs, and session-related instructions in instructions.rs. The module handles session creation and activation, permission and configuration management, session isolation and security boundaries, and optimistic session handling.
@@ -93,23 +96,23 @@ graph LR
 ### Shared State Access
 Modules access shared state through well-defined interfaces. For example, the capabilities module can access session state from the session account and build execution context using the loaded session configuration.
 
-### Singleton Program Integration
-The kernel program integrates with three singleton programs via CPI:
+### Singleton Module Integration
+The kernel program includes three singleton modules as part of the unified program:
 
 ```mermaid
 graph LR
-    Kernel[Kernel Program] -->|CPI| Proc[Processor Singleton]
-    Kernel -->|CPI| Sched[Scheduler Singleton]
-    Kernel -->|CPI| Diff[Diff Singleton]
+    Caps[Capabilities] -->|Direct Call| Proc[processor::]
+    Caps -->|Direct Call| Sched[scheduler::]
+    Caps -->|Direct Call| Diff[diff::]
     
-    Proc -->|Stateless Execution| Kernel
-    Sched -->|Queue Management| Kernel
-    Diff -->|State Diffs| Kernel
+    Proc -->|Execution Results| Caps
+    Sched -->|Scheduling Decisions| Caps
+    Diff -->|State Changes| Caps
 ```
 
-- **Processor**: Handles stateless execution orchestration
-- **Scheduler**: Manages multi-shard scheduling and partial order composition
-- **Diff**: Calculates and optimizes state diffs
+- **processor::** Handles stateless execution orchestration with verification chains
+- **scheduler::** Manages multi-shard scheduling and partial order composition
+- **diff::** Calculates and optimizes state diffs for atomic updates
 
 ## Instruction Flow
 

@@ -1,18 +1,18 @@
 /// Capability definitions with namespace scoping
 /// This module handles capability account structures, instruction handlers, and namespace access logic
-pub mod state;
+pub mod scoping;
 pub mod instructions;
-pub mod namespace;
-pub mod types;
 pub mod eval_rules;
 pub mod ordering_rules;
 pub mod execution_config;
 
 // Re-export main types and functions - be specific to avoid ambiguity
-pub use state::{
+pub use scoping::{
     ValidateNamespaceScope, CheckObjectAccess, VerifyCapabilityComposition,
-    CapabilityValidationResult,
+    CapabilityValidationResult, CapabilityDefinition, CapabilityScope, CapabilityType,
+    NamespaceManager, NamespaceAccess,
 };
+
 // Import error types from the unified error module
 pub use crate::error::{CapabilityError, NamespaceScopingError, ExecutionConfigError};
 

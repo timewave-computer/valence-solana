@@ -1,6 +1,5 @@
 /// Event utility functions and helper methods
 /// This module provides convenience functions for creating events and managing the event system
-
 use anchor_lang::prelude::*;
 use super::{
     EventManager, EventData, EventType,
@@ -176,14 +175,14 @@ pub fn emit_configuration_updated(
 ) -> Result<()> {
     let mut event = EventData::new(
         EventType::ConfigurationUpdated,
-        format!("config:{}", config_type),
+        format!("config:{config_type}"),
         vec![]
     ).with_metadata("category".to_string(), "configuration".to_string())
      .with_metadata("config_type".to_string(), config_type);
     
     // Add change details as metadata
     for (key, value) in changes {
-        event = event.with_metadata(format!("change_{}", key), value);
+        event = event.with_metadata(format!("change_{key}"), value);
     }
     
     manager.emit_event(&event)

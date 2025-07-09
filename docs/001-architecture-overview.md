@@ -6,19 +6,24 @@ The Valence Protocol implements a hosted microkernel architecture - a single Sol
 
 ```mermaid
 graph TB
-    subgraph "Kernel Program (Hosted Microkernel)"
-        C[Capabilities/Shards] --> P[Processor]
-        S[Sessions] --> C
-        F[Functions] --> C
-        V[Verification] --> C
-        Ev[Events] --> All[All Modules]
-        Config[Config] --> All
-    end
-    
-    subgraph "Singleton Programs"
-        P[Processor Singleton]
-        Sc[Scheduler Singleton]
-        D[Diff Singleton]
+    subgraph "Unified Kernel Program"
+        subgraph "Core Modules"
+            C[Capabilities/Shards] --> S[Sessions]
+            S --> F[Functions]
+            F --> V[Verification]
+            Ev[Events] --> All[All Modules]
+            Config[Config] --> All
+        end
+        
+        subgraph "Singleton Modules"
+            P[Processor Module]
+            Sc[Scheduler Module]
+            D[Diff Module]
+        end
+        
+        C --> P
+        C --> Sc
+        C --> D
     end
     
     subgraph "External Interface"
@@ -28,9 +33,6 @@ graph TB
     end
     
     API --> C
-    C --> P
-    C --> Sc
-    C --> D
     P --> State
     Sc --> State
     D --> State
@@ -64,10 +66,10 @@ The system maintains clean interfaces with well-defined module boundaries and AP
 | Verification | Verification function system | [verification.md](./105-verification.md) |
 | Events | Event coordination system | [events.md](./106-events.md) |
 
-### Singleton Programs
+### Singleton Modules
 
-| Singleton | Purpose | Key Features |
-|-----------|---------|--------------|
+| Module | Purpose | Key Features |
+|--------|---------|--------------|
 | Processor | Stateless execution orchestration | Verification chain coordination, context building, resource management |
 | Scheduler | Multi-shard scheduling | Queue management, partial order composition, priority scheduling |
 | Diff | State diff operations | Diff calculation, batch optimization, atomic processing |

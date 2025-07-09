@@ -1,8 +1,6 @@
 // Core verification instruction handlers
 use anchor_lang::prelude::*;
 
-/// Verification errors
-
 /// Verification state for tracking results
 #[account]
 pub struct VerificationState {

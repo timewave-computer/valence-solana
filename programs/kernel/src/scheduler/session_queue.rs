@@ -2,7 +2,7 @@
 // This module handles queuing and batch processing of session operations
 
 use anchor_lang::prelude::*;
-use crate::SchedulerError;
+use crate::error::SchedulerError;
 
 /// Session operation queue for batch processing
 #[account]

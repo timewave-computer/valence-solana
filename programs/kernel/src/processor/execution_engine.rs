@@ -1,7 +1,7 @@
 // Core execution logic for capability processing
 
 use anchor_lang::prelude::*;
-use crate::ProcessorError;
+use crate::error::ProcessorError;
 
 /// Core execution engine for processing capabilities
 pub struct ExecutionEngine;

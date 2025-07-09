@@ -302,14 +302,12 @@ pub struct CreateOptimisticSession<'info> {
 // Queue-related operations have been moved to the scheduler singleton
 // For batch processing and queue management, use the scheduler program via CPI
 // See scheduler/session_queue.rs for the new queue implementation
-//
 // The following account contexts have been deprecated:
 // - BatchActivateOptimisticSessions: Use scheduler's batch processing
 // - InitializeSessionQueue: Use scheduler's queue initialization
 // - QueueSessionInit: Use scheduler's enqueue_operation
 // - ExecuteQueuedInit: Use scheduler's process_batch
 // - BatchProcessQueue: Use scheduler's batch processing
-//
 // Manual operations remain in this module:
 
 /// Manual session initialization (direct path without queue)
@@ -783,25 +781,21 @@ pub mod session_factory {
         Ok(())
     }
 
-    /// Batch activate sessions from pending to active state
+//     /// Batch activate sessions from pending to active state
 //     pub fn batch_activate_optimistic_sessions(ctx: Context<BatchActivateOptimisticSessions>) -> Result<()> {
 //         let factory_state = &mut ctx.accounts.factory_state;
-//         
 //         // Update active count when sessions become active
 //         factory_state.active_sessions = factory_state.active_sessions
 //             .checked_add(factory_state.total_sessions)
 //             .unwrap_or(u64::MAX);
-//         
 //         msg!("All sessions activated");
-//         
 //         Ok(())
 //     }
 
-    /// Initialize session initialization queue
+//     /// Initialize session initialization queue
 //     pub fn initialize_session_queue(ctx: Context<InitializeSessionQueue>) -> Result<()> {
 //         let init_queue = &mut ctx.accounts.init_queue;
 //         let clock = Clock::get()?;
-//         
 //         init_queue.authority = ctx.accounts.authority.key();
 //         init_queue.pending_inits = vec![];
 //         init_queue.max_queue_size = 50; // Maximum 50 pending initializations

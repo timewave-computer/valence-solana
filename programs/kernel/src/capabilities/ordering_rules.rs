@@ -1,6 +1,5 @@
 // App-specific ordering rules for shard contracts
 // This module implements the partial order framework for capability execution
-//
 // COMPOSITION ALGORITHM APPROACH:
 // The framework uses a multi-stage composition process:
 // 1. Local Validation: Each shard validates its own constraints for consistency
@@ -8,7 +7,6 @@
 // 3. Conflict Detection: Identifies contradictory orderings, cycles, and resource contention
 // 4. Conflict Resolution: Uses configurable strategies (consensus, temporal, priority-based)
 // 5. Execution Planning: Generates final execution order respecting all constraints
-//
 // CURRENT LIMITATIONS:
 // - Maximum 256 constraints per shard (can be increased with account resizing)
 // - Conflict resolution is deterministic but may not be optimal for all use cases
@@ -201,8 +199,7 @@ impl PartialOrder {
             if Self::constraints_conflict(new_constraint, existing) {
                 result.is_valid = false;
                 result.errors.push(format!(
-                    "New constraint conflicts with existing constraint: {:?}",
-                    existing
+                    "New constraint conflicts with existing constraint: {existing:?}"
                 ));
             }
         }
@@ -396,12 +393,14 @@ impl PartialOrder {
     }
 
     /// Set priority weight for this shard's constraints
+    #[must_use]
     pub fn with_priority_weight(mut self, weight: u8) -> Self {
         self.priority_weight = weight;
         self
     }
 
     /// Add metadata to the partial order
+    #[must_use]
     pub fn with_metadata(mut self, description: String, tags: Vec<String>) -> Self {
         self.metadata.description = description;
         self.metadata.tags = tags;

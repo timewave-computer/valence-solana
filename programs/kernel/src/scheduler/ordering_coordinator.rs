@@ -201,29 +201,29 @@ impl OrderingCoordinator {
         let mut all_capabilities = HashSet::new();
         
         for order in shard_orders {
-            let mut shard_capabilities = HashSet::new();
+            let mut current_shard_caps = HashSet::new();
             
             for constraint in &order.constraints {
                 match constraint {
                     OrderingConstraint::Before { capability_a, capability_b } |
                     OrderingConstraint::After { capability_a, capability_b } => {
-                        shard_capabilities.insert(capability_a.clone());
-                        shard_capabilities.insert(capability_b.clone());
+                        current_shard_caps.insert(capability_a.clone());
+                        current_shard_caps.insert(capability_b.clone());
                     }
                     OrderingConstraint::Sequential { capabilities } |
                     OrderingConstraint::Concurrent { capabilities } => {
                         for cap in capabilities {
-                            shard_capabilities.insert(cap.clone());
+                            current_shard_caps.insert(cap.clone());
                         }
                     }
                     OrderingConstraint::Priority { capability, .. } => {
-                        shard_capabilities.insert(capability.clone());
+                        current_shard_caps.insert(capability.clone());
                     }
                 }
             }
             
             // Check for overlaps
-            for cap in &shard_capabilities {
+            for cap in &current_shard_caps {
                 if all_capabilities.contains(cap) {
                     shared_capabilities.insert(cap.clone());
                 }

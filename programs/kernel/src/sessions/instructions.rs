@@ -1,6 +1,5 @@
 /// Session instruction handlers
 /// This file contains all the instruction handlers for session operations
-
 use anchor_lang::prelude::*;
 use crate::error::ValenceSessionError;
 use crate::sessions::state::{SessionState, SessionMetadata, SessionData};

@@ -1,8 +1,7 @@
 /// Diff module for SDK kernel operations
 
-use anchor_lang::prelude::*;
 use crate::{ValenceClient, ValenceResult, ValenceError};
-use solana_sdk::signature::Signature;
+use solana_sdk::{signature::Signature, pubkey::Pubkey};
 
 impl ValenceClient {
     /// Get the diff state PDA
@@ -15,7 +14,7 @@ impl ValenceClient {
     }
     
     /// Initialize the diff singleton
-    pub async fn initialize_diff(&self, authority: &Pubkey) -> ValenceResult<Signature> {
+    pub async fn initialize_diff(&self, _authority: &Pubkey) -> ValenceResult<Signature> {
         // Note: The actual implementation would require proper account setup
         // This is a placeholder that shows the structure
         Err(ValenceError::NotImplemented("Diff initialization not yet implemented".to_string()))
@@ -24,8 +23,8 @@ impl ValenceClient {
     /// Calculate diff between two states
     pub async fn calculate_diff(
         &self,
-        state_a: Vec<u8>,
-        state_b: Vec<u8>,
+        _state_a: Vec<u8>,
+        _state_b: Vec<u8>,
     ) -> ValenceResult<Signature> {
         // Note: The actual implementation would require proper account setup
         // This is a placeholder that shows the structure
@@ -35,8 +34,8 @@ impl ValenceClient {
     /// Apply diff to a state
     pub async fn apply_diff(
         &self,
-        base_state: Vec<u8>,
-        diff: Vec<u8>,
+        _base_state: Vec<u8>,
+        _diff: Vec<u8>,
     ) -> ValenceResult<Signature> {
         // Note: The actual implementation would require proper account setup
         // This is a placeholder that shows the structure
@@ -46,7 +45,7 @@ impl ValenceClient {
     /// Process diffs in batch
     pub async fn process_diffs(
         &self,
-        diffs: Vec<DiffOperation>,
+        _diffs: Vec<DiffOperation>,
     ) -> ValenceResult<Signature> {
         // Note: The actual implementation would require proper account setup
         // This is a placeholder that shows the structure
@@ -56,8 +55,8 @@ impl ValenceClient {
     /// Verify diff integrity
     pub async fn verify_diff_integrity(
         &self,
-        diff_hash: [u8; 32],
-        expected_result_hash: [u8; 32],
+        _diff_hash: [u8; 32],
+        _expected_result_hash: [u8; 32],
     ) -> ValenceResult<bool> {
         // Note: The actual implementation would require proper account setup
         // This is a placeholder that shows the structure

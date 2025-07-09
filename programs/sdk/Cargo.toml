@@ -39,6 +39,9 @@ sha2 = "0.10"
 chrono = { version = "0.4", features = ["serde"] }
 shellexpand = "3.0"
 
+# Pin transitive dependencies to avoid edition2024
+base64ct = "1.6.0"
+
 # CLI dependencies
 clap = { version = "4.0", features = ["derive", "env"], optional = true }
 

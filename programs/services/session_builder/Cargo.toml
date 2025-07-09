@@ -26,7 +26,9 @@ solana-sdk = "2.0"
 # solana-program = "2.0" # Use anchor-lang's re-export instead
 anchor-lang = "0.31.1"
 
-# Valence domain client for Solana interaction
+# Valence domain client for Solana interaction (off-chain only)
+# NOTE: coprocessor feature disabled for compatibility with nix environment (Rust 1.84)
+# To build with coprocessor support, use system cargo with Rust 1.85+
 valence-domain-clients = { path = "../../../submodules/valence-domain-clients", features = ["solana"] }
 
 # Configuration and environment

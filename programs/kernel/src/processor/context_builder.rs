@@ -2,6 +2,7 @@
 
 use anchor_lang::prelude::*;
 use crate::processor::execution_engine::ExecutionContext;
+use crate::error::ProcessorError;
 
 /// Builds execution contexts for capability processing
 pub struct ContextBuilder {
@@ -113,12 +114,12 @@ impl ContextBuilder {
     pub fn validate(&self, context: &ExecutionContext) -> Result<()> {
         // Validate capability ID
         if context.capability_id.is_empty() {
-            return Err(crate::ProcessorError::CapabilityInvalidId.into());
+            return Err(ProcessorError::CapabilityInvalidId.into());
         }
 
         // Validate session and caller
         if context.session == Some(Pubkey::default()) || context.caller == Pubkey::default() {
-            return Err(crate::ProcessorError::ExecutionFailed.into());
+            return Err(ProcessorError::ExecutionFailed.into());
         }
 
         Ok(())

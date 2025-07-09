@@ -150,7 +150,7 @@ impl MockDataGenerator {
             let mut seed_bytes = [0u8; 64];
             seed_bytes[0] = s;
             seed_bytes[32] = s;
-            if let Ok(keypair) = Keypair::from_bytes(&seed_bytes) {
+            if let Ok(keypair) = Keypair::try_from(&seed_bytes[..]) {
                 keypair
             } else {
                 Keypair::new()
@@ -493,7 +493,7 @@ impl DevUtils {
         std::thread::sleep(std::time::Duration::from_millis(10));
         
         let end_time = current_timestamp();
-        let duration_ms = (end_time - start_time) * 1000;
+        let duration_ms = ((end_time - start_time) * 1000).max(10); // Ensure minimum 10ms
         
         BenchmarkResult {
             capability_id: capability_id.to_string(),

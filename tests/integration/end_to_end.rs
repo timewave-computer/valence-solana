@@ -7,15 +7,16 @@ use solana_sdk::{
     signature::Keypair,
     signer::Signer,
     transaction::Transaction,
+    hash::Hash,
 };
 
 #[tokio::test]
 async fn test_end_to_end_capability_execution() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
@@ -189,11 +190,11 @@ async fn test_end_to_end_capability_execution() {
 
 #[tokio::test]
 async fn test_cross_singleton_coordination() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;

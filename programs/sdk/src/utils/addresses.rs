@@ -328,7 +328,7 @@ mod tests {
     fn test_account_constructors() {
         let program_id = Pubkey::new_unique();
         let authority = Pubkey::new_unique();
-        let shard_address = Pubkey::new_unique();
+        let _shard_address = Pubkey::new_unique();
         
         // Test InitializeRegistry account constructor
         let registry_accounts = accounts::InitializeRegistry::new(&program_id, &authority);

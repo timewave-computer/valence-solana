@@ -1,9 +1,7 @@
 /// Processor module for SDK kernel operations
 
-use anchor_lang::prelude::*;
 use crate::{ValenceClient, ValenceResult, ValenceError};
-use solana_sdk::signature::Signature;
-use std::rc::Rc;
+use solana_sdk::{signature::Signature, pubkey::Pubkey};
 
 impl ValenceClient {
     /// Get the processor state PDA
@@ -16,7 +14,7 @@ impl ValenceClient {
     }
     
     /// Initialize the processor singleton
-    pub async fn initialize_processor(&self, authority: &Pubkey) -> ValenceResult<Signature> {
+    pub async fn initialize_processor(&self, _authority: &Pubkey) -> ValenceResult<Signature> {
         // Note: The actual implementation would require proper account setup
         // This is a placeholder that shows the structure
         Err(ValenceError::NotImplemented("Processor initialization not yet implemented".to_string()))
@@ -25,9 +23,9 @@ impl ValenceClient {
     /// Process a capability through the processor
     pub async fn process_capability(
         &self,
-        capability_id: String,
-        input_data: Vec<u8>,
-        session: Option<Pubkey>,
+        _capability_id: String,
+        _input_data: Vec<u8>,
+        _session: Option<Pubkey>,
     ) -> ValenceResult<Signature> {
         // Note: The actual implementation would require proper account setup
         // This is a placeholder that shows the structure
@@ -35,14 +33,14 @@ impl ValenceClient {
     }
     
     /// Pause the processor
-    pub async fn pause_processor(&self, authority: &Pubkey) -> ValenceResult<Signature> {
+    pub async fn pause_processor(&self, _authority: &Pubkey) -> ValenceResult<Signature> {
         // Note: The actual implementation would require proper account setup
         // This is a placeholder that shows the structure
         Err(ValenceError::NotImplemented("Processor pause not yet implemented".to_string()))
     }
     
     /// Resume the processor
-    pub async fn resume_processor(&self, authority: &Pubkey) -> ValenceResult<Signature> {
+    pub async fn resume_processor(&self, _authority: &Pubkey) -> ValenceResult<Signature> {
         // Note: The actual implementation would require proper account setup
         // This is a placeholder that shows the structure
         Err(ValenceError::NotImplemented("Processor resume not yet implemented".to_string()))

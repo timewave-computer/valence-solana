@@ -1,7 +1,7 @@
 // Execution queue management
 
 use anchor_lang::prelude::*;
-use crate::SchedulerError;
+use crate::error::SchedulerError;
 use std::collections::{VecDeque, HashMap};
 
 /// Manages execution queues across multiple shards

@@ -2,7 +2,7 @@
 
 pub mod processor_singleton;
 pub mod scheduler_singleton;
-pub mod diff_singleton;
+pub mod differentiator_singleton;
 pub mod end_to_end;
 pub mod performance;
 
@@ -11,18 +11,19 @@ pub use solana_program_test::*;
 pub use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
-    signature::Keypair,
+    signature::{Keypair, Signature},
     signer::Signer,
     transaction::Transaction,
+    hash::Hash,
 };
 
 /// Common test setup function
 pub async fn setup_test_environment() -> (BanksClient, Keypair, Hash, Pubkey) {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None, // Use None for Anchor programs - they handle their own entry point
     );
     
     let (banks_client, payer, recent_blockhash) = program_test.start().await;

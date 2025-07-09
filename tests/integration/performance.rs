@@ -7,16 +7,17 @@ use solana_sdk::{
     signature::Keypair,
     signer::Signer,
     transaction::Transaction,
+    hash::Hash,
 };
 use std::time::Instant;
 
 #[tokio::test]
 async fn test_processor_performance_baseline() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
@@ -57,11 +58,11 @@ async fn test_processor_performance_baseline() {
 
 #[tokio::test]
 async fn test_scheduler_queue_performance() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
@@ -122,11 +123,11 @@ async fn test_scheduler_queue_performance() {
 
 #[tokio::test]
 async fn test_diff_diff_performance() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;

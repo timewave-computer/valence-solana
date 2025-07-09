@@ -1,6 +1,5 @@
 /// Valence Protocol Kernel - Unified kernel protocol implementation
 /// This is the main program entry point that orchestrates all valence functionality
-
 use anchor_lang::prelude::*;
 
 // Use a valid 32-byte program ID for development  

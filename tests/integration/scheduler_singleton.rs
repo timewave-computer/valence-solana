@@ -7,15 +7,16 @@ use solana_sdk::{
     signature::Keypair,
     signer::Signer,
     transaction::Transaction,
+    hash::Hash,
 };
 
 #[tokio::test]
 async fn test_scheduler_singleton_initialization() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
@@ -57,11 +58,11 @@ async fn test_scheduler_singleton_initialization() {
 
 #[tokio::test]
 async fn test_scheduler_queue_management() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
@@ -108,11 +109,11 @@ async fn test_scheduler_queue_management() {
 
 #[tokio::test]
 async fn test_scheduler_priority_ordering() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
@@ -185,11 +186,11 @@ async fn test_scheduler_priority_ordering() {
 
 #[tokio::test]
 async fn test_scheduler_resource_allocation() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;

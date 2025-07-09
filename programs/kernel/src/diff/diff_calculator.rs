@@ -152,6 +152,7 @@ impl DiffCalculator {
     pub fn apply_diff(state: &mut Vec<u8>, operations: &[DiffOperation]) -> Result<()> {
         for operation in operations {
             match operation {
+                // Positional operations (supported by diff calculator)
                 DiffOperation::Insert { position, data } => {
                     let pos = *position as usize;
                     if pos <= state.len() {
@@ -165,12 +166,20 @@ impl DiffCalculator {
                         state.drain(start..end);
                     }
                 }
-                DiffOperation::Update { position, data } => {
+                DiffOperation::Replace { position, data } => {
                     let start = *position as usize;
                     let end = start + data.len();
                     if start < state.len() {
                         state.splice(start..end.min(state.len()), data.iter().cloned());
                     }
+                }
+                // Key-value operations (not supported for byte array diffs)
+                DiffOperation::Add { .. } | 
+                DiffOperation::Update { .. } | 
+                DiffOperation::Remove { .. } | 
+                DiffOperation::Move { .. } => {
+                    msg!("Key-value operations not supported for byte array diffs");
+                    // Skip these operations for byte array diffs
                 }
             }
         }

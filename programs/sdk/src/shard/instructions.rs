@@ -1,7 +1,5 @@
 /// Shard instructions module
 
-use anchor_lang::prelude::*;
-use crate::{ValenceResult, ValenceError};
 
 /// Shard configuration
 #[derive(Debug, Clone)]

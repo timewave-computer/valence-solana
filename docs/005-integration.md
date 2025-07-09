@@ -43,7 +43,7 @@ sequenceDiagram
     M1->>M1: continue_processing()
 ```
 
-Capability validation during execution demonstrates this pattern where the capabilities module validates access before calling the processor singleton for execution.
+Capability validation during execution demonstrates this pattern where the capabilities:: module validates access before calling the processor:: module for execution.
 
 ### Event-Driven Pattern
 
@@ -51,7 +51,7 @@ Event-driven coordination enables loose coupling and handles cross-cutting conce
 
 ```mermaid
 graph TD
-    A[Event Source] --> B[Event System]
+    A[Event Source] --> B[events::]
     B --> C[Event Handler 1]
     B --> D[Event Handler 2]
     B --> E[Event Handler N]
@@ -61,7 +61,7 @@ graph TD
     E --> H[Module Response]
 ```
 
-Session lifecycle events illustrate this pattern where the sessions module emits events that other modules listen for to update their relevant state.
+Session lifecycle events illustrate this pattern where the sessions:: module emits events that other modules listen for to update their relevant state.
 
 ### Pipeline Processing Pattern
 
@@ -111,31 +111,31 @@ Session creation with multiple state updates exemplifies this pattern where sess
 
 ### Capabilities and Sessions Integration
 
-The capabilities module integrates with sessions by loading session state, validating permissions, executing with session context, and updating usage statistics. The sessions module creates sessions, emits events, and provides context for capability operations.
+The capabilities:: module integrates with sessions:: by loading session state, validating permissions, executing with session context, and updating usage statistics. The sessions:: module creates sessions, emits events, and provides context for capability operations.
 
 ```mermaid
 graph TD
-    A[Capabilities Module] --> B[Load Session State]
+    A[capabilities::] --> B[Load Session State]
     B --> C[Validate Session Permissions]
     C --> D[Execute with Session Context]
     D --> E[Update Session Usage Stats]
     
-    F[Sessions Module] --> G[Session Creation]
+    F[sessions::] --> G[Session Creation]
     G --> H[Emit Session Events]
-    H --> I[Capabilities Module Listens]
+    H --> I[capabilities:: Listens]
     I --> J[Update Execution Context]
 ```
 
-The capabilities module accesses session state directly, validates permissions, builds execution context with session data, and executes capabilities within the session context.
+The capabilities:: module accesses session state directly, validates permissions, builds execution context with session data, and executes capabilities within the session context.
 
 ### Capabilities and Verification Integration
 
-Capabilities module requests verification from the verification module, which loads and executes verification functions, then aggregates results for capability validation.
+Capabilities:: module requests verification from the verification:: module, which loads and executes verification functions, then aggregates results for capability validation.
 
 ```mermaid
 sequenceDiagram
-    participant Cap as Capabilities
-    participant Ver as Verification
+    participant Cap as capabilities::
+    participant Ver as verification::
     participant VF as Verification Functions
     
     Cap->>Ver: request_verification(capability, context)
@@ -151,7 +151,7 @@ sequenceDiagram
     Ver-->>Cap: combined_verification_result
 ```
 
-The capabilities module gets required verifications, executes the verification chain, validates namespace access, and combines results for comprehensive capability validation.
+The capabilities:: module gets required verifications, executes the verification chain, validates namespace access, and combines results for comprehensive capability validation.
 
 ### Functions and Verification Integration
 

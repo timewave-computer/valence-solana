@@ -7,15 +7,17 @@ use solana_sdk::{
     signature::Keypair,
     signer::Signer,
     transaction::Transaction,
+    hash::Hash,
 };
+use solana_program_test::BanksClientError;
 
 #[tokio::test]
 async fn test_processor_singleton_initialization() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
@@ -54,11 +56,11 @@ async fn test_processor_singleton_initialization() {
 
 #[tokio::test]
 async fn test_processor_capability_execution() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
@@ -104,11 +106,11 @@ async fn test_processor_capability_execution() {
 
 #[tokio::test]
 async fn test_processor_pause_resume() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;

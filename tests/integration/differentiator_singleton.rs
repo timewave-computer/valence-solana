@@ -7,15 +7,16 @@ use solana_sdk::{
     signature::Keypair,
     signer::Signer,
     transaction::Transaction,
+    hash::Hash,
 };
 
 #[tokio::test]
 async fn test_diff_singleton_initialization() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
@@ -54,11 +55,11 @@ async fn test_diff_singleton_initialization() {
 
 #[tokio::test]
 async fn test_diff_calculate_diff() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
@@ -103,11 +104,11 @@ async fn test_diff_calculate_diff() {
 
 #[tokio::test]
 async fn test_diff_process_diffs() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
@@ -153,11 +154,11 @@ async fn test_diff_process_diffs() {
 
 #[tokio::test]
 async fn test_diff_verify_integrity() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
@@ -198,11 +199,11 @@ async fn test_diff_verify_integrity() {
 
 #[tokio::test]
 async fn test_diff_batch_optimization() {
-    let program_id = Pubkey::new_unique();
+    let program_id = valence_kernel::id();
     let mut program_test = ProgramTest::new(
         "valence_kernel",
         program_id,
-        processor!(valence_kernel::entry),
+        None,
     );
 
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;

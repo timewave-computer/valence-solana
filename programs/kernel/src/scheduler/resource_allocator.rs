@@ -1,7 +1,7 @@
 // Resource allocation across shards
 
 use anchor_lang::prelude::*;
-use crate::SchedulerError;
+use crate::error::SchedulerError;
 
 /// Manages resource allocation across multiple shards
 pub struct ResourceAllocator;

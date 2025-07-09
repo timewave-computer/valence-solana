@@ -1,92 +1,100 @@
-# Capabilities Module - Capability Definitions & Scoping
+# Capabilities Module - Capability Definitions & Shards
 
-The capabilities module manages capability definitions and implements namespace-based scoping for access control within the Valence Protocol.
+The capabilities module manages capability definitions and implements shard-based execution with embedded evaluation logic within the Valence Protocol.
 
 ## Module Purpose
 
-The capabilities module is responsible for defining what capabilities are and their properties, implementing namespace-based access control, managing capability-level permissions, and validating capability access requests.
+The capabilities module is responsible for defining what capabilities are and their properties, managing shard state with embedded evaluation logic, implementing namespace-based access control through scoping, managing capability-level permissions, and coordinating with singleton modules for execution.
 
 ## Module Architecture
 
 ```mermaid
 graph TB
     subgraph "Capabilities Module"
-        A[types.rs] --> B[Core Capability Types]
-        C[instructions.rs] --> D[Namespace Operations]
-        E[state.rs] --> F[Capability State]
-        G[namespace.rs] --> H[Namespace Management]
-        I[mod.rs] --> J[Module Exports]
+        A[eval_rules.rs] --> B[Shard State & Eval Config]
+        C[scoping.rs] --> D[Namespace Scoping]
+        E[instructions.rs] --> F[Capability Instructions]
+        G[ordering_rules.rs] --> H[Partial Order Management]
+        I[execution_config.rs] --> J[Execution Configuration]
+        K[mod.rs] --> L[Module Exports]
     end
     
     subgraph "External Interfaces"
-        K[Capability Validation]
-        L[Namespace Queries]
-        M[Access Control]
+        M[Capability Validation]
+        N[Shard Management]
+        O[Access Control]
     end
     
     subgraph "Dependencies"
-        N[Functions Module]
-        O[Verification Module]
-        P[Sessions Module]
+        P[Processor Module]
+        Q[Scheduler Module]
+        R[Verification Module]
     end
     
-    C --> K
-    G --> L
-    C --> M
-    
+    E --> M
     A --> N
     C --> O
-    H --> P
+    
+    B --> P
+    G --> Q
+    C --> R
 ```
 
 ## Components
 
-### types.rs - Core Capability Types
+### eval_rules.rs - Shard State & Evaluation Configuration
 
-This component defines the core capability types and data structures. The CapabilityDefinition struct contains unique capability identifier, capability type, capability scope, required permissions, associated functions, namespace restrictions, and verification requirements. The CapabilityType enumeration includes Function execution capability, DataAccess capability, SystemAdmin capability, SessionManagement capability, and cross-capability Composition. The CapabilityScope defines namespace identifier, accessible objects within namespace, allowed operations, and resource limits.
+This component manages shard state with embedded evaluation logic. The ShardState account contains authority that manages the shard, processor program address for execution, pause state, total executions counter, shard version, PDA bump seed, and evaluation configuration. The EvalConfig structure defines maximum execution time allowed, maximum compute units allowed, execution recording settings, and default verification function requirements. Shards embed evaluation logic by default, providing simple deployment, better performance through reduced CPI calls, and tighter coupling between state and evaluation rules.
 
-### instructions.rs - Namespace Operations
+### scoping.rs - Namespace Scoping & Access Control
 
-This component implements namespace scoping operations and access control logic through namespace creation, access validation, sub-capability creation, and permission checking.
+This component implements namespace-based access control and capability scoping. The CapabilityDefinition struct contains unique capability identifier, capability type (Function, DataAccess, SystemAdmin, etc.), capability scope with namespace restrictions, required permissions, and verification requirements. The NamespaceManager validates object access within namespaces, verifies capability composition rules, and enforces permission boundaries. Scoping ensures capabilities only access objects within their authorized namespaces.
+
+### ordering_rules.rs - Partial Order Management
+
+This component manages ordering constraints for multi-shard coordination. The PartialOrder structure defines execution ordering with unique identifier, ordering constraints list, and priority level. OrderingConstraint types include FIFO for first-in-first-out ordering, Priority-based ordering, and Dependency-based ordering with before/after relationships. The OrderingRuleRegistry maintains available ordering rules and applies them to compose partial orders from multiple shards.
+
+### execution_config.rs - Execution Configuration
+
+This component defines execution configuration for capabilities. The ExecutionConfig includes execution mode (Sequential, Parallel, Conditional), resource limits with compute units and memory allocation, timeout settings, and retry policies. CompleteExecutionConfig combines base configuration with app-specific settings for comprehensive execution control.
+
+## Shard-Based Execution Flow
+
+### Capability Execution with Shards
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Shard as ShardState
+    participant Eval as EvalConfig
+    participant Proc as processor::
+    participant Sched as scheduler::
+    
+    Client->>Shard: execute_capability(cap_def, input)
+    Shard->>Eval: validate_execution_rules()
+    Eval-->>Shard: validation_result
+    Shard->>Shard: increment_execution_counter()
+    Shard->>Proc: process_capability()
+    Proc->>Proc: build_execution_context()
+    Proc->>Proc: orchestrate_verification()
+    Proc-->>Shard: execution_result
+    Shard-->>Client: Result<ExecutionResult>
+```
+
+### Multi-Shard Coordination
 
 ```mermaid
 graph TD
-    A[Namespace Operations] --> B[Create Namespace]
-    A --> C[Validate Access]
-    A --> D[Create Sub-Capability]
-    A --> E[Check Permissions]
+    A[Multiple Shards] --> B[scheduler::]
+    B --> C[Collect Ordering Constraints]
+    C --> D[Compose Partial Order]
+    D --> E[Topological Sort]
+    E --> F[Execute in Order]
     
-    B --> F[Namespace Creation]
-    C --> G[Access Validation]
-    D --> H[Sub-Capability Creation]
-    E --> I[Permission Checking]
+    F --> G[processor::]
+    G --> H[Execute Capabilities]
+    H --> I[Update Shard States]
 ```
-
-The NamespaceCapability struct provides scoped access with namespace identifier, accessible objects, allowed operations, resource allocation, and optional parent capability. It includes methods to create new namespace capabilities, check object access permissions, check operation permissions, and create sub-capabilities with restricted access that verify all restricted objects are within the parent capability.
-
-### state.rs - Capability State Management
-
-This component manages capability state and persistence. The CapabilityEntry contains capability definition, registration timestamp, last updated timestamp, usage statistics, and status. CapabilityUsageStats tracks total executions, total execution time, average execution time, success rate, and last execution timestamp. CapabilityStatus includes Active, Disabled, Deprecated, and Maintenance states.
-
-### namespace.rs - Namespace Management
-
-This component implements namespace creation, management, and hierarchical access control through a namespace hierarchy with root and child namespaces, access control with inheritance rules, permission propagation, and restriction enforcement.
-
-```mermaid
-graph TD
-    A[Namespace Hierarchy] --> B[Root Namespace]
-    B --> C[Child Namespace 1]
-    B --> D[Child Namespace 2]
-    C --> E[Sub-Namespace 1.1]
-    C --> F[Sub-Namespace 1.2]
-    D --> G[Sub-Namespace 2.1]
-    
-    H[Access Control] --> I[Inheritance Rules]
-    I --> J[Permission Propagation]
-    J --> K[Restriction Enforcement]
-```
-
-The NamespaceManager maintains namespace hierarchy through a tree structure, access control policies, and resource quotas per namespace. The NamespaceNode represents hierarchy nodes with namespace identifier, optional parent namespace, child namespaces, objects in the namespace, and namespace permissions. The manager creates new namespaces by validating parent existence, creating namespace nodes, adding to the tree, and updating parent children lists. It validates namespace access by checking direct permissions and inherited permissions from parent namespaces.
 
 ## Capability Validation Flow
 
@@ -128,23 +136,27 @@ flowchart TD
 
 ## Integration Points
 
-### Eval Module Integration
+### Processor Module Integration
 
-Capability validation in the eval module loads capability definitions, validates namespace access, checks required permissions, and aggregates results. The CapabilityValidator validates capability access by loading capability definitions, validating namespace access for the capability scope, checking required permissions against the execution context, and returning aggregated validation results with capability ID, namespace access status, permissions satisfaction, verification functions, and function chain.
+The processor:: module handles stateless execution orchestration for capabilities. When a shard executes a capability, it delegates to the processor for context building through the ContextBuilder, verification orchestration via the VerificationOrchestrator, and execution engine operations. The processor maintains no state between executions, ensuring clean execution semantics.
 
-### Functions Module Integration
+### Scheduler Module Integration
 
-Capability-function binding validates that capabilities allow function execution, then executes functions in sequence. The FunctionExecutor executes capability functions by validating the capability type is Function, executing functions in sequence using function IDs from the capability definition, and returning function execution results with capability ID and individual function results.
+The scheduler:: module manages multi-shard coordination. When multiple shards need coordinated execution, the scheduler collects ordering constraints from each shard's PartialOrder, composes them using the PartialOrderComposer, performs topological sorting to determine execution order, and manages the execution queue. This ensures proper ordering across shard boundaries.
+
+### Verification Module Integration
+
+Capability validation integrates with the verification:: module to execute verification chains. The shard's EvalConfig specifies default verification functions, which are combined with capability-specific verifications. The verification module executes these functions as pure predicates, returning aggregated results for access control decisions.
 
 ## Account Structures
 
-### Capability Registry Account
+### Shard State Account
 
-The CapabilityRegistry contains registered capabilities, namespace hierarchy, access policies, and registry metadata.
+The ShardState account is the primary account for capability execution, containing authority for shard management, processor program address, pause state, execution counter, version and bump seed, and embedded EvalConfig. The account uses PDA derivation with seeds ["shard_state"] and requires ShardState::SPACE allocation.
 
-### Namespace Account
+### Capability Definition Structure
 
-The NamespaceAccount includes namespace definition, objects in namespace, permissions, and resource quotas.
+The CapabilityDefinition is passed as instruction data and includes capability identifier, type, and scope, namespace restrictions for access control, required permissions and verifications, associated function identifiers, and execution configuration overrides.
 
 ## Error Handling
 
