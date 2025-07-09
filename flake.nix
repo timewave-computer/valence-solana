@@ -11,7 +11,7 @@
     nixpkgs.url = "nixpkgs/nixos-24.11";
     flake-parts.url = "github:hercules-ci/flake-parts";
     devshell.url = "github:numtide/devshell";
-    zero-nix.url = "path:./submodules/zero.nix";
+    zero-nix.url = "path:./zero.nix";
   };
 
   outputs = {
