@@ -119,18 +119,18 @@
       RED='\033[0;31m'
       NC='\033[0m' # No Color
       
-      # Build programs using nix-build
+      # Build programs using nix build
       echo -e "''${YELLOW}Building valence-shard...''${NC}"
-      nix-build -A valencePrograms.shard --out-link ./target/nix-shard
+      nix build .#valencePrograms.shard --out-link ./target/nix-shard
       
       echo -e "''${YELLOW}Building valence-gateway...''${NC}"
-      nix-build -A valencePrograms.gateway --out-link ./target/nix-gateway
+      nix build .#valencePrograms.gateway --out-link ./target/nix-gateway
       
       echo -e "''${YELLOW}Building valence-registry...''${NC}"
-      nix-build -A valencePrograms.registry --out-link ./target/nix-registry
+      nix build .#valencePrograms.registry --out-link ./target/nix-registry
       
       echo -e "''${YELLOW}Building valence-verifier...''${NC}"
-      nix-build -A valencePrograms.verifier --out-link ./target/nix-verifier
+      nix build .#valencePrograms.verifier --out-link ./target/nix-verifier
       
       echo ""
       echo -e "''${GREEN}=== BPF Programs Built Successfully ===''${NC}"
@@ -155,17 +155,27 @@
       echo "=== Testing BPF Builder ==="
       echo ""
       
-      # Test building the e2e test program
-      echo "Testing BPF builder with e2e test program..."
-      nix-build -A testProgram --out-link ./target/test-bpf-program
+      # Test building the valence programs using the BPF builder
+      echo "Testing BPF builder with Valence programs..."
+      nix build .#valencePrograms.shard --out-link ./target/test-shard-bpf
+      nix build .#valencePrograms.gateway --out-link ./target/test-gateway-bpf
       
       echo ""
       echo "✓ BPF builder test completed successfully"
-      echo "Test program available in: ./target/test-bpf-program/deploy/"
+      echo "Built programs available in:"
+      echo "  - ./target/test-shard-bpf/deploy/"
+      echo "  - ./target/test-gateway-bpf/deploy/"
       
-      if [ -d "./target/test-bpf-program/deploy" ]; then
-        echo "Built programs:"
-        ls -la ./target/test-bpf-program/deploy/
+      if [ -d "./target/test-shard-bpf/deploy" ]; then
+        echo ""
+        echo "Shard programs:"
+        ls -la ./target/test-shard-bpf/deploy/ || echo "No files found"
+      fi
+      
+      if [ -d "./target/test-gateway-bpf/deploy" ]; then
+        echo ""
+        echo "Gateway programs:"
+        ls -la ./target/test-gateway-bpf/deploy/ || echo "No files found"
       fi
     ''}/bin/valence-test-bpf-builder";
   };
