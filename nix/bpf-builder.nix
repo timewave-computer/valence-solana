@@ -40,6 +40,11 @@
         export PATH="${inputs'.zero-nix.packages.solana-tools}/bin:$PATH"
         export HOME=$TMPDIR
         
+        # Set up platform tools environment (from zero.nix pattern)
+        export PLATFORM_TOOLS_DIR="${inputs'.zero-nix.packages.solana-node}/platform-tools"
+        export SBF_SDK_PATH="${inputs'.zero-nix.packages.solana-node}/platform-tools"
+        export PATH="${inputs'.zero-nix.packages.solana-node}/platform-tools/rust/bin:${inputs'.zero-nix.packages.solana-node}/platform-tools/llvm/bin:$PATH"
+        
         # Set up cargo and rustup cache directories (from zero.nix pattern)
         export CARGO_HOME="$TMPDIR/.cargo"
         export RUSTUP_HOME="$TMPDIR/.rustup"
@@ -48,12 +53,27 @@
         # Create output directory
         mkdir -p $out/deploy
         
-        # Build using cargo-build-sbf from zero.nix
+        # Debug: Check what's available
+        echo "Available cargo commands:"
+        ls -la ${inputs'.zero-nix.packages.solana-tools}/bin/ | grep cargo || true
+        
+        # Use the cargo build-sbf approach from zero.nix (bypassing platform tools installation)
+        echo "Building BPF program..."
         ${if cargoToml != null then ''
-          cargo build-sbf --manifest-path ${cargoToml} --sbf-out-dir $out/deploy
+          cargo build --release --target sbf-solana-solana --manifest-path ${cargoToml}
+          # Copy built artifacts
+          find . -name "*.so" -path "*/target/sbf-solana-solana/release/*" -exec cp {} $out/deploy/ \;
         '' else ''
-          cargo build-sbf --sbf-out-dir $out/deploy
+          cargo build --release --target sbf-solana-solana
+          # Copy built artifacts
+          find . -name "*.so" -path "*/target/sbf-solana-solana/release/*" -exec cp {} $out/deploy/ \;
         ''}
+        
+        # Verify we built something
+        if [ -z "$(ls -A $out/deploy)" ]; then
+          echo "No .so files found, checking other possible locations..."
+          find . -name "*.so" -type f
+        fi
       '';
       
       installPhase = ''
