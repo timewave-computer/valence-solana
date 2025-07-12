@@ -41,7 +41,12 @@
         };
         
         # Use pre-built valence programs from parent flake
-        valencePrograms = parentRoot.packages.${system}.valencePrograms;
+        valencePrograms = {
+          shard = parentRoot.packages.${system}.valence-shard;
+          gateway = parentRoot.packages.${system}.valence-gateway;
+          registry = parentRoot.packages.${system}.valence-registry;
+          verifier = parentRoot.packages.${system}.valence-verifier;
+        };
         
         # Build off-chain services
         sessionBuilder = pkgs.rustPlatform.buildRustPackage {

@@ -68,10 +68,22 @@
           
           # BPF Builder functions
           inherit (bpfBuilderConfig) buildBPFProgram buildValencePrograms;
-          
-          # Build all Valence programs
+        } // (let
+          # Build all Valence programs and expose them individually
           valencePrograms = bpfBuilderConfig.buildValencePrograms ./.;
-        };
+        in {
+          # Individual programs
+          valence-shard = valencePrograms.shard;
+          valence-gateway = valencePrograms.gateway;
+          valence-registry = valencePrograms.registry;
+          valence-verifier = valencePrograms.verifier;
+          
+          # Also expose the full set
+          valencePrograms = pkgs.symlinkJoin {
+            name = "valence-programs";
+            paths = builtins.attrValues valencePrograms;
+          };
+        });
 
         # Apps - combine all app definitions
         apps = buildApps // crate2nixApps // fastBuildApps // localApps // testApps // templateApps // simpleTemplateApps // flakeTemplateApps // bpfBuilderConfig;

@@ -121,16 +121,16 @@
       
       # Build programs using nix build
       echo -e "''${YELLOW}Building valence-shard...''${NC}"
-      nix build .#valencePrograms.shard --out-link ./target/nix-shard
+      nix build .#valence-shard --out-link ./target/nix-shard
       
       echo -e "''${YELLOW}Building valence-gateway...''${NC}"
-      nix build .#valencePrograms.gateway --out-link ./target/nix-gateway
+      nix build .#valence-gateway --out-link ./target/nix-gateway
       
       echo -e "''${YELLOW}Building valence-registry...''${NC}"
-      nix build .#valencePrograms.registry --out-link ./target/nix-registry
+      nix build .#valence-registry --out-link ./target/nix-registry
       
       echo -e "''${YELLOW}Building valence-verifier...''${NC}"
-      nix build .#valencePrograms.verifier --out-link ./target/nix-verifier
+      nix build .#valence-verifier --out-link ./target/nix-verifier
       
       echo ""
       echo -e "''${GREEN}=== BPF Programs Built Successfully ===''${NC}"
@@ -157,8 +157,8 @@
       
       # Test building the valence programs using the BPF builder
       echo "Testing BPF builder with Valence programs..."
-      nix build .#valencePrograms.shard --out-link ./target/test-shard-bpf
-      nix build .#valencePrograms.gateway --out-link ./target/test-gateway-bpf
+      nix build .#valence-shard --out-link ./target/test-shard-bpf
+      nix build .#valence-gateway --out-link ./target/test-gateway-bpf
       
       echo ""
       echo "✓ BPF builder test completed successfully"
