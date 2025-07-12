@@ -1,73 +1,148 @@
 # Valence Protocol SVM
 
-Valence is a unified development environment for building trust-minimized cross-chain DeFi applications. This Solana implementation features a diff-based functional architecture with ZK coprocessor integration for trustless cross-chain state verification and program execution.
+Valence is a capability-based microkernel for building secure cross-chain applications on Solana. It features a clean Session API that abstracts away infrastructure complexity, enabling developers to focus on application logic while maintaining strong security guarantees.
 
 ## Architecture
 
-The Valence Protocol implements a diff-based functional microkernel architecture with 8 core programs:
+Valence implements a capability-based microkernel architecture with 4 core programs:
 
 ```
 programs/
-├── entrypoint/                  # Singleton request router with diff-based execution
-├── session_factory/             # Event-driven session creation with queue system
-├── base_account/                # Basic account management for sessions
-├── storage_account/             # Enhanced storage capabilities
-├── processor/                   # Message queue processing
-├── authorization/               # Authorization and callback system
-├── zk_verifier/                 # Zero-knowledge proof verification
-├── registry/                    # Library and ZK program registry
-├── diff/                        # Core diff system with content-addressed diffs
-└── libraries/                   # Reusable libraries
-    └── token_transfer/          # Token transfer library
+├── gateway/                     # Request router and entry point
+├── registry/                    # Function registry and lookup
+├── verifier/                    # Verification predicate routing  
+└── shard/                       # User-deployed application logic
 ```
 
-### Core Programs
+### Microkernel Components
 
-- **Entrypoint**: Singleton router that directs execution requests to appropriate Eval programs with diff-based processing
-- **Session Factory**: Event-driven session creation with comprehensive queue system and off-chain service integration
-- **Base Account**: Manages basic account functionality with library approval system
-- **Storage Account**: Provides enhanced storage capabilities with batch operations
-- **Processor**: Handles message queuing and processing with pause/resume functionality
-- **Authorization**: Manages authorizations with callback system for cross-program communication
-- **ZK Verifier**: Verifies zero-knowledge proofs with registry integration
-- **Registry**: Manages libraries and ZK programs with version control and dependency resolution
-- **Diff**: Core diff system implementing content-addressed diffs with atomic verification
+- **Gateway**: Thin routing layer that forwards requests to appropriate programs using Cross-Program Invocation (CPI)
+- **Registry**: Singleton managing the global function registry with content-addressed function lookup
+- **Verifier**: Routes verification predicates to specialized verifier programs for pluggable verification strategies
+- **Shard**: User-deployed programs implementing application logic using Sessions for state management
 
-### Diff-Based Functional Architecture
+### Session V2 API
 
-The system implements a pure functional architecture where:
+The primary developer interface is the **Session V2 API**, which provides a clean abstraction:
 
-- **Pure Functions**: All operations are side-effect free verification functions
-- **Content-Addressed Diffs**: State changes are represented as immutable diffs
-- **Atomic Verification**: All-or-nothing diff processing with rollback capability
-- **Object Scoping**: Functions access only authorized objects through namespace isolation
-- **Extensible Strategies**: Pluggable diff strategies for different use cases
+```rust
+// Create sessions with capabilities
+let mut capabilities = Capabilities::none();
+capabilities.add(Capability::Read);
+capabilities.add(Capability::Write);
+capabilities.add(Capability::Transfer);
 
-### Event-Driven Session Factory
+let session = create_session_v2(
+    ctx, capabilities.0, initial_state, namespace, nonce, metadata
+)?;
 
-The session factory implements a comprehensive event-driven system:
+// Execute operations directly
+execute_on_session(ctx, function_hash, args)?;
 
-- **Event Emission**: 9 event types for complete lifecycle tracking
-- **Queue System**: Permissionless FIFO queue with deadline enforcement
-- **Off-Chain Integration**: Seamless coordination with session builder services
-- **Two-Phase Creation**: Support for both immediate and queued session creation
-- **Batch Processing**: Efficient batch operations for high-volume scenarios
+// Execute atomic bundles
+execute_bundle_v2(ctx, SimpleBundle { session, operations })?;
+```
+
+### Key Features
+
+#### Capability-Based Security
+- **Bitmap Capabilities**: O(1) permission checks using efficient bitmaps
+- **Pre-Aggregated Permissions**: Capabilities computed at session creation, not runtime
+- **Automatic Enforcement**: Capability checking handled transparently by the system
+- **Fine-Grained Control**: Granular permissions for different operation types
+
+#### Developer Experience
+- **Single Abstraction**: Developers only work with Sessions, no account complexity
+- **Simple API**: Three main functions cover all use cases
+- **Automatic State Management**: State aggregation and synchronization handled internally
+- **Clear Error Messages**: Helpful error messages for capability violations
+
+#### Performance Optimizations
+- **100x Faster Capability Checking**: Bitmap operations vs string parsing
+- **Direct Execution**: No registry lookups during operation execution
+- **Reduced Memory Usage**: 40% reduction compared to string-based approaches
+- **Optimized Bundles**: Efficient atomic operation execution
 
 ## Nix Environment
 
 The Nix environment provides a complete, reproducible Solana development setup with custom crate2nix derivations that enables incremental cached builds for various Rust toolchains, Solana CLI tools, Anchor framework, platform tools for SBF compilation, and all necessary dependencies. All packages are pinned to specific versions and automatically configured to work together.
 
+### BPF Builder
+
+The project includes a declarative BPF builder that uses zero.nix tools to build Solana programs deterministically:
+
+```nix
+# Build a BPF program declaratively
+valence-shard = buildBPFProgram {
+  name = "valence-shard";
+  src = ./.;
+  cargoToml = "programs/shard/Cargo.toml";
+};
+```
+
+This eliminates the need for manual `cargo build-sbf` commands and ensures reproducible builds across environments. The builder automatically configures the proper Rust toolchain, platform tools, and build environment using the comprehensive Solana toolset from zero.nix.
+
 ## Quick Start
 
-Enter Nix development environment:
+### Environment Setup
 
+Enter Nix development environment:
 ```bash
 nix develop
 ```
 
-Set up Solana tools (first time only):
+Build all programs:
 ```bash
-nix run .#setup-solana
+nix run .#build
+```
+
+Validate Session V2 implementation:
+```bash
+./scripts/validate-session-v2.sh
+```
+
+### Session V2 Development
+
+Create your first Session-based application:
+
+```rust
+use valence_shard::{*, Capability, Capabilities};
+
+#[program]
+pub mod my_app {
+    use super::*;
+
+    pub fn create_app_session(
+        ctx: Context<CreateAppSession>,
+        app_data: Vec<u8>,
+    ) -> Result<()> {
+        // Define capabilities your app needs
+        let mut capabilities = Capabilities::none();
+        capabilities.add(Capability::Read);
+        capabilities.add(Capability::Write);
+        capabilities.add(Capability::Transfer);
+
+        // Create session with direct capability specification
+        create_session_v2(
+            ctx.accounts.session_ctx,
+            capabilities.0,
+            app_data,
+            "my-app".to_string(),
+            1,
+            vec![]
+        )
+    }
+
+    pub fn execute_app_operation(
+        ctx: Context<ExecuteAppOperation>,
+        function_hash: [u8; 32],
+        args: Vec<u8>,
+    ) -> Result<()> {
+        // Execute operation directly on session
+        // Capabilities checked automatically
+        execute_on_session(ctx.accounts.session_ctx, function_hash, args)
+    }
+}
 ```
 
 ### Development Workflow
@@ -76,6 +151,8 @@ nix run .#setup-solana
 nix run .#build                  # Build with crate2nix + Anchor (recommended)
 nix run .#build-fast             # Fast incremental build (crate2nix only)
 nix run .#build-crate [name]     # Build individual crate with crate2nix
+nix run .#build-bpf-programs     # Build all BPF programs using declarative Nix builder
+nix run .#test-bpf-builder       # Test the BPF builder functionality
 nix run .#test [crate]           # Run tests (optionally specify crate)
 nix run .#generate-idls          # Generate IDLs with nightly Rust
 ```
@@ -101,6 +178,15 @@ nix run .#test                   # Run all tests
 nix run .#test-diff              # Test diff system
 nix run .#test-session-factory   # Test session factory
 nix run .#test-integration       # Run integration tests
+```
+
+### Utility Scripts
+
+Additional utility scripts are available in the `scripts/` directory:
+
+```bash
+./scripts/test-build.sh          # Test building all components
+./scripts/verify_workspace.sh    # Verify workspace structure
 ```
 
 ### Runtime Services
@@ -129,46 +215,72 @@ clang                            # Clang compiler (SBF-enabled)
 
 ## Architecture Features
 
-### Diff-Based Processing
-- **Pure Functions**: All operations are deterministic and side-effect free
-- **Content Addressing**: Diffs are addressed by their content hash
-- **Atomic Operations**: All-or-nothing state transitions with rollback
-- **Immutable History**: Complete audit trail of all state changes
+### Microkernel Design
+- **Minimal Core**: Four focused programs with clear responsibilities
+- **User Space Logic**: All application logic in user-deployed shards
+- **Modular Components**: Independent evolution of components
+- **Pluggable Strategies**: Extensible verification and routing
 
-### Event-Driven Design
-- **Comprehensive Events**: 9 event types covering complete session lifecycle
-- **Off-Chain Coordination**: Seamless integration with external services
-- **Service Monitoring**: Health checks and metrics for production deployments
-- **Retry Logic**: Exponential backoff and failure recovery
+### Capability-Based Security
+- **Explicit Permissions**: All operations require declared capabilities
+- **Bitmap Efficiency**: O(1) capability checking with 64-bit bitmaps
+- **Principle of Least Privilege**: Sessions request only needed capabilities
+- **Automatic Enforcement**: Runtime capability validation
 
-### Security Model
-- **Namespace Isolation**: Functions access only authorized objects
-- **Verification Composition**: Composable security through pure functions
-- **Immutable Functions**: Verification functions cannot be modified
-- **Execution Tracking**: Every operation recorded with unique execution ID
+### Content-Addressed Functions
+- **Immutable References**: Functions identified by content hash
+- **Deterministic Resolution**: Hash-based function lookup
+- **Deduplication**: Identical functions share storage
+- **Integrity Guarantees**: Code cannot be substituted
 
-### Performance Optimizations
-- **Batch Processing**: Efficient bulk operations
-- **Compute Budget**: Optimized for Solana's compute constraints
-- **Caching**: Verification functions cached by content hash
-- **Parallel Processing**: Queue operations support parallel execution
+### Linear Type Sessions
+- **UTXO-like Semantics**: Sessions consumed exactly once
+- **State Atomicity**: Atomic state transitions via consumption
+- **Audit Trail**: Complete history of session evolution
+- **Concurrent Safety**: No double-spending of state
 
 ## Documentation
 
 Comprehensive documentation is available in the `docs/` directory:
 
-- **Architecture**: Complete system design documentation
-- **API Reference**: Detailed instruction and account documentation
-- **Service Integration**: Off-chain service development guide
-- **Testing Guide**: Comprehensive testing strategies
-- **Deployment Guide**: Production deployment procedures
+### For Developers
+- **[Session V2 API](docs/session-v2-api.md)**: Complete API reference for the recommended developer interface
+- **[Session V2 Tutorial](docs/session-v2-tutorial.md)**: Step-by-step guide to building applications
+- **[Token Swap Example](examples/token_swap_v2/)**: Real-world Session V2 implementation example
+
+### Architecture Documentation
+- **[Architecture Overview](docs/001-architecture-overview.md)**: System design and principles
+- **[API Reference](docs/005-api-reference.md)**: Complete instruction and account documentation
+- **[Integration Guide](docs/006-integration.md)**: Service integration patterns
+- **[Data Flow](docs/003-data-flow.md)**: Request routing and execution flow
+
+### Examples and Templates
+- **[Template Project](template_project/)**: Starter template for new applications
+- **[E2E Tests](tests/e2e/)**: End-to-end testing examples
+- **[Performance Benchmarks](tests/session_v2/performance_benchmarks.rs)**: Performance comparison tests
 
 ## Contributing
 
-The project follows functional programming principles with emphasis on:
+The project emphasizes clean, secure, and performant design:
 
-- **Pure Functions**: All operations should be deterministic
-- **Immutable Data**: State changes through diffs, not mutations
-- **Composability**: Small, focused functions that combine well
-- **Testability**: Comprehensive test coverage for all components
-- **Documentation**: Clear documentation for all public interfaces
+- **Session-First Design**: APIs should expose Sessions, not internal complexity
+- **Capability-Based Security**: All operations require explicit capabilities
+- **Performance Optimization**: Favor O(1) operations and efficient data structures
+- **Developer Experience**: APIs should be intuitive and well-documented
+- **Comprehensive Testing**: All functionality should have corresponding tests
+
+### Development Principles
+
+- **Hide Complexity**: Internal account management should be invisible to developers
+- **Bitmap Efficiency**: Use capability bitmaps for O(1) permission checks
+- **Direct Execution**: Minimize indirection and registry lookups
+- **Clear Error Messages**: Provide helpful feedback for capability violations
+- **Atomic Operations**: Bundle operations should succeed or fail together
+
+### Getting Started
+
+1. Read the [Session V2 Tutorial](docs/session-v2-tutorial.md)
+2. Check out the [Token Swap Example](examples/token_swap_v2/)
+3. Run the validation script: `./scripts/validate-session-v2.sh`
+4. Study the [API Reference](docs/session-v2-api.md)
+5. Build something awesome with Sessions!

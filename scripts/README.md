@@ -1,57 +1,65 @@
-# Scripts Directory - MIGRATION COMPLETE ✅
+# Scripts Directory
 
-🎉 **MIGRATION COMPLETE**: All bash scripts have been successfully migrated to self-contained nix apps with **crate2nix** for lightning-fast incremental builds.
+This directory contains utility scripts for the Valence Solana project.
 
-## Available Nix Commands
+## Scripts
 
-All functionality is now available through nix apps in `flake.nix`. Use these commands:
+### `test-build.sh`
+**Purpose**: Tests building all workspace components using the nix development environment.
 
-### Core Development Commands
+**Usage**: 
+```bash
+./scripts/test-build.sh
+```
 
-| Command | Description |
-|---------|-------------|
-| `nix run .#build` | Build with crate2nix + Anchor (recommended) |
-| `nix run .#build-fast` | Fast incremental build (crate2nix only) |
-| `nix run .#build-crate [name]` | Build individual crate with crate2nix |
-| `nix run .#test [crate]` | Run tests (optionally specify crate) |
-| `nix develop` | Enter development environment |
+**What it does**:
+- Tests building workspace root, programs, SDK, services, and e2e tests
+- Uses `nix develop` to ensure proper environment
+- Provides detailed success/failure reporting
+- Checks for deprecated components (like old session_builder)
 
-### Environment & Deployment Commands
+### `verify_workspace.sh`
+**Purpose**: Verifies the workspace structure and configuration.
 
-| Command | Description |
-|---------|-------------|
-| `nix run .#setup-solana` | Set up Solana platform tools |
-| `nix run .#generate-idls` | Generate IDLs with nightly Rust |
-| `nix run .#deploy [network]` | Deploy to devnet/mainnet |
-| `nix run .#env-info` | Show environment information |
-| `nix run .#clear-cache` | Clear all build caches |
+**Usage**:
+```bash
+./scripts/verify_workspace.sh
+```
 
-### Benefits of crate2nix + Nix Approach
+**What it does**:
+- Validates that expected workspace members exist
+- Checks for old/deprecated references (e.g., session_builder)
+- Verifies Anchor version consistency
+- Ensures proper workspace configuration
 
-- ✅ **Lightning-fast incremental builds**: crate2nix provides Rust-native incremental compilation with Nix caching
-- ✅ **Reproducible**: Pinned dependency versions ensure consistent builds
-- ✅ **Self-contained**: No external bash scripts or system dependencies
-- ✅ **Cross-platform**: Works consistently across Linux, macOS Intel/Apple Silicon
-- ✅ **Cacheable**: Nix provides intelligent caching and binary substitution
-- ✅ **Declarative**: All configuration is explicit in `flake.nix`
+### `validate-session-v2.sh`
+**Purpose**: Validates that the Session V2 implementation is complete and working.
 
-## Development Workflow
+**Usage**:
+```bash
+./scripts/validate-session-v2.sh
+```
 
-1. **Enter development environment**: `nix develop`
-2. **Fast development builds**: `nix run .#build-fast`
-3. **Full build with deployment artifacts**: `nix run .#build`
-4. **Run tests**: `nix run .#test [crate]`
-5. **Clear caches if needed**: `nix run .#clear-cache`
+**What it does**:
+- Checks that all Session V2 API components are implemented
+- Validates capability system and bitmap implementation
+- Verifies documentation and examples exist
+- Tests compilation of core components
+- Confirms all Session V2 features are working
 
-## Build System Architecture
+## Running Scripts
 
-- **crate2nix**: Handles Rust compilation with incremental builds and Nix caching
-- **Anchor**: Used for IDL generation and deployment artifact creation
-- **Platform Tools**: Integrated Solana BPF/SBF compilation toolchain
-- **Unified Environment**: All tools work together seamlessly
+All scripts should be run from the project root directory:
 
-## Legacy Scripts Removed
+```bash
+# From project root
+./scripts/test-build.sh
+./scripts/verify_workspace.sh
+```
 
-All bash scripts have been successfully removed and replaced with the modern crate2nix-based build system. This provides significantly faster builds and better developer experience.
+## Development Notes
 
-This directory can be safely deleted once this README is no longer needed for reference. 
+- These scripts use nix for consistent environments
+- They include color output for better readability
+- All scripts are designed to be CI-friendly
+- Scripts follow the project preference for organizing utilities in the scripts directory 

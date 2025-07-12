@@ -1,0 +1,11 @@
+[package]
+name = "valence-gateway"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anchor-lang = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "valence_gateway"

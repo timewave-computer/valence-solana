@@ -1,178 +1,186 @@
-# Kernel Program Architecture
+# Unified Kernel Architecture
 
-The Valence Protocol kernel program implements a hosted microkernel that provides a unified execution environment for capability-based operations on Solana.
+This document details the core kernel components of Valence Solana: the Gateway, Registry, and Verifier programs. These singleton programs provide essential services that user-deployed shards compose to build applications.
 
-## Module Organization
+## Kernel Design Philosophy
 
-```mermaid
-graph TB
-    subgraph "Kernel Program Entry Point"
-        Program[#program kernel]
-    end
-    
-    subgraph "Core Modules"
-        Capabilities[capabilities::*<br/>Capability Definitions & Shards]
-        Sessions[sessions::*<br/>Session Management]
-        Functions[functions::*<br/>Function Registry]
-        Verification[verification::*<br/>Verification System]
-    end
-    
-    subgraph "Singleton Modules"
-        Processor[processor::*<br/>Execution Engine]
-        Scheduler[scheduler::*<br/>Multi-Shard Scheduling]
-        Diff[diff::*<br/>State Diff Operations]
-    end
-    
-    subgraph "Supporting Systems"
-        Events[events::*<br/>Event Coordination]
-        Config[config::*<br/>Configuration]
-        State[state::*<br/>Shared State]
-        Error[error::*<br/>Error Handling]
-    end
-    
-    Program --> Capabilities
-    Capabilities --> Sessions
-    Capabilities --> Functions
-    Capabilities --> Verification
-    Capabilities --> Processor
-    Capabilities --> Scheduler
-    Capabilities --> Diff
-    
-    Events -.-> All[All Modules]
-    Config -.-> All
-    State -.-> All
-    Error -.-> All
+The Valence kernel follows minimalist design principles. Each component has a single, well-defined responsibility and exposes a simple interface. Complex behavior emerges from the composition of these simple primitives rather than from complex individual components.
+
+The kernel enforces no application-level policies. It provides mechanisms for routing, registration, and verification, but leaves policy decisions to user space. This separation enables diverse applications to share common infrastructure while implementing their own specific requirements.
+
+## Gateway Program
+
+The gateway serves as the protocol's entry point, routing all operations to their appropriate destinations. Its design prioritizes simplicity and reliability over feature richness.
+
+### Routing Mechanism
+
+The gateway accepts a single instruction type with a routing target and payload:
+
+```
+route(target: RouteTarget, data: Vec<u8>)
 ```
 
-## Module Responsibilities
+The RouteTarget enum specifies three possible destinations:
+- Registry operations for function management
+- Verifier operations for predicate evaluation  
+- Shard operations for application logic
 
-### capabilities:: Capability Definitions & Shards
-The capabilities module defines capabilities and manages shard-based execution. It includes shard state management in state.rs, capability scoping and permissions in scoping.rs, execution context and results in execution.rs, and capability-related instructions in instructions.rs. The module manages capability definition and validation, shard-based state management, execution context building, and permission boundary enforcement.
+The gateway performs no validation beyond basic target verification. It constructs the appropriate Cross-Program Invocation (CPI) and forwards the request with the original signer permissions.
 
-### sessions:: Session Lifecycle Management
-The sessions module manages session creation, activation, and lifecycle. It includes session configuration and permissions in state.rs, session factory and management in lifecycle.rs, session isolation and security in isolation.rs, and session-related instructions in instructions.rs. The module handles session creation and activation, permission and configuration management, session isolation and security boundaries, and optimistic session handling.
+### State Management
 
+Gateway state consists solely of configuration data:
+- Authority pubkey for administrative operations
+- Pause flag for emergency stops
+- Reserved space for future extensions
 
-### functions:: Function Registry & Composition
-The functions module manages the function registry and enables composition. It includes function discovery and registration in registry.rs, function execution coordination in execution.rs, function composition management in metadata.rs, and function-related operations in instructions.rs. The module handles function registration and discovery, function chain composition, function aggregation patterns, and metadata management.
+This minimal state reduces attack surface and simplifies security analysis. The gateway cannot be corrupted by malformed requests since it maintains no request-specific state.
 
-### verification:: Verification Function System
-The verification module executes verification functions for capability validation. It contains core verification predicates in predicates.rs, permission verification in basic_permission.rs, system-level authorization in system_auth.rs, session validation in session_creation.rs, parameter validation in parameter_constraint.rs, block height verification in block_height.rs, and zero-knowledge proof verification in zk_proof.rs. The module manages pure verification function execution, multi-layered verification composition, verification result aggregation, and pluggable verification architecture.
+### CPI Pattern
 
-## Inter-Module Communication
+The gateway uses a consistent CPI pattern for all routing:
 
-### Direct Function Calls
-Most module interactions use direct function calls for maximum performance:
+1. Validate the target program exists
+2. Construct instruction data from the payload
+3. Build account metas from remaining accounts
+4. Invoke the target program
+5. Return the result directly to caller
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Kernel as kernel::program
-    participant Caps as capabilities::*
-    participant Verify as verification::*
-    participant Proc as Processor Singleton
-    
-    Client->>Kernel: execute_capability()
-    Kernel->>Caps: process_execution()
-    Caps->>Verify: run_verifications()
-    Verify-->>Caps: verification_results
-    Caps->>Proc: CPI execute()
-    Proc-->>Caps: execution_result
-    Caps-->>Kernel: execution_result
-    Kernel-->>Client: Result<()>
-```
+This pattern ensures the gateway adds minimal overhead while preserving security properties of the underlying programs.
 
-### Event-Based Coordination
-For cross-cutting concerns and loose coupling:
+## Registry Program
 
-```mermaid
-graph LR
-    A[Module A] -->|emit| Events[Event System]
-    Events -->|notify| B[Module B]
-    Events -->|notify| C[Module C]
-    Events -->|notify| D[Module D]
-```
+The registry manages a global, content-addressed function store. Its design emphasizes immutability and deterministic resolution.
 
-### Shared State Access
-Modules access shared state through well-defined interfaces. For example, the capabilities module can access session state from the session account and build execution context using the loaded session configuration.
+### Content Addressing
 
-### Singleton Module Integration
-The kernel program includes three singleton modules as part of the unified program:
+Functions are identified by the SHA256 hash of their program ID. This creates a 32-byte identifier that uniquely represents the function's implementation. The hash serves as both an identifier and an integrity check.
 
-```mermaid
-graph LR
-    Caps[Capabilities] -->|Direct Call| Proc[processor::]
-    Caps -->|Direct Call| Sched[scheduler::]
-    Caps -->|Direct Call| Diff[diff::]
-    
-    Proc -->|Execution Results| Caps
-    Sched -->|Scheduling Decisions| Caps
-    Diff -->|State Changes| Caps
-```
+When registering a function, the registry:
+1. Accepts the function hash and program ID
+2. Derives a Program Derived Address (PDA) from the hash
+3. Stores the mapping in the PDA account
+4. Records the registering authority
 
-- **processor::** Handles stateless execution orchestration with verification chains
-- **scheduler::** Manages multi-shard scheduling and partial order composition
-- **diff::** Calculates and optimizes state diffs for atomic updates
+The PDA derivation uses the seeds `[b"function", hash]`, ensuring each function has a unique, deterministic address.
 
-## Instruction Flow
+### Registration Policy
 
-### Main Program Instructions
-The kernel program exposes four primary instructions:
+Any account can register new functions, but several constraints apply:
+- Functions cannot be re-registered (first-come, first-served)
+- Only the original registrant can deregister
+- Deregistration closes the account and recovers rent
 
-```mermaid
-graph TD
-    A[initialize] --> B{System Ready?}
-    B -->|No| C[Setup Core State]
-    B -->|Yes| D[Return Success]
-    
-    E[execute_capability] --> F[Build Context]
-    F --> G[Validate Capability]
-    G --> H[Run Verifications]
-    H --> I[Execute Functions]
-    I --> J[Emit Events]
-    
-    K[pause] --> L[Set Paused State]
-    M[resume] --> N[Clear Paused State]
-```
+This policy balances openness with accountability. Anyone can contribute functions to the ecosystem, but they remain responsible for their registrations.
 
-### Module Instruction Patterns
-Each module follows consistent patterns for instruction handling. They verify accounts and permissions during context validation, load required state from accounts, execute module-specific business logic, update accounts with new state, emit relevant events, and return success or error results.
+### Lookup Mechanism
 
-## Security & Isolation
+Function lookup is a simple PDA derivation and account read. Given a function hash, clients can:
+1. Derive the PDA address
+2. Check if the account exists
+3. Read the program ID if present
 
-### Permission Boundaries
-```mermaid
-graph TB
-    subgraph "Permission Layer"
-        P1[Session Permissions]
-        P2[Capability Permissions]  
-        P3[Function Permissions]
-        P4[Namespace Permissions]
-    end
-    
-    subgraph "Validation Layer"
-        V1[Session Validation]
-        V2[Capability Validation]
-        V3[Parameter Validation]
-        V4[Access Control]
-    end
-    
-    P1 --> V1
-    P2 --> V2
-    P3 --> V3
-    P4 --> V4
-```
+This mechanism requires no RPC calls to the registry program itself, reducing load and improving performance.
 
-### Isolation Mechanisms
-The system provides namespace scoping where objects are accessible only within defined namespaces. Session boundaries constrain operations to session permissions. Capability limits restrict functions to capability definitions. Verification gates provide multi-layer verification before execution.
+## Verifier Program
 
-## Performance Optimizations
+The verifier provides a pluggable system for evaluation predicates. It routes verification requests to specialized programs based on semantic labels.
 
-### Direct Call Optimization
-The architecture eliminates inter-process communication overhead through direct function calls. Modules use shared memory access patterns and benefit from compile-time optimization across modules.
+### Label-Based Routing
 
-### State Access Patterns
-The system employs efficient account loading and caching strategies. It minimizes state transitions and uses batch operations where possible.
+Verifiers are identified by string labels rather than addresses or hashes. This enables semantic verification patterns:
 
-### Execution Optimization
-The architecture supports inline verification execution, optimistic execution patterns, and lazy evaluation strategies to maximize performance. 
+- "balance_check" routes to a balance verification program
+- "signature_verify" routes to a signature verification program  
+- "merkle_proof" routes to a Merkle proof verification program
+
+Labels provide meaningful names while maintaining flexibility. New verification strategies can be added by registering new labels.
+
+### Verifier Registration
+
+Verifier registration follows a similar pattern to function registration:
+1. Derive PDA from label: `[b"verifier", label.as_bytes()]`
+2. Store verifier program ID in PDA account
+3. Record registering authority
+
+Unlike functions, verifiers can be updated by their authority. This allows bug fixes and improvements while maintaining stable labels.
+
+### Verification Flow
+
+When verify_predicate is called:
+1. Look up verifier program by label
+2. Forward predicate data and context via CPI
+3. Return success/failure result
+
+The verifier program itself defines the predicate format and evaluation rules. The kernel only provides the routing mechanism.
+
+## Account Structure Design
+
+All kernel programs use Program Derived Addresses (PDAs) extensively. This design choice provides several benefits:
+
+- Deterministic addressing without keypair management
+- Natural uniqueness constraints
+- Simplified client interactions
+- Rent recovery on deregistration
+
+PDA seeds follow consistent patterns:
+- Function entries: `[b"function", hash]`
+- Verifier entries: `[b"verifier", label.as_bytes()]`
+- Config accounts: `[b"config", authority.as_ref()]`
+
+This consistency simplifies client code and reduces cognitive overhead.
+
+## Inter-Component Communication
+
+Kernel components communicate exclusively through CPI. They share no state and make no assumptions about each other's internals. This loose coupling enables independent evolution and reduces system-wide failure modes.
+
+Communication patterns follow these principles:
+- Pass through original signer permissions
+- Forward all provided accounts
+- Return results unmodified
+- Propagate errors with context
+
+The gateway exemplifies this pattern - it knows nothing about registry or verifier internals, only their instruction formats.
+
+## Error Handling
+
+Each kernel component defines its own error types:
+- Gateway: InvalidTarget, Unauthorized
+- Registry: FunctionAlreadyRegistered, FunctionNotFound
+- Verifier: VerifierNotFound, VerificationFailed
+
+Errors bubble up through CPI calls, preserving the original error source. This aids debugging while maintaining abstraction boundaries.
+
+## Performance Considerations
+
+The kernel design prioritizes correctness over performance, but several optimizations apply:
+
+- PDA lookups can be cached client-side
+- Gateway routing adds minimal overhead (one CPI)
+- Registry lookups require no program execution
+- Verifier routing is pay-for-what-you-use
+
+Most performance costs come from application logic in shards, not kernel operations.
+
+## Security Properties
+
+The kernel provides several security guarantees:
+
+1. **No Ambient Authority**: All operations require explicit authorization
+2. **Immutable Functions**: Registered functions cannot be modified
+3. **Isolated Components**: Compromise of one component doesn't affect others
+4. **Minimal State**: Reduced attack surface from minimal stored data
+5. **Deterministic Addresses**: PDAs prevent address substitution attacks
+
+These properties compose to create a secure foundation for applications.
+
+## Future Evolution
+
+The kernel design accommodates evolution through several mechanisms:
+
+- Gateway can route to new services
+- Registry can implement new function types
+- Verifier can support new predicate categories
+- Reserved space in accounts enables upgrades
+
+However, the core interfaces should remain stable. Breaking changes would require careful migration strategies to preserve ecosystem compatibility.

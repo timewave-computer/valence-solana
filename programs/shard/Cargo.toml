@@ -1,0 +1,12 @@
+[package]
+name = "valence-shard"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anchor-lang = { workspace = true }
+sha2 = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "valence_shard"

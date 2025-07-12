@@ -1,0 +1,16 @@
+[package]
+name = "session_builder"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = { workspace = true }
+solana-client = { workspace = true }
+solana-sdk = { workspace = true }
+tokio = { workspace = true }
+sha2 = { workspace = true }
+shellexpand = "3.1"
+
+[[bin]]
+name = "session_builder"
+path = "src/main.rs"

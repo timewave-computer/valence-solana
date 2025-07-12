@@ -60,6 +60,7 @@ anchor/
 test-helpers/target/
 utils/target/
 tests/target/
+artifacts/
 
 # TypeScript test files (if temporary)
 tests/zk_functionality.ts

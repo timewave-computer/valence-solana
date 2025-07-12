@@ -7,17 +7,23 @@ anchor_version = "0.31.1"
 
 [workspace]
 members = [
-    "programs/kernel",
-    "programs/services/session_builder",
+    "programs/gateway",
+    "programs/registry",
+    "programs/verifier",
+    "programs/shard",
 ]
 
 [programs.localnet]
-valence-kernel = "11111111111111111111111111111112"
-session_builder = "11111111111111111111111111111114"
+valence-gateway = "11111111111111111111111111111111"
+valence-registry = "11111111111111111111111111111112"
+valence-verifier = "11111111111111111111111111111113"
+valence-shard = "11111111111111111111111111111114"
 
 [programs.testnet]
-valence-kernel = "11111111111111111111111111111112"
-session_builder = "11111111111111111111111111111114"
+valence-gateway = "11111111111111111111111111111111"
+valence-registry = "11111111111111111111111111111112"
+valence-verifier = "11111111111111111111111111111113"
+valence-shard = "11111111111111111111111111111114"
 
 [registry]
 url = "https://api.apr.dev"

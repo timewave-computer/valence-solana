@@ -1,21 +1,26 @@
 [workspace]
 members = [
-    # On-chain programs (built with cargo build-sbf)
-    "programs/kernel",
+    # New clean architecture programs
+    "programs/gateway",      # Entry point router singleton
+    "programs/registry",     # Function registry singleton
+    "programs/verifier",     # Verification routing singleton
+    "programs/shard",        # User shard template
     
     # Off-chain components (built with regular cargo)
-    "programs/sdk",
-    "programs/services/session_builder",
-    "tests",
+    "sdk",                   # SDK moved to root level
+    "services/lifecycle_manager", # Lifecycle manager service
+    # "tests",               # Temporarily excluded until new programs are ready
 ]
+# Exclude old implementation and e2e tests (they have their own workspace)
+exclude = ["programs_old", "tests/e2e", "artifacts"]
 resolver = "2"
 
 # Exclude on-chain programs from workspace builds to avoid conflicts
 # Use scripts/build-onchain.sh to build these
 default-members = [
-    "programs/sdk",
-    "programs/services/session_builder",
-    "tests",
+    "sdk",                   # SDK at root level
+    "services/lifecycle_manager", # Lifecycle manager service
+    # "tests",               # Temporarily excluded until new programs are ready
 ]
 
 [workspace.dependencies]
@@ -59,8 +64,8 @@ codegen-units = 1
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(test)'] }
 
 [workspace.lints.clippy]
-all = "warn"
-pedantic = "warn"
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
 # Allow some pedantic lints that are too strict
 module_name_repetitions = "allow"
 must_use_candidate = "allow"
