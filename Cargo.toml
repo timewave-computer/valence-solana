@@ -8,17 +8,19 @@ members = [
     
     # Off-chain components (built with regular cargo)
     "sdk",                   # SDK moved to root level
+    "services/session_builder", # Session builder service
     "services/lifecycle_manager", # Lifecycle manager service
     # "tests",               # Temporarily excluded until new programs are ready
 ]
-# Exclude old implementation and e2e tests (they have their own workspace)
-exclude = ["programs_old", "tests/e2e", "artifacts"]
+# Exclude old implementation and test directories (they have their own workspace)
+exclude = ["programs_old", "tests/e2e", "tests/session_v2", "tests/encapsulation", "artifacts"]
 resolver = "2"
 
 # Exclude on-chain programs from workspace builds to avoid conflicts
 # Use scripts/build-onchain.sh to build these
 default-members = [
     "sdk",                   # SDK at root level
+    "services/session_builder", # Session builder service
     "services/lifecycle_manager", # Lifecycle manager service
     # "tests",               # Temporarily excluded until new programs are ready
 ]

@@ -15,14 +15,25 @@
       export MACOSX_DEPLOYMENT_TARGET=11.0
       export SOURCE_DATE_EPOCH=$(date +%s)
       export PROTOC=${pkgs.protobuf}/bin/protoc
+      export PKG_CONFIG_PATH=${pkgs.openssl.dev}/lib/pkgconfig
+      export OPENSSL_DIR=${pkgs.openssl.dev}
+      export OPENSSL_LIB_DIR=${pkgs.openssl.out}/lib
+      export OPENSSL_INCLUDE_DIR=${pkgs.openssl.dev}/include
       
       # Use nightly rust for Edition 2024 support
-      export PATH="${inputs'.zero-nix.packages.nightly-rust}/bin:${inputs'.zero-nix.packages.solana-tools}/bin:$PATH"
+      export PATH="${inputs'.zero-nix.packages.nightly-rust}/bin:$PATH"
       export CARGO="${inputs'.zero-nix.packages.nightly-rust}/bin/cargo"
       export RUSTC="${inputs'.zero-nix.packages.nightly-rust}/bin/rustc"
       
-      # Run anchor test
-      ${inputs'.zero-nix.packages.solana-tools}/bin/anchor test
+      # Run tests for individual crates (avoiding BPF compilation)
+      echo "Testing SDK..."
+      cargo test --manifest-path sdk/Cargo.toml
+      
+      echo "Testing Session V2..."
+      cargo test --manifest-path tests/session_v2/Cargo.toml
+      
+      echo "Testing Encapsulation..."
+      cargo test --manifest-path tests/encapsulation/Cargo.toml
       
       echo "Tests completed!"
     ''}/bin/valence-test";
