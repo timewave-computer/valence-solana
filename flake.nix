@@ -26,6 +26,24 @@
       ];
 
       systems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
+      
+      # Flake-level outputs
+      flake = {
+        # Expose builder functions at the flake level
+        lib = {
+          # Users can access these with: 
+          # let valence = inputs.valence-solana; in
+          # valence.lib.buildBPFProgram { ... }
+          buildBPFProgram = system: let
+            pkgs = inputs.nixpkgs.legacyPackages.${system};
+            inputs' = {
+              zero-nix.packages = inputs.zero-nix.packages.${system};
+              crate2nix.packages = inputs.crate2nix.packages.${system};
+            };
+            bpfBuilderConfig = import ./nix/bpf-builder.nix {inherit pkgs inputs';};
+          in bpfBuilderConfig.buildBPFProgram;
+        };
+      };
 
       perSystem = {
         pkgs,
@@ -65,9 +83,6 @@
         packages = packagesConfig // {
           # Re-export packages that were in apps as packages too
           inherit (packagesConfig) default generate-cargo-nix regenerate-cargo-nix;
-          
-          # BPF Builder functions
-          inherit (bpfBuilderConfig) buildBPFProgram buildValencePrograms;
         } // (let
           # Build all Valence programs and expose them individually
           valencePrograms = bpfBuilderConfig.buildValencePrograms ./.;
@@ -84,7 +99,10 @@
         });
 
         # Apps - combine all app definitions
-        apps = buildApps // crate2nixApps // fastBuildApps // localApps // testApps // templateApps // simpleTemplateApps // flakeTemplateApps // bpfBuilderConfig;
+        apps = buildApps // crate2nixApps // fastBuildApps // localApps // testApps // templateApps // simpleTemplateApps // flakeTemplateApps // {
+          # Only include actual apps from bpfBuilderConfig, not functions
+          inherit (bpfBuilderConfig) build-bpf-programs test-bpf-builder;
+        };
       };
     };
 }
