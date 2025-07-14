@@ -21,7 +21,7 @@ use valence_sdk::ValenceClient;
 #[path = "test_utils.rs"]
 mod test_utils;
 use test_utils::{LocalValidator, DeployedPrograms};
-use valence_test_shard::{self as shard, create_test_session_params};
+use valence_test_shard::{create_test_session_params};
 
 #[test]
 fn test_end_to_end_flow() {
@@ -78,7 +78,7 @@ fn test_end_to_end_flow() {
     // A better design would use a deterministic nonce or counter.
     let (capabilities, metadata) = create_test_session_params();
     let session = client
-        .create_session(capabilities, metadata)
+        .create_session(capabilities.0, metadata)
         .expect("Session creation failed - see note above about lamports nonce issue");
     println!("   Session created: {}", session);
     

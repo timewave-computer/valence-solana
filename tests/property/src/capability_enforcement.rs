@@ -112,7 +112,7 @@ fn prop_capability_combinations_are_valid() {
         // Property: Mutually exclusive capabilities
         let _has_freeze = (capabilities & CAP_FREEZE) != 0;
         let _has_burn = (capabilities & CAP_BURN) != 0;
-        let _has_admin = (capabilities & CAP_ADMIN) != 0;
+        let has_admin = (capabilities & CAP_ADMIN) != 0;
         
         // In this example, freeze and burn might be mutually exclusive for non-admins
         // Skip this check - it's too restrictive for random testing

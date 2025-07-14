@@ -6,19 +6,33 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  SOLANA_VERSION: 2.0.22
-  ANCHOR_VERSION: 0.31.1
-  RUST_TOOLCHAIN: 1.75.0
-
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Cache dependencies
-        uses: actions/cache@v3
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+        with:
+          submodules: recursive
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@da36cb69b1c3247ad7a1f931ebfd954a1105ef14 # v14
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v15
+        with:
+          name: timewave
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          # Only push to cache from main branch on Linux
+          skipPush: ${{ github.event_name == 'pull_request' || matrix.os != 'ubuntu-latest' }}
+
+      # Cache Rust build artifacts
+      - name: Cache Rust artifacts
+        uses: actions/cache@v4.2.0
         with:
           path: |
             ~/.cargo/bin/
@@ -27,35 +41,89 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Verify Nix environment
+        run: |
+          nix develop -L --no-update-lock-file -c bash -c "
+            echo '=== Environment Check ==='
+            echo 'Rust version:' && rustc --version
+            echo 'Cargo version:' && cargo --version
+            echo 'Solana version:' && solana --version
+            echo 'Anchor version:' && anchor --version
+          "
+
+      - name: Run unit tests
+        run: nix develop -L --no-update-lock-file -c cargo test --workspace --lib
+
+      - name: Run property tests
+        run: nix develop -L --no-update-lock-file -c cargo test -p valence-property-tests
+
+      - name: Build programs
+        run: |
+          nix develop -L --no-update-lock-file -c bash -c "
+            # Build using the build script
+            if [ -f scripts/build-with-keys.sh ]; then
+              chmod +x scripts/build-with-keys.sh
+              ./scripts/build-with-keys.sh
+            else
+              # Fallback to direct build
+              cargo build-sbf --manifest-path programs/registry/Cargo.toml
+              cargo build-sbf --manifest-path programs/shard/Cargo.toml
+              cargo build-sbf --manifest-path tests/integration/functions/test_function/Cargo.toml
+            fi
+          "
+
+      - name: Check code quality
+        run: |
+          nix develop -L --no-update-lock-file -c bash -c "
+            echo '=== Running clippy ==='
+            cargo clippy --all-targets --all-features -- -D warnings
+            
+            echo '=== Checking format ==='
+            cargo fmt --all -- --check
+          "
+
+      # Integration tests only on Linux due to validator requirements
+      - name: Run integration tests
+        if: runner.os == 'Linux'
+        run: |
+          nix develop -L --no-update-lock-file -c bash -c "
+            # Try to use the local validator app if available
+            if nix run .#valence-local -L --no-update-lock-file & then
+              LOCAL_PID=\$!
+              echo 'Started valence-local environment'
+              sleep 10
+            else
+              # Fallback to manual validator start
+              solana-test-validator --quiet &
+              VALIDATOR_PID=\$!
+              echo 'Started test validator'
+              sleep 5
+            fi
+            
+            # Run integration tests
+            TEST_RESULT=0
+            cargo test -p valence-tests --test e2e_test -- --nocapture || TEST_RESULT=\$?
+            
+            # Cleanup
+            if [ -n \"\$LOCAL_PID\" ]; then
+              kill \$LOCAL_PID 2>/dev/null || true
+            fi
+            if [ -n \"\$VALIDATOR_PID\" ]; then
+              kill \$VALIDATOR_PID 2>/dev/null || true
+            fi
+            
+            exit \$TEST_RESULT
+          "
+
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4.5.0
         with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-          override: true
-          components: rustfmt, clippy
-      
-      - name: Install Solana
-        run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v${{ env.SOLANA_VERSION }}/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          solana --version
-      
-      - name: Install Anchor
-        run: |
-          cargo install --git https://github.com/coral-xyz/anchor --tag v${{ env.ANCHOR_VERSION }} anchor-cli --locked
-          anchor --version
-      
-      - name: Build
-        run: anchor build
-      
-      - name: Run tests
-        run: |
-          solana-keygen new --no-passphrase
-          anchor test
-      
-      - name: Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
-      
-      - name: Format check
-        run: cargo fmt --all -- --check
+          name: test-artifacts-${{ matrix.os }}
+          path: |
+            target/deploy/*.so
+            test-ledger/
+            *.log

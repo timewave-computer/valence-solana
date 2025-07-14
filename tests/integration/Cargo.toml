@@ -17,6 +17,7 @@ hex = "0.4"
 valence-sdk = { path = "../../sdk" }
 registry = { path = "../../programs/registry" }
 shard = { path = "../../programs/shard" }
+valence-test-shard = { path = "./shard" }
 
 [[test]]
 name = "valence_test"

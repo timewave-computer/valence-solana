@@ -153,6 +153,9 @@ fn prop_concurrent_session_access_is_safe() {
             })
             .collect();
         
+        // Track write counts per session for validation
+        let mut write_counts = vec![0; session_count];
+        
         for (session_idx, op_type) in &operations {
             let session_idx = session_idx % session_count;
             let session = &mut sessions[session_idx];
@@ -170,6 +173,7 @@ fn prop_concurrent_session_access_is_safe() {
                         session.locked = true;
                         session.data += 1;
                         session.locked = false;
+                        write_counts[session_idx] += 1;
                     }
                 },
                 2 => {
@@ -178,22 +182,40 @@ fn prop_concurrent_session_access_is_safe() {
                 },
                 _ => unreachable!(),
             }
-            
-            // Property: Session data integrity maintained
-            // Note: session.data tracks write operations on this specific session
+        }
+        
+        // Verify session data matches actual write counts
+        for (i, session) in sessions.iter().enumerate() {
             prop_assert!(
-                session.data <= operations.len(),
-                "Session data exceeds total operations: {} > {}", session.data, operations.len()
+                session.data == write_counts[i],
+                "Session {} data mismatch: expected {}, got {}", 
+                i, write_counts[i], session.data
             );
         }
         
-        // Property: No sessions remain locked (unless last operation was a lock)
-        // This is more realistic - in concurrent systems, sessions might end locked
-        let locked_count = sessions.iter().filter(|s| s.locked).count();
-        prop_assert!(
-            locked_count <= session_count / 2,
-            "Too many sessions remain locked: {}/{}", locked_count, session_count
-        );
+        // Property: The number of locked sessions is reasonable
+        // In a concurrent system, any number of sessions could end up locked
+        // We just verify that the lock state is consistent with the operations
+        let _locked_count = sessions.iter().filter(|s| s.locked).count();
+        
+        // Count lock toggle operations per session to verify final state
+        let mut lock_toggles_per_session = vec![0; session_count];
+        for (session_idx, op_type) in &operations {
+            let session_idx = session_idx % session_count;
+            if op_type % 3 == 2 {
+                lock_toggles_per_session[session_idx] += 1;
+            }
+        }
+        
+        // Verify each session's lock state matches the number of toggles
+        for (i, session) in sessions.iter().enumerate() {
+            let expected_locked = lock_toggles_per_session[i] % 2 == 1;
+            prop_assert!(
+                session.locked == expected_locked,
+                "Session {} lock state mismatch: expected {}, got {}", 
+                i, expected_locked, session.locked
+            );
+        }
     });
 }
 

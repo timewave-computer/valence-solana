@@ -14,7 +14,7 @@
 
 use anchor_lang::prelude::*;
 use registry::{self};
-use valence_test_shard::{self as shard, Capabilities};
+use shard::{self, Capabilities};
 use sha2::{Sha256, Digest};
 
 #[test]

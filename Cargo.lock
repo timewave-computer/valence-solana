@@ -6587,6 +6587,7 @@ dependencies = [
  "solana-sdk",
  "tokio",
  "valence-sdk",
+ "valence-test-shard",
 ]
 
 [[package]]
