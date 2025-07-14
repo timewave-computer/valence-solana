@@ -1,45 +1,26 @@
 [features]
-seeds = true
+seeds = false
 skip-lint = false
 
-[toolchain]
-anchor_version = "0.31.1"
-
-[workspace]
-members = [
-    "programs/authorization",
-    "programs/registry", 
-    "programs/processor",
-    "programs/base_account",
-    "programs/storage_account",
-    "programs/zk_verifier",
-    "programs/libraries/token_transfer",
-]
-
 [programs.localnet]
-authorization = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-registry = "VaLRegGhzqJwVmQhciS9JT6czSZJzBGmyReBt3SXXyL"
-processor = "3YX6iPrpB9yQab1BoBEmRBfjRehJkZnuBZdn69pi6eLu"
-base_account = "BaseSixYBPg1K1xjRXVBvd7LVLmATG2sFjUXzVZrfG6"
-storage_account = "StrgAcntpYbpLUXMvUb8ZuUjQBnMLFZnBxwxrRjrYJU"
-zk_verifier = "5xk7TofwN46GUpkRoLAtJVaGkfHGYY7wm3aGWAzBAmq7"
-token_transfer = "TknTrfzGGGtAL3YxG8TKvoa2Yo2uXxn6SYgZ5C3fHNB"
-
-[programs.testnet]
-authorization = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-registry = "VaLRegGhzqJwVmQhciS9JT6czSZJzBGmyReBt3SXXyL"
-processor = "3YX6iPrpB9yQab1BoBEmRBfjRehJkZnuBZdn69pi6eLu"
-base_account = "BaseSixYBPg1K1xjRXVBvd7LVLmATG2sFjUXzVZrfG6"
-storage_account = "StrgAcntpYbpLUXMvUb8ZuUjQBnMLFZnBxwxrRjrYJU"
-zk_verifier = "5xk7TofwN46GUpkRoLAtJVaGkfHGYY7wm3aGWAzBAmq7"
-token_transfer = "TknTrfzGGGtAL3YxG8TKvoa2Yo2uXxn6SYgZ5C3fHNB"
+registry = "11111111111111111111111111111112"
+shard = "11111111111111111111111111111113"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
-wallet = "/Users/hxrts/keypair.json"
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "cargo test --workspace" 
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[test]
+startup_wait = 5000
+shutdown_wait = 2000
+upgradeable = false
+
+[[test.genesis]]
+address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+program = "./tests/fixtures/mpl_token_metadata.so"

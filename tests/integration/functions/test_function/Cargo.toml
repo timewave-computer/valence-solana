@@ -1,11 +1,11 @@
 [package]
-name = "registry"
+name = "test-function"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "registry"
+name = "test_function"
 
 [features]
 no-entrypoint = []
@@ -13,8 +13,7 @@ no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
+idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
 anchor-lang = "0.31.1"
-sha2 = "0.10.8"
-valence-common = { path = "../common" }

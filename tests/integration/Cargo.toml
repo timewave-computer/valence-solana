@@ -1,0 +1,28 @@
+[package]
+name = "valence-tests"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anchor-lang = "0.31.1"
+anchor-client = "0.31.1"
+solana-sdk = "2.1.6"
+solana-program = "2.1.6"
+tokio = { version = "1", features = ["full"] }
+anyhow = "1.0"
+sha2 = "0.10.8"
+dirs = "5.0"
+hex = "0.4"
+
+valence-sdk = { path = "../../sdk" }
+registry = { path = "../../programs/registry" }
+shard = { path = "../../programs/shard" }
+valence-test-shard = { path = "./shard" }
+
+[[test]]
+name = "valence_test"
+path = "tests/valence_test.rs"
+
+[[test]]
+name = "e2e_test"
+path = "tests/e2e_test.rs"

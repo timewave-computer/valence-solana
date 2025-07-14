@@ -1,74 +1,116 @@
-# Valence Protocol SVM
+# Valence Protocol
 
-Valence is a unified development environment for building trust-minimized cross-chain DeFi applications. This Solana implementation features ZK coprocessor integration for trustless cross-chain state verification and pogram execution.
+Implementation of the Valence Protocol for Solana.
+
+## Project Structure
+
+```
+valence-solana/
+├── programs/
+│   ├── common/          # Shared security utilities
+│   ├── registry/        # Function registry (singleton)
+│   └── shard/           # Session management
+├── sdk/                 # Rust SDK
+├── examples/            # Usage examples
+└── tests/integration/   # End-to-end tests
+```
 
 ## Architecture
 
 ```
-programs
-├── authorization    # Permissioning with ZK support
-├── processor        # Message execution engine with priority queues
-├── registry         # Library and ZK program registry
-├── zk_verifier      # Proof verification
-├── base_account     # Token custody and vault operations
-├── storage_account  # Key-value data storage and persistence
-└── libraries        # Collection of utility libraries
+┌─────────────────┐
+│   Client SDK    │
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│     Shard       │ (User programs with sessions)
+└────────┬────────┘
+         │ Direct CPI
+┌────────▼────────┐
+│    Registry     │ (Singleton service)
+└─────────────────┘
 ```
-
-## Nix Environment
-
-The Nix environment provides a complete, reproducible Solana development setup with custom crate2nix derivations that enables incremental cached builds for various Rust toolchains, Solana CLI tools, Anchor framework, platform tools for SBF compilation, and all necessary dependencies. All packages are pinned to specific versions and automatically configured to work together.
 
 ## Quick Start
 
-Enter Nix development environment:
-
+1. **Build programs:**
 ```bash
-nix develop
+./build.sh
 ```
 
-Set up Solana tools (first time only):
+2. **Deploy locally:**
 ```bash
-nix run .#setup-solana
+solana-test-validator
+solana program deploy target/deploy/registry.so
+solana program deploy target/deploy/shard.so
 ```
 
-### Development Workflow
-
+3. **Run example:**
 ```bash
-nix run .#build                  # Build with crate2nix + Anchor (recommended)
-nix run .#build-fast             # Fast incremental build (crate2nix only)
-nix run .#build-crate [name]     # Build individual crate with crate2nix
-nix run .#test [crate]           # Run tests (optionally specify crate)
-nix run .#generate-idls          # Generate IDLs with nightly Rust
+cargo run --example simple_usage
 ```
 
-### Environment Management
+## Key Features
 
-```bash
-nix run .#env-info               # Show environment status
-nix run .#setup-solana           # Set up Solana unified node environment
-nix run .#clear-cache            # Clear build caches (Valence, Cargo, Anchor, Nix)
+### Security
+- All program IDs validated
+- Bounds checking throughout
+- Content verification for functions
+- Linear session consumption (UTXO-like)
+
+### Performance
+- O(1) capability checking with bitmaps
+- O(1) account lookups via HashMap indexing
+- Single-pass account validation
+- Efficient SHA-256 state hashing
+
+### Developer Experience
+- SDK with fluent API
+- Simple session management
+- Type-safe capabilities
+- Error handling
+
+## Example Usage
+
+```rust
+use valence_sdk::{ValenceClient, SessionBuilder};
+
+// Register a function
+let content_hash = client
+    .register_function(program_id, metadata, bytecode_hash)
+    .await?;
+
+// Create a session
+let session = SessionBuilder::new()
+    .with_read()
+    .with_write()
+    .with_execute()
+    .build(&client)
+    .await?;
+
+// Execute function
+client.execute_function(
+    session,
+    program_id,
+    metadata,
+    bytecode_hash,
+    input_data,
+).await?;
+
+// Consume session
+client.consume_session(session).await?;
 ```
 
-### Deployment
+## Implementation Status
 
-```bash
-nix run .#deploy [network]       # Deploy to devnet/mainnet
-```
+Registry program with content verification  
+Shard program with session management  
+Real function execution via CPI  
+Cryptographic state hashing  
+Security utilities and validation  
+Minimal SDK with clean abstractions  
+End-to-end test suite  
 
-### Solana Node Environment
+## Documentation
 
-This flake packages the complete Solana development environment with all tools automatically configured to work together:
-
-```bash
-# Solana CLI tools
-solana                           # Main Solana CLI
-solana-keygen                    # Key generation utility
-solana-test-validator            # Local test validator
-# ... and other Solana CLI tools
-
-# Platform tools (custom Rust/Clang toolchain for SBF compilation)
-cargo-build-sbf                  # Build Solana programs with integrated platform tools
-rustc                           # Rust compiler (SBF-enabled)
-clang                           # Clang compiler (SBF-enabled)
-```
+See `work/crit_simplify.md` for the detailed implementation plan and `work/IMPLEMENTATION_COMPLETE.md` for the completion summary.

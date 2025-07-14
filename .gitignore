@@ -23,6 +23,7 @@ yarn-error.log*
 # Editor directories and files
 .idea/
 .vscode/
+.claude/
 .cursor/
 *.suo
 *.ntvs*
@@ -36,16 +37,18 @@ yarn-error.log*
 
 # Working files
 work/
-scripts/
 result/
 app/
-docs/
+
+# Local environment files
+.env.local
+deployment.env
+valence.env
+*.key
+*.keypair
 
 # Documentation build artifacts
 docs/tests/
-
-# Examples (if they're generated/temporary)
-examples/
 
 # Anchor framework copy
 anchor/
@@ -54,6 +57,22 @@ anchor/
 test-helpers/target/
 utils/target/
 tests/target/
+artifacts/
+proptest-regressions/
 
 # TypeScript test files (if temporary)
 tests/zk_functionality.ts
+
+# Scratch/temporary directories
+scratch/
+
+# Build logs
+*.log
+
+# Environment files
+.envrc
+.valence-env
+
+# Flake locks (except root)
+*/flake.lock
+!flake.lock

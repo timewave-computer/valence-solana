@@ -1,11 +1,11 @@
 [package]
-name = "registry"
+name = "shard"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "registry"
+name = "shard"
 
 [features]
 no-entrypoint = []
@@ -17,4 +17,5 @@ default = []
 [dependencies]
 anchor-lang = "0.31.1"
 sha2 = "0.10.8"
+registry = { path = "../registry", features = ["cpi"] }
 valence-common = { path = "../common" }
