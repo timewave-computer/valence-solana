@@ -61,11 +61,6 @@
         echo ""
         echo -e "''${YELLOW}Shutting down...''${NC}"
         
-        # Kill session builder if running
-        if [ ! -z "$SESSION_BUILDER_PID" ]; then
-          kill $SESSION_BUILDER_PID 2>/dev/null || true
-        fi
-        
         # Kill validator
         kill $VALIDATOR_PID 2>/dev/null || true
         
@@ -108,41 +103,33 @@
       mkdir -p target/deploy
       
       # Check if programs exist in either location
-      GATEWAY_SO=""
       REGISTRY_SO=""
-      VERIFIER_SO=""
+      SHARD_SO=""
       
       # Try deploy directory first
-      if [ -f target/deploy/valence_gateway.so ]; then
-        GATEWAY_SO="target/deploy/valence_gateway.so"
-      elif [ -f target/sbf-solana-solana/release/valence_gateway.so ]; then
-        GATEWAY_SO="target/sbf-solana-solana/release/valence_gateway.so"
-      fi
-      
       if [ -f target/deploy/valence_registry.so ]; then
         REGISTRY_SO="target/deploy/valence_registry.so"
       elif [ -f target/sbf-solana-solana/release/valence_registry.so ]; then
         REGISTRY_SO="target/sbf-solana-solana/release/valence_registry.so"
       fi
       
-      if [ -f target/deploy/valence_verifier.so ]; then
-        VERIFIER_SO="target/deploy/valence_verifier.so"
-      elif [ -f target/sbf-solana-solana/release/valence_verifier.so ]; then
-        VERIFIER_SO="target/sbf-solana-solana/release/valence_verifier.so"
+      if [ -f target/deploy/valence_shard.so ]; then
+        SHARD_SO="target/deploy/valence_shard.so"
+      elif [ -f target/sbf-solana-solana/release/valence_shard.so ]; then
+        SHARD_SO="target/sbf-solana-solana/release/valence_shard.so"
       fi
       
       # Build if any are missing
-      if [ -z "$GATEWAY_SO" ] || [ -z "$REGISTRY_SO" ] || [ -z "$VERIFIER_SO" ]; then
+      if [ -z "$REGISTRY_SO" ] || [ -z "$SHARD_SO" ]; then
         echo "Programs not found, building..."
         nix run .#build-onchain
         
         # Set paths after build
-        GATEWAY_SO="target/sbf-solana-solana/release/valence_gateway.so"
         REGISTRY_SO="target/sbf-solana-solana/release/valence_registry.so"
-        VERIFIER_SO="target/sbf-solana-solana/release/valence_verifier.so"
+        SHARD_SO="target/sbf-solana-solana/release/valence_shard.so"
         
         # Verify build succeeded
-        if [ ! -f "$GATEWAY_SO" ]; then
+        if [ ! -f "$REGISTRY_SO" ]; then
           echo -e "''${RED}Failed to build programs''${NC}"
           exit 1
         fi
@@ -151,31 +138,16 @@
       fi
       
       # Copy to deploy directory for consistency (if not already there)
-      if [ "$GATEWAY_SO" != "target/deploy/valence_gateway.so" ]; then
-        cp "$GATEWAY_SO" target/deploy/valence_gateway.so
-      fi
       if [ "$REGISTRY_SO" != "target/deploy/valence_registry.so" ]; then
         cp "$REGISTRY_SO" target/deploy/valence_registry.so
       fi
-      if [ "$VERIFIER_SO" != "target/deploy/valence_verifier.so" ]; then
-        cp "$VERIFIER_SO" target/deploy/valence_verifier.so
+      if [ "$SHARD_SO" != "target/deploy/valence_shard.so" ]; then
+        cp "$SHARD_SO" target/deploy/valence_shard.so
       fi
       
       # Deploy singleton programs
       echo ""
       echo -e "''${YELLOW}Deploying singleton programs...''${NC}"
-      
-      # Deploy Gateway
-      echo -e "''${BLUE}Deploying Gateway...''${NC}"
-      DEPLOY_OUTPUT=$(solana program deploy target/deploy/valence_gateway.so 2>&1)
-      GATEWAY_ID=$(echo "$DEPLOY_OUTPUT" | grep -E "Program Id:|Deployed program" | awk '{print $NF}' | head -1)
-      
-      if [ -z "$GATEWAY_ID" ] || [[ "$GATEWAY_ID" == *"Error"* ]]; then
-        echo -e "''${RED}Failed to deploy Gateway''${NC}"
-        echo "$DEPLOY_OUTPUT"
-        exit 1
-      fi
-      echo -e "''${GREEN}Gateway deployed at: $GATEWAY_ID''${NC}"
       
       # Deploy Registry
       echo -e "''${BLUE}Deploying Registry...''${NC}"
@@ -189,26 +161,12 @@
       fi
       echo -e "''${GREEN}Registry deployed at: $REGISTRY_ID''${NC}"
       
-      # Deploy Verifier
-      echo -e "''${BLUE}Deploying Verifier...''${NC}"
-      DEPLOY_OUTPUT=$(solana program deploy target/deploy/valence_verifier.so 2>&1)
-      VERIFIER_ID=$(echo "$DEPLOY_OUTPUT" | grep -E "Program Id:|Deployed program" | awk '{print $NF}' | head -1)
-      
-      if [ -z "$VERIFIER_ID" ] || [[ "$VERIFIER_ID" == *"Error"* ]]; then
-        echo -e "''${RED}Failed to deploy Verifier''${NC}"
-        echo "$DEPLOY_OUTPUT"
-        exit 1
-      fi
-      echo -e "''${GREEN}Verifier deployed at: $VERIFIER_ID''${NC}"
-      
       # Save program IDs to config file
       CONFIG_FILE="$HOME/.valence/local-config.json"
       mkdir -p "$HOME/.valence"
       cat > "$CONFIG_FILE" <<EOF
       {
-        "gateway": "$GATEWAY_ID",
         "registry": "$REGISTRY_ID",
-        "verifier": "$VERIFIER_ID",
         "rpc_url": "http://localhost:8899"
       }
       EOF
@@ -216,53 +174,7 @@
       echo ""
       echo -e "''${GREEN}Program IDs saved to: $CONFIG_FILE''${NC}"
       
-      # Build session builder if not already built
-      echo ""
-      echo -e "''${YELLOW}Checking session builder service...''${NC}"
-      if [ ! -f services/session_builder/target/release/session_builder ]; then
-        echo -e "''${YELLOW}Session builder not found. Build it separately with:''${NC}"
-        echo "  cargo build --release --manifest-path services/session_builder/Cargo.toml"
-        echo ""
-        echo -e "''${YELLOW}Continuing without session builder for now...''${NC}"
-        SKIP_SESSION_BUILDER=true
-      else
-        echo -e "''${GREEN}Session builder already built''${NC}"
-        SKIP_SESSION_BUILDER=false
-      fi
-      
-      # Start session builder service if available
-      if [ "$SKIP_SESSION_BUILDER" = "false" ]; then
-        echo ""
-        echo -e "''${YELLOW}Starting session builder service...''${NC}"
-        
-        # Create session builder config
-        SESSION_CONFIG="$HOME/.valence/session-builder-config.json"
-        cat > "$SESSION_CONFIG" <<EOF
-      {
-        "rpc_url": "http://localhost:8899",
-        "keypair_path": "$HOME/.config/solana/id.json",
-        "shard_program_id": "11111111111111111111111111111114",
-        "poll_interval_secs": 5,
-        "max_retries": 3
-      }
-      EOF
-        
-        # Run session builder in background
-        ./services/session_builder/target/release/session_builder --config "$SESSION_CONFIG" &
-        SESSION_BUILDER_PID=$!
-        
-        sleep 2
-        
-        # Check if session builder is running
-        if ! kill -0 $SESSION_BUILDER_PID 2>/dev/null; then
-          echo -e "''${RED}Failed to start session builder''${NC}"
-          exit 1
-        fi
-        
-        echo -e "''${GREEN}Session builder started successfully''${NC}"
-      else
-        SESSION_BUILDER_PID=""
-      fi
+
       
       # Print summary
       echo ""
@@ -271,21 +183,13 @@
       echo "========================================="
       echo ""
       echo "Deployed Programs:"
-      echo "  Gateway:  $GATEWAY_ID"
       echo "  Registry: $REGISTRY_ID"  
-      echo "  Verifier: $VERIFIER_ID"
       echo ""
       echo "Services:"
       echo "  Solana RPC: http://localhost:8899"
-      if [ -n "$SESSION_BUILDER_PID" ]; then
-        echo "  Session Builder: Running (PID: $SESSION_BUILDER_PID)"
-      else
-        echo "  Session Builder: Not running (build separately)"
-      fi
       echo ""
       echo "Configuration saved to:"
       echo "  $CONFIG_FILE"
-      echo "  $SESSION_CONFIG"
       echo ""
       echo "To deploy a shard:"
       echo "  solana program deploy target/deploy/valence_shard.so"

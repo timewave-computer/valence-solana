@@ -1,0 +1,55 @@
+[package]
+name = "valence-property-tests"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Core dependencies
+anchor-lang = { workspace = true }
+anchor-client = { workspace = true }
+solana-sdk = { workspace = true }
+solana-program = { workspace = true }
+
+# Property testing
+proptest = "1.4"
+quickcheck = "1.0"
+quickcheck_macros = "1.0"
+
+# Test utilities
+tokio = { version = "1", features = ["full"] }
+anyhow = { workspace = true }
+sha2 = { workspace = true }
+rand = "0.8"
+arbitrary = { version = "1.3", features = ["derive"] }
+
+# Valence dependencies
+valence-sdk = { path = "../../sdk" }
+registry = { path = "../../programs/registry" }
+shard = { path = "../../programs/shard" }
+
+[dev-dependencies]
+proptest-derive = "0.4"
+
+[[test]]
+name = "session_security"
+path = "src/session_security.rs"
+
+[[test]]
+name = "capability_enforcement"
+path = "src/capability_enforcement.rs"
+
+[[test]]
+name = "function_registration"
+path = "src/function_registration.rs"
+
+[[test]]
+name = "state_isolation"
+path = "src/state_isolation.rs"
+
+[[test]]
+name = "resource_limits"
+path = "src/resource_limits.rs"
+
+[[test]]
+name = "authorization"
+path = "src/authorization.rs"

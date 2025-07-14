@@ -50,9 +50,6 @@ valence.env
 # Documentation build artifacts
 docs/tests/
 
-# Examples (if they're generated/temporary)
-examples/
-
 # Anchor framework copy
 anchor/
 
@@ -61,6 +58,21 @@ test-helpers/target/
 utils/target/
 tests/target/
 artifacts/
+proptest-regressions/
 
 # TypeScript test files (if temporary)
 tests/zk_functionality.ts
+
+# Scratch/temporary directories
+scratch/
+
+# Build logs
+*.log
+
+# Environment files
+.envrc
+.valence-env
+
+# Flake locks (except root)
+*/flake.lock
+!flake.lock

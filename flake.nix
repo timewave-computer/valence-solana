@@ -74,9 +74,7 @@
         in {
           # Individual programs
           valence-shard = valencePrograms.shard;
-          valence-gateway = valencePrograms.gateway;
           valence-registry = valencePrograms.registry;
-          valence-verifier = valencePrograms.verifier;
           
           # Also expose the full set
           valencePrograms = pkgs.symlinkJoin {

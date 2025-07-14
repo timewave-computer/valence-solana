@@ -25,30 +25,12 @@
       RED='\033[0;31m'
       NC='\033[0m' # No Color
       
-      # Build the gateway program
-      echo -e "''${YELLOW}Building valence-gateway...''${NC}"
-      if cargo build-sbf --manifest-path programs/gateway/Cargo.toml; then
-          echo -e "''${GREEN}valence-gateway built successfully''${NC}"
-      else
-          echo -e "''${RED}Failed to build valence-gateway''${NC}"
-          exit 1
-      fi
-      
       # Build the registry program
       echo -e "''${YELLOW}Building valence-registry...''${NC}"
       if cargo build-sbf --manifest-path programs/registry/Cargo.toml; then
           echo -e "''${GREEN}valence-registry built successfully''${NC}"
       else
           echo -e "''${RED}Failed to build valence-registry''${NC}"
-          exit 1
-      fi
-      
-      # Build the verifier program
-      echo -e "''${YELLOW}Building valence-verifier...''${NC}"
-      if cargo build-sbf --manifest-path programs/verifier/Cargo.toml; then
-          echo -e "''${GREEN}valence-verifier built successfully''${NC}"
-      else
-          echo -e "''${RED}Failed to build valence-verifier''${NC}"
           exit 1
       fi
       
@@ -110,14 +92,10 @@
       echo "Building valence-sdk..."
       cargo build --release --manifest-path sdk/Cargo.toml
       
-      echo "Building lifecycle-manager..."
-      cargo build --release --manifest-path services/lifecycle_manager/Cargo.toml
-      
       echo "✓ Off-chain components built successfully!"
       echo ""
       echo "Built artifacts available in:"
       echo "  - sdk/target/release/: SDK libraries"
-      echo "  - services/session_builder/target/release/: Session builder service"
       echo ""
       echo "To use crate2nix for faster incremental builds:"
       echo "  1. Run 'nix run .#generate-cargo-nix' to generate Cargo.nix"
@@ -146,7 +124,7 @@
       
       echo "=== Build Complete ==="
       echo "On-chain artifacts: ./target/deploy/"
-      echo "Off-chain artifacts: ./sdk/target/release/ and ./services/*/target/release/"
+      echo "Off-chain artifacts: ./sdk/target/release/"
       echo ""
       echo "Next steps:"
       echo "1. Deploy programs using: solana program deploy target/deploy/<program>.so"

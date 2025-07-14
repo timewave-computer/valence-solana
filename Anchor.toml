@@ -1,36 +1,26 @@
 [features]
-seeds = true
+seeds = false
 skip-lint = false
 
-[toolchain]
-anchor_version = "0.31.1"
-
-[workspace]
-members = [
-    "programs/gateway",
-    "programs/registry",
-    "programs/verifier",
-    "programs/shard",
-]
-
 [programs.localnet]
-valence-gateway = "11111111111111111111111111111111"
-valence-registry = "11111111111111111111111111111112"
-valence-verifier = "11111111111111111111111111111113"
-valence-shard = "11111111111111111111111111111114"
-
-[programs.testnet]
-valence-gateway = "11111111111111111111111111111111"
-valence-registry = "11111111111111111111111111111112"
-valence-verifier = "11111111111111111111111111111113"
-valence-shard = "11111111111111111111111111111114"
+registry = "11111111111111111111111111111112"
+shard = "11111111111111111111111111111113"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
-wallet = "/Users/hxrts/keypair.json"
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "cargo test --workspace" 
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[test]
+startup_wait = 5000
+shutdown_wait = 2000
+upgradeable = false
+
+[[test.genesis]]
+address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+program = "./tests/fixtures/mpl_token_metadata.so"

@@ -49,21 +49,10 @@ in {
         cargoNix.workspaceMembers."valence-sdk".build
       ' --out-link result-sdk
       
-      # Build session builder
-      echo "Building session-builder..."
-      nix build --impure --expr '
-        let
-          pkgs = import <nixpkgs> {};
-          cargoNix = import ./Cargo.nix { inherit pkgs; release = true; };
-        in
-        cargoNix.workspaceMembers."session_builder".build
-      ' --out-link result-session-builder
-      
       echo ""
       echo "=== Fast Build Complete ==="
       echo "Results:"
       echo "  SDK: ./result-sdk"
-      echo "  Session Builder: ./result-session-builder"
       echo ""
       echo "Each dependency was cached individually for maximum build speed!"
       echo "Future builds will be much faster as unchanged dependencies are reused."
@@ -82,10 +71,7 @@ in {
         echo "Available crates:"
         if [ -f Cargo.nix ]; then
           echo "  - valence-sdk"
-          echo "  - session_builder"
-          echo "  - valence-gateway"
           echo "  - valence-registry"
-          echo "  - valence-verifier"
           echo "  - valence-shard"
         else
           echo "  Run 'nix run .#generate-cargo-nix' first"

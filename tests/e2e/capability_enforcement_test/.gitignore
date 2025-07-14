@@ -1,7 +1,0 @@
-/target
-/node_modules
-.anchor
-.DS_Store
-*.log
-.valence-env
-/test-ledger

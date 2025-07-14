@@ -1,12 +1,21 @@
 [package]
-name = "valence-shard"
+name = "shard"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-anchor-lang = { workspace = true }
-sha2 = { workspace = true }
-
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "valence_shard"
+name = "shard"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.31.1"
+sha2 = "0.10.8"
+registry = { path = "../registry", features = ["cpi"] }
+valence-common = { path = "../common" }

@@ -519,6 +519,13 @@ EOF
       # Set up environment
       export PATH="${inputs'.zero-nix.packages.solana-tools}/bin:${inputs'.zero-nix.packages.nightly-rust}/bin:$PATH"
       export RUST_BACKTRACE=1
+      export MACOSX_DEPLOYMENT_TARGET=11.0
+      export SOURCE_DATE_EPOCH=1686858254
+      export PROTOC=${pkgs.protobuf}/bin/protoc
+      export PKG_CONFIG_PATH=${pkgs.openssl.dev}/lib/pkgconfig
+      export OPENSSL_DIR=${pkgs.openssl.dev}
+      export OPENSSL_LIB_DIR=${pkgs.openssl.out}/lib
+      export OPENSSL_INCLUDE_DIR=${pkgs.openssl.dev}/include
       
       # Build the shard program
       echo "Building shard program..."

@@ -201,8 +201,12 @@ CARGO_EOF
       echo ""
       echo "To build:"
       echo "  cd $PROJECT_DIR"
+      echo "  export MACOSX_DEPLOYMENT_TARGET=11.0"
       echo "  cargo build-sbf              # Build program"
       echo "  cargo build --features client # Build client"
+      echo ""
+      echo "Or use the parent nix environment:"
+      echo "  cd $PROJECT_DIR && nix run ..#valence-template-build"
     ''}/bin/valence-new-simple";
   };
 }

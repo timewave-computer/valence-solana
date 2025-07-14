@@ -3,13 +3,19 @@
   pkgs,
   inputs',
   ...
-}: {
+}: let
+  inherit (pkgs) lib stdenv;
+in {
   packages = with pkgs; [
     openssl
     pkg-config
     protobuf  # For off-chain builds
     inputs'.crate2nix.packages.default  # For generating Cargo.nix
     jq  # For JSON parsing in scripts
+  ] ++ lib.optionals stdenv.isDarwin [
+    libiconv  # Required for macOS builds
+    darwin.apple_sdk.frameworks.Security
+    darwin.apple_sdk.frameworks.SystemConfiguration
   ];
   
   commands = [
@@ -52,6 +58,15 @@
     {
       name = "SOURCE_DATE_EPOCH";
       value = "1686858254";
+    }
+  ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+    {
+      name = "LIBRARY_PATH";
+      value = "${pkgs.libiconv}/lib";
+    }
+    {
+      name = "LDFLAGS";
+      value = "-L${pkgs.libiconv}/lib";
     }
   ];
   

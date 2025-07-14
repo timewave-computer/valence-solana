@@ -69,7 +69,7 @@ test_component "." "Workspace Root"
 echo -e "${BLUE}=== PROGRAMS ===${NC}"
 echo ""
 
-for prog in gateway registry shard verifier; do
+for prog in registry shard test_function; do
     test_component "programs/$prog" "Program: $prog"
 done
 
@@ -78,23 +78,12 @@ echo -e "${BLUE}=== SDK ===${NC}"
 echo ""
 test_component "sdk" "SDK"
 
-# Test services
-echo -e "${BLUE}=== SERVICES ===${NC}"
-echo ""
+# Note: No services directory in current project structure
 
-for service in lifecycle_manager; do
-    test_component "services/$service" "Service: $service"
-done
-
-# Check if session_builder still exists and warn about it
-if [ -d "services/session_builder" ]; then
-    echo -e "${YELLOW}[WARNING]${NC} services/session_builder found - should be migrated to lifecycle_manager"
-fi
-
-# Test e2e template
+# Test integration tests
 echo -e "${BLUE}=== TEST PROJECTS ===${NC}"
 echo ""
-test_component "tests/e2e/capability_enforcement_test" "E2E Capability Enforcement Test"
+test_component "tests/integration" "Integration Tests"
 
 # Summary
 echo ""

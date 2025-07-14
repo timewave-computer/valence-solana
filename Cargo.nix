@@ -38,30 +38,30 @@ rec {
   # You can override the features with
   # workspaceMembers."${crateName}".build.override { features = [ "default" "feature1" ... ]; }.
   workspaceMembers = {
-    "session_builder" = rec {
-      packageId = "session_builder";
+    "registry" = rec {
+      packageId = "registry";
       build = internal.buildRustCrateWithFeatures {
-        packageId = "session_builder";
+        packageId = "registry";
       };
 
       # Debug support which might change between releases.
       # File a bug if you depend on any for non-debug work!
       debug = internal.debugCrate { inherit packageId; };
     };
-    "valence-gateway" = rec {
-      packageId = "valence-gateway";
+    "shard" = rec {
+      packageId = "shard";
       build = internal.buildRustCrateWithFeatures {
-        packageId = "valence-gateway";
+        packageId = "shard";
       };
 
       # Debug support which might change between releases.
       # File a bug if you depend on any for non-debug work!
       debug = internal.debugCrate { inherit packageId; };
     };
-    "valence-registry" = rec {
-      packageId = "valence-registry";
+    "valence-common" = rec {
+      packageId = "valence-common";
       build = internal.buildRustCrateWithFeatures {
-        packageId = "valence-registry";
+        packageId = "valence-common";
       };
 
       # Debug support which might change between releases.
@@ -78,20 +78,10 @@ rec {
       # File a bug if you depend on any for non-debug work!
       debug = internal.debugCrate { inherit packageId; };
     };
-    "valence-shard" = rec {
-      packageId = "valence-shard";
+    "valence-tests" = rec {
+      packageId = "valence-tests";
       build = internal.buildRustCrateWithFeatures {
-        packageId = "valence-shard";
-      };
-
-      # Debug support which might change between releases.
-      # File a bug if you depend on any for non-debug work!
-      debug = internal.debugCrate { inherit packageId; };
-    };
-    "valence-verifier" = rec {
-      packageId = "valence-verifier";
-      build = internal.buildRustCrateWithFeatures {
-        packageId = "valence-verifier";
+        packageId = "valence-tests";
       };
 
       # Debug support which might change between releases.
@@ -126,6 +116,35 @@ rec {
     #   inject test dependencies into the build
 
     crates = {
+      "Inflector" = rec {
+        crateName = "Inflector";
+        version = "0.11.4";
+        edition = "2015";
+        sha256 = "1lqmcni21ifzyq41fhz6k1j2b23cmsx469s4g4sf01l78miqqhzy";
+        libName = "inflector";
+        authors = [
+          "Josh Teeter<joshteeter@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "lazy_static";
+            packageId = "lazy_static";
+            optional = true;
+          }
+          {
+            name = "regex";
+            packageId = "regex";
+            optional = true;
+          }
+        ];
+        features = {
+          "default" = [ "heavyweight" ];
+          "heavyweight" = [ "regex" "lazy_static" ];
+          "lazy_static" = [ "dep:lazy_static" ];
+          "regex" = [ "dep:regex" ];
+        };
+        resolvedDefaultFeatures = [ "default" "heavyweight" "lazy_static" "regex" ];
+      };
       "addr2line" = rec {
         crateName = "addr2line";
         version = "0.24.2";
@@ -171,11 +190,140 @@ rec {
           "rustc-dep-of-std" = [ "core" ];
         };
       };
+      "aead" = rec {
+        crateName = "aead";
+        version = "0.5.2";
+        edition = "2021";
+        sha256 = "1c32aviraqag7926xcb9sybdm36v5vh9gnxpn4pxdwjc50zl28ni";
+        authors = [
+          "RustCrypto Developers"
+        ];
+        dependencies = [
+          {
+            name = "crypto-common";
+            packageId = "crypto-common";
+          }
+          {
+            name = "generic-array";
+            packageId = "generic-array";
+            usesDefaultFeatures = false;
+          }
+        ];
+        features = {
+          "arrayvec" = [ "dep:arrayvec" ];
+          "blobby" = [ "dep:blobby" ];
+          "bytes" = [ "dep:bytes" ];
+          "default" = [ "rand_core" ];
+          "dev" = [ "blobby" ];
+          "getrandom" = [ "crypto-common/getrandom" "rand_core" ];
+          "heapless" = [ "dep:heapless" ];
+          "rand_core" = [ "crypto-common/rand_core" ];
+          "std" = [ "alloc" "crypto-common/std" ];
+        };
+        resolvedDefaultFeatures = [ "alloc" "getrandom" "rand_core" ];
+      };
+      "aes" = rec {
+        crateName = "aes";
+        version = "0.8.4";
+        edition = "2021";
+        sha256 = "1853796anlwp4kqim0s6wm1srl4ib621nm0cl2h3c8klsjkgfsdi";
+        authors = [
+          "RustCrypto Developers"
+        ];
+        dependencies = [
+          {
+            name = "cfg-if";
+            packageId = "cfg-if";
+          }
+          {
+            name = "cipher";
+            packageId = "cipher";
+          }
+          {
+            name = "cpufeatures";
+            packageId = "cpufeatures";
+            target = { target, features }: (("aarch64" == target."arch" or null) || ("x86_64" == target."arch" or null) || ("x86" == target."arch" or null));
+          }
+        ];
+        devDependencies = [
+          {
+            name = "cipher";
+            packageId = "cipher";
+            features = [ "dev" ];
+          }
+        ];
+        features = {
+          "zeroize" = [ "dep:zeroize" ];
+        };
+      };
+      "aes-gcm-siv" = rec {
+        crateName = "aes-gcm-siv";
+        version = "0.11.1";
+        edition = "2021";
+        sha256 = "039ycyz9hijvrv2hiks9a1099yprqpkk3v39shb58dx99c9q81xf";
+        libName = "aes_gcm_siv";
+        authors = [
+          "RustCrypto Developers"
+        ];
+        dependencies = [
+          {
+            name = "aead";
+            packageId = "aead";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "aes";
+            packageId = "aes";
+            optional = true;
+          }
+          {
+            name = "cipher";
+            packageId = "cipher";
+          }
+          {
+            name = "ctr";
+            packageId = "ctr";
+          }
+          {
+            name = "polyval";
+            packageId = "polyval";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "subtle";
+            packageId = "subtle";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "zeroize";
+            packageId = "zeroize";
+            usesDefaultFeatures = false;
+          }
+        ];
+        devDependencies = [
+          {
+            name = "aead";
+            packageId = "aead";
+            usesDefaultFeatures = false;
+            features = [ "dev" ];
+          }
+        ];
+        features = {
+          "aes" = [ "dep:aes" ];
+          "alloc" = [ "aead/alloc" ];
+          "default" = [ "aes" "alloc" "getrandom" ];
+          "getrandom" = [ "aead/getrandom" ];
+          "heapless" = [ "aead/heapless" ];
+          "std" = [ "aead/std" "alloc" ];
+          "stream" = [ "aead/stream" ];
+        };
+        resolvedDefaultFeatures = [ "aes" "alloc" "default" "getrandom" ];
+      };
       "agave-feature-set" = rec {
         crateName = "agave-feature-set";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "18z0fwbd34myynmipj7f42l7cwl0kvq77g0k51jk56r4h3ynl19j";
+        sha256 = "02r1mf7bgk4fyrzjb8ihgd857qi21gl5l9kxnza4dl990h738cr7";
         libName = "agave_feature_set";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -539,6 +687,66 @@ rec {
           "anchor-debug" = [ "anchor-syn/anchor-debug" ];
           "idl-build" = [ "anchor-syn/idl-build" ];
           "interface-instructions" = [ "anchor-syn/interface-instructions" ];
+        };
+      };
+      "anchor-client" = rec {
+        crateName = "anchor-client";
+        version = "0.31.1";
+        edition = "2021";
+        sha256 = "09fjvr3znyhq659522knlyc7j1i2gn6dmsbxy343f7ah28dykcs9";
+        libName = "anchor_client";
+        authors = [
+          "Anchor Maintainers <accounts@200ms.io>"
+        ];
+        dependencies = [
+          {
+            name = "anchor-lang";
+            packageId = "anchor-lang";
+          }
+          {
+            name = "anyhow";
+            packageId = "anyhow";
+          }
+          {
+            name = "futures";
+            packageId = "futures";
+          }
+          {
+            name = "regex";
+            packageId = "regex";
+          }
+          {
+            name = "serde";
+            packageId = "serde";
+            features = [ "derive" ];
+          }
+          {
+            name = "solana-account-decoder";
+            packageId = "solana-account-decoder";
+          }
+          {
+            name = "solana-client";
+            packageId = "solana-client";
+          }
+          {
+            name = "solana-sdk";
+            packageId = "solana-sdk";
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror 1.0.69";
+          }
+          {
+            name = "tokio";
+            packageId = "tokio";
+            features = [ "rt" "sync" ];
+          }
+          {
+            name = "url";
+            packageId = "url";
+          }
+        ];
+        features = {
         };
       };
       "anchor-derive-accounts" = rec {
@@ -1410,9 +1618,9 @@ rec {
       };
       "async-compression" = rec {
         crateName = "async-compression";
-        version = "0.4.25";
+        version = "0.4.26";
         edition = "2018";
-        sha256 = "1m6s01ck0jnqw14r8m2kyh1afd200brbdjfhbys66rl57x7h5xj0";
+        sha256 = "1f9b8z1jkvvf0sr3b4iz7b9b1rfjqn7g80d1hj4hpalbimvl2zwk";
         libName = "async_compression";
         authors = [
           "Wim Looman <wim@nemo157.com>"
@@ -1459,7 +1667,7 @@ rec {
         ];
         features = {
           "all" = [ "all-implementations" "all-algorithms" ];
-          "all-algorithms" = [ "brotli" "bzip2" "deflate" "gzip" "lz4" "lzma" "xz" "zlib" "zstd" "deflate64" ];
+          "all-algorithms" = [ "brotli" "bzip2" "deflate" "gzip" "lz4" "lzma" "xz-parallel" "xz" "zlib" "zstd" "deflate64" ];
           "all-implementations" = [ "futures-io" "tokio" ];
           "brotli" = [ "dep:brotli" ];
           "bzip2" = [ "dep:bzip2" ];
@@ -1473,6 +1681,7 @@ rec {
           "lzma" = [ "dep:liblzma" ];
           "tokio" = [ "dep:tokio" ];
           "xz" = [ "lzma" ];
+          "xz-parallel" = [ "xz" "liblzma/parallel" ];
           "xz2" = [ "xz" ];
           "zlib" = [ "flate2" ];
           "zstd" = [ "libzstd" "zstd-safe" ];
@@ -2407,6 +2616,33 @@ rec {
         };
         resolvedDefaultFeatures = [ "alloc" ];
       };
+      "cipher" = rec {
+        crateName = "cipher";
+        version = "0.4.4";
+        edition = "2021";
+        sha256 = "1b9x9agg67xq5nq879z66ni4l08m6m3hqcshk37d4is4ysd3ngvp";
+        authors = [
+          "RustCrypto Developers"
+        ];
+        dependencies = [
+          {
+            name = "crypto-common";
+            packageId = "crypto-common";
+          }
+          {
+            name = "inout";
+            packageId = "inout";
+          }
+        ];
+        features = {
+          "blobby" = [ "dep:blobby" ];
+          "block-padding" = [ "inout/block-padding" ];
+          "dev" = [ "blobby" ];
+          "rand_core" = [ "crypto-common/rand_core" ];
+          "std" = [ "alloc" "crypto-common/std" "inout/std" ];
+          "zeroize" = [ "dep:zeroize" ];
+        };
+      };
       "combine" = rec {
         crateName = "combine";
         version = "4.6.7";
@@ -2657,9 +2893,9 @@ rec {
       };
       "crc32fast" = rec {
         crateName = "crc32fast";
-        version = "1.4.2";
-        edition = "2015";
-        sha256 = "1czp7vif73b8xslr3c9yxysmh9ws2r8824qda7j47ffs9pcnjxx9";
+        version = "1.5.0";
+        edition = "2021";
+        sha256 = "04d51liy8rbssra92p0qnwjw8i9rm9c4m3bwy19wjamz1k4w30cl";
         authors = [
           "Sam Rijs <srijs@airpost.net>"
           "Alex Crichton <alex@alexcrichton.com>"
@@ -2781,6 +3017,11 @@ rec {
             features = [ "more_lengths" ];
           }
           {
+            name = "rand_core";
+            packageId = "rand_core 0.6.4";
+            optional = true;
+          }
+          {
             name = "typenum";
             packageId = "typenum";
           }
@@ -2789,7 +3030,7 @@ rec {
           "getrandom" = [ "rand_core/getrandom" ];
           "rand_core" = [ "dep:rand_core" ];
         };
-        resolvedDefaultFeatures = [ "std" ];
+        resolvedDefaultFeatures = [ "getrandom" "rand_core" "std" ];
       };
       "crypto-mac" = rec {
         crateName = "crypto-mac";
@@ -2814,6 +3055,34 @@ rec {
         features = {
           "blobby" = [ "dep:blobby" ];
           "dev" = [ "blobby" ];
+        };
+      };
+      "ctr" = rec {
+        crateName = "ctr";
+        version = "0.9.2";
+        edition = "2021";
+        sha256 = "0d88b73waamgpfjdml78icxz45d95q7vi2aqa604b0visqdfws83";
+        authors = [
+          "RustCrypto Developers"
+        ];
+        dependencies = [
+          {
+            name = "cipher";
+            packageId = "cipher";
+          }
+        ];
+        devDependencies = [
+          {
+            name = "cipher";
+            packageId = "cipher";
+            features = [ "dev" ];
+          }
+        ];
+        features = {
+          "alloc" = [ "cipher/alloc" ];
+          "block-padding" = [ "cipher/block-padding" ];
+          "std" = [ "cipher/std" "alloc" ];
+          "zeroize" = [ "cipher/zeroize" ];
         };
       };
       "curve25519-dalek 3.2.0" = rec {
@@ -2869,11 +3138,11 @@ rec {
         };
         resolvedDefaultFeatures = [ "alloc" "std" "u64_backend" ];
       };
-      "curve25519-dalek 4.1.3" = rec {
+      "curve25519-dalek 4.2.0" = rec {
         crateName = "curve25519-dalek";
-        version = "4.1.3";
+        version = "4.2.0";
         edition = "2021";
-        sha256 = "1gmjb9dsknrr8lypmhkyjd67p1arb8mbfamlwxm7vph38my8pywp";
+        sha256 = "0zn9wzgv7mv5s8hs6kh6pzks2in4p1k8svm6rji6jxb3pmfpqfrp";
         libName = "curve25519_dalek";
         authors = [
           "Isis Lovecruft <isis@patternsinthevoid.net>"
@@ -2913,9 +3182,17 @@ rec {
             usesDefaultFeatures = false;
           }
           {
+            name = "serde";
+            packageId = "serde";
+            optional = true;
+            usesDefaultFeatures = false;
+            features = [ "derive" ];
+          }
+          {
             name = "subtle";
             packageId = "subtle";
             usesDefaultFeatures = false;
+            features = [ "const-generics" ];
           }
           {
             name = "zeroize";
@@ -2941,7 +3218,7 @@ rec {
         features = {
           "alloc" = [ "zeroize?/alloc" ];
           "default" = [ "alloc" "precomputed-tables" "zeroize" ];
-          "digest" = [ "dep:digest" ];
+          "digest" = [ "dep:digest" "digest/core-api" ];
           "ff" = [ "dep:ff" ];
           "group" = [ "dep:group" "rand_core" ];
           "group-bits" = [ "group" "ff/bits" ];
@@ -2949,7 +3226,7 @@ rec {
           "serde" = [ "dep:serde" ];
           "zeroize" = [ "dep:zeroize" ];
         };
-        resolvedDefaultFeatures = [ "alloc" "default" "digest" "precomputed-tables" "rand_core" "zeroize" ];
+        resolvedDefaultFeatures = [ "alloc" "default" "digest" "precomputed-tables" "rand_core" "serde" "zeroize" ];
       };
       "curve25519-dalek-derive" = rec {
         crateName = "curve25519-dalek-derive";
@@ -3168,9 +3445,9 @@ rec {
       };
       "deranged" = rec {
         crateName = "deranged";
-        version = "0.3.11";
+        version = "0.4.0";
         edition = "2021";
-        sha256 = "1d1ibqqnr5qdrpw8rclwrf1myn3wf0dygl04idf4j2s49ah6yaxl";
+        sha256 = "13h6skwk411wzhf1l9l7d3yz5y6vg9d7s3dwhhb4a942r88nm7lw";
         authors = [
           "Jacob Pratt <jacob@jhpratt.dev>"
         ];
@@ -3184,10 +3461,13 @@ rec {
         ];
         features = {
           "default" = [ "std" ];
+          "macros" = [ "dep:deranged-macros" ];
           "num" = [ "dep:num-traits" ];
           "powerfmt" = [ "dep:powerfmt" ];
           "quickcheck" = [ "dep:quickcheck" "alloc" ];
-          "rand" = [ "dep:rand" ];
+          "rand" = [ "rand08" "rand09" ];
+          "rand08" = [ "dep:rand08" ];
+          "rand09" = [ "dep:rand09" ];
           "serde" = [ "dep:serde" ];
           "std" = [ "alloc" ];
         };
@@ -3295,56 +3575,6 @@ rec {
           "std" = [ "alloc" ];
         };
         resolvedDefaultFeatures = [ "alloc" "std" ];
-      };
-      "dirs" = rec {
-        crateName = "dirs";
-        version = "6.0.0";
-        edition = "2015";
-        sha256 = "0knfikii29761g22pwfrb8d0nqpbgw77sni9h2224haisyaams63";
-        authors = [
-          "Simon Ochsenreither <simon@ochsenreither.de>"
-        ];
-        dependencies = [
-          {
-            name = "dirs-sys";
-            packageId = "dirs-sys";
-          }
-        ];
-
-      };
-      "dirs-sys" = rec {
-        crateName = "dirs-sys";
-        version = "0.5.0";
-        edition = "2015";
-        sha256 = "1aqzpgq6ampza6v012gm2dppx9k35cdycbj54808ksbys9k366p0";
-        libName = "dirs_sys";
-        authors = [
-          "Simon Ochsenreither <simon@ochsenreither.de>"
-        ];
-        dependencies = [
-          {
-            name = "libc";
-            packageId = "libc";
-            target = { target, features }: (target."unix" or false);
-          }
-          {
-            name = "option-ext";
-            packageId = "option-ext";
-          }
-          {
-            name = "redox_users";
-            packageId = "redox_users";
-            usesDefaultFeatures = false;
-            target = { target, features }: ("redox" == target."os" or null);
-          }
-          {
-            name = "windows-sys";
-            packageId = "windows-sys 0.59.0";
-            target = { target, features }: (target."windows" or false);
-            features = [ "Win32_UI_Shell" "Win32_Foundation" "Win32_Globalization" "Win32_System_Com" ];
-          }
-        ];
-
       };
       "displaydoc" = rec {
         crateName = "displaydoc";
@@ -3792,9 +4022,9 @@ rec {
       };
       "fiat-crypto" = rec {
         crateName = "fiat-crypto";
-        version = "0.2.9";
-        edition = "2018";
-        sha256 = "07c1vknddv3ak7w89n85ik0g34nzzpms6yb845vrjnv9m4csbpi8";
+        version = "0.3.0";
+        edition = "2021";
+        sha256 = "094z20x40qws7ca8khvjqssiajf5sy1b1cgdwqd0cl6kvlr1xkb4";
         libName = "fiat_crypto";
         authors = [
           "Fiat Crypto library authors <jgross@mit.edu>"
@@ -5067,7 +5297,7 @@ rec {
           }
           {
             name = "rustls";
-            packageId = "rustls 0.23.28";
+            packageId = "rustls 0.23.29";
             usesDefaultFeatures = false;
           }
           {
@@ -5103,7 +5333,7 @@ rec {
           }
           {
             name = "rustls";
-            packageId = "rustls 0.23.28";
+            packageId = "rustls 0.23.29";
             usesDefaultFeatures = false;
             features = [ "tls12" ];
           }
@@ -5703,6 +5933,25 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" "unicode-width" ];
       };
+      "inout" = rec {
+        crateName = "inout";
+        version = "0.1.4";
+        edition = "2021";
+        sha256 = "008xfl1jn9rxsq19phnhbimccf4p64880jmnpg59wqi07kk117w7";
+        authors = [
+          "RustCrypto Developers"
+        ];
+        dependencies = [
+          {
+            name = "generic-array";
+            packageId = "generic-array";
+          }
+        ];
+        features = {
+          "block-padding" = [ "dep:block-padding" ];
+          "std" = [ "block-padding/std" ];
+        };
+      };
       "io-uring" = rec {
         crateName = "io-uring";
         version = "0.7.8";
@@ -6002,6 +6251,32 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" "futures" "futures-executor" ];
       };
+      "kaigan" = rec {
+        crateName = "kaigan";
+        version = "0.2.6";
+        edition = "2021";
+        sha256 = "16jiml3p0zy3qa00rcp5pxd2iwa7fqc85gx3bbvg0dximvjmv89b";
+        authors = [
+          "Metaplex Developers <dev@metaplex.com>"
+        ];
+        dependencies = [
+          {
+            name = "borsh";
+            packageId = "borsh 0.10.4";
+          }
+          {
+            name = "serde";
+            packageId = "serde";
+            optional = true;
+            features = [ "derive" ];
+          }
+        ];
+        features = {
+          "anchor" = [ "dep:anchor-lang" ];
+          "serde" = [ "dep:serde" ];
+        };
+        resolvedDefaultFeatures = [ "serde" ];
+      };
       "keccak" = rec {
         crateName = "keccak";
         version = "0.1.5";
@@ -6048,32 +6323,6 @@ rec {
           "use_std" = [ "std" ];
         };
         resolvedDefaultFeatures = [ "default" "extra_traits" "std" ];
-      };
-      "libredox" = rec {
-        crateName = "libredox";
-        version = "0.1.4";
-        edition = "2021";
-        sha256 = "0f06ikfym363zrqy9llp4asgcbakz0aiq0ds0rkljdg52088100m";
-        authors = [
-          "4lDO2 <4lDO2@protonmail.com>"
-        ];
-        dependencies = [
-          {
-            name = "bitflags";
-            packageId = "bitflags";
-          }
-          {
-            name = "libc";
-            packageId = "libc";
-          }
-        ];
-        features = {
-          "default" = [ "call" "std" "redox_syscall" ];
-          "ioslice" = [ "dep:ioslice" ];
-          "mkns" = [ "ioslice" ];
-          "redox_syscall" = [ "dep:redox_syscall" ];
-        };
-        resolvedDefaultFeatures = [ "call" "std" ];
       };
       "libsecp256k1" = rec {
         crateName = "libsecp256k1";
@@ -6351,6 +6600,44 @@ rec {
         features = {
         };
         resolvedDefaultFeatures = [ "default" ];
+      };
+      "merlin" = rec {
+        crateName = "merlin";
+        version = "3.0.0";
+        edition = "2018";
+        sha256 = "0z9rh9jlpcs0i0cijbs6pcq26gl4qwz05y7zbnv7h2gwk4kqxhsq";
+        authors = [
+          "Henry de Valence <hdevalence@hdevalence.ca>"
+        ];
+        dependencies = [
+          {
+            name = "byteorder";
+            packageId = "byteorder";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "keccak";
+            packageId = "keccak";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "rand_core";
+            packageId = "rand_core 0.6.4";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "zeroize";
+            packageId = "zeroize";
+            usesDefaultFeatures = false;
+            features = [ "zeroize_derive" ];
+          }
+        ];
+        features = {
+          "debug-transcript" = [ "hex" ];
+          "default" = [ "std" ];
+          "hex" = [ "dep:hex" ];
+          "std" = [ "rand_core/std" "byteorder/std" ];
+        };
       };
       "minimal-lexical" = rec {
         crateName = "minimal-lexical";
@@ -7178,17 +7465,6 @@ rec {
           "vendored" = [ "openssl-src" ];
         };
       };
-      "option-ext" = rec {
-        crateName = "option-ext";
-        version = "0.2.0";
-        edition = "2015";
-        sha256 = "0zbf7cx8ib99frnlanpyikm1bx8qn8x602sw1n7bg6p9x94lyx04";
-        libName = "option_ext";
-        authors = [
-          "Simon Ochsenreither <simon@ochsenreither.de>"
-        ];
-
-      };
       "parking" = rec {
         crateName = "parking";
         version = "2.2.1";
@@ -7385,6 +7661,39 @@ rec {
           "Alex Crichton <alex@alexcrichton.com>"
         ];
 
+      };
+      "polyval" = rec {
+        crateName = "polyval";
+        version = "0.6.2";
+        edition = "2021";
+        sha256 = "09gs56vm36ls6pyxgh06gw2875z2x77r8b2km8q28fql0q6yc7wx";
+        authors = [
+          "RustCrypto Developers"
+        ];
+        dependencies = [
+          {
+            name = "cfg-if";
+            packageId = "cfg-if";
+          }
+          {
+            name = "cpufeatures";
+            packageId = "cpufeatures";
+            target = { target, features }: (("aarch64" == target."arch" or null) || ("x86_64" == target."arch" or null) || ("x86" == target."arch" or null));
+          }
+          {
+            name = "opaque-debug";
+            packageId = "opaque-debug";
+          }
+          {
+            name = "universal-hash";
+            packageId = "universal-hash";
+            usesDefaultFeatures = false;
+          }
+        ];
+        features = {
+          "std" = [ "universal-hash/std" ];
+          "zeroize" = [ "dep:zeroize" ];
+        };
       };
       "portable-atomic" = rec {
         crateName = "portable-atomic";
@@ -7622,7 +7931,7 @@ rec {
           }
           {
             name = "rustls";
-            packageId = "rustls 0.23.28";
+            packageId = "rustls 0.23.29";
             optional = true;
             usesDefaultFeatures = false;
             features = [ "std" ];
@@ -7737,7 +8046,7 @@ rec {
           }
           {
             name = "rustls";
-            packageId = "rustls 0.23.28";
+            packageId = "rustls 0.23.29";
             optional = true;
             usesDefaultFeatures = false;
             features = [ "std" ];
@@ -8297,39 +8606,6 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" "userspace" ];
       };
-      "redox_users" = rec {
-        crateName = "redox_users";
-        version = "0.5.0";
-        edition = "2021";
-        sha256 = "0awxx66izdw6kz97r3zxrl5ms5f6dqi5l0f58mlsvlmx8wyrsvyx";
-        authors = [
-          "Jose Narvaez <goyox86@gmail.com>"
-          "Wesley Hershberger <mggmugginsmc@gmail.com>"
-        ];
-        dependencies = [
-          {
-            name = "getrandom";
-            packageId = "getrandom 0.2.16";
-            features = [ "std" ];
-          }
-          {
-            name = "libredox";
-            packageId = "libredox";
-            usesDefaultFeatures = false;
-            features = [ "std" "call" ];
-          }
-          {
-            name = "thiserror";
-            packageId = "thiserror 2.0.12";
-          }
-        ];
-        features = {
-          "auth" = [ "rust-argon2" "zeroize" ];
-          "default" = [ "auth" ];
-          "rust-argon2" = [ "dep:rust-argon2" ];
-          "zeroize" = [ "dep:zeroize" ];
-        };
-      };
       "regex" = rec {
         crateName = "regex";
         version = "1.11.1";
@@ -8386,7 +8662,7 @@ rec {
           "unstable" = [ "pattern" ];
           "use_std" = [ "std" ];
         };
-        resolvedDefaultFeatures = [ "perf" "perf-backtrack" "perf-cache" "perf-dfa" "perf-inline" "perf-literal" "perf-onepass" "std" ];
+        resolvedDefaultFeatures = [ "default" "perf" "perf-backtrack" "perf-cache" "perf-dfa" "perf-inline" "perf-literal" "perf-onepass" "std" "unicode" "unicode-age" "unicode-bool" "unicode-case" "unicode-gencat" "unicode-perl" "unicode-script" "unicode-segment" ];
       };
       "regex-automata" = rec {
         crateName = "regex-automata";
@@ -8447,7 +8723,7 @@ rec {
           "unicode-script" = [ "regex-syntax?/unicode-script" ];
           "unicode-segment" = [ "regex-syntax?/unicode-segment" ];
         };
-        resolvedDefaultFeatures = [ "alloc" "dfa-onepass" "hybrid" "meta" "nfa-backtrack" "nfa-pikevm" "nfa-thompson" "perf-inline" "perf-literal" "perf-literal-multisubstring" "perf-literal-substring" "std" "syntax" ];
+        resolvedDefaultFeatures = [ "alloc" "dfa-onepass" "hybrid" "meta" "nfa-backtrack" "nfa-pikevm" "nfa-thompson" "perf-inline" "perf-literal" "perf-literal-multisubstring" "perf-literal-substring" "std" "syntax" "unicode" "unicode-age" "unicode-bool" "unicode-case" "unicode-gencat" "unicode-perl" "unicode-script" "unicode-segment" "unicode-word-boundary" ];
       };
       "regex-syntax" = rec {
         crateName = "regex-syntax";
@@ -8464,7 +8740,31 @@ rec {
           "default" = [ "std" "unicode" ];
           "unicode" = [ "unicode-age" "unicode-bool" "unicode-case" "unicode-gencat" "unicode-perl" "unicode-script" "unicode-segment" ];
         };
-        resolvedDefaultFeatures = [ "std" ];
+        resolvedDefaultFeatures = [ "default" "std" "unicode" "unicode-age" "unicode-bool" "unicode-case" "unicode-gencat" "unicode-perl" "unicode-script" "unicode-segment" ];
+      };
+      "registry" = rec {
+        crateName = "registry";
+        version = "0.1.0";
+        edition = "2021";
+        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./programs/registry; };type = [ "cdylib" "lib" ];
+        dependencies = [
+          {
+            name = "anchor-lang";
+            packageId = "anchor-lang";
+          }
+          {
+            name = "sha2";
+            packageId = "sha2 0.10.9";
+          }
+          {
+            name = "valence-common";
+            packageId = "valence-common";
+          }
+        ];
+        features = {
+          "cpi" = [ "no-entrypoint" ];
+        };
+        resolvedDefaultFeatures = [ "cpi" "default" "no-entrypoint" "no-idl" "no-log-ix-name" ];
       };
       "reqwest" = rec {
         crateName = "reqwest";
@@ -8572,7 +8872,7 @@ rec {
           }
           {
             name = "rustls";
-            packageId = "rustls 0.23.28";
+            packageId = "rustls 0.23.29";
             optional = true;
             usesDefaultFeatures = false;
             target = { target, features }: (!("wasm32" == target."arch" or null));
@@ -8977,11 +9277,11 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" "log" "logging" "tls12" ];
       };
-      "rustls 0.23.28" = rec {
+      "rustls 0.23.29" = rec {
         crateName = "rustls";
-        version = "0.23.28";
+        version = "0.23.29";
         edition = "2021";
-        sha256 = "0hv6sk3r60vw11in2p8phpjd132684b4wg3zac456lzl1ghy6q3i";
+        sha256 = "1lcvzvzqk8xx8jzg0x5v3mkqgwkwr7v6zdq8zw8rp6xj74h3i494";
         dependencies = [
           {
             name = "once_cell";
@@ -9002,7 +9302,7 @@ rec {
           }
           {
             name = "rustls-webpki";
-            packageId = "rustls-webpki 0.103.3";
+            packageId = "rustls-webpki 0.103.4";
             rename = "webpki";
             usesDefaultFeatures = false;
             features = [ "alloc" ];
@@ -9137,7 +9437,7 @@ rec {
           }
           {
             name = "rustls";
-            packageId = "rustls 0.23.28";
+            packageId = "rustls 0.23.29";
             usesDefaultFeatures = false;
             features = [ "std" ];
           }
@@ -9153,21 +9453,21 @@ rec {
           }
           {
             name = "rustls-webpki";
-            packageId = "rustls-webpki 0.103.3";
+            packageId = "rustls-webpki 0.103.4";
             rename = "webpki";
             usesDefaultFeatures = false;
             target = { target, features }: ((target."unix" or false) && (!("android" == target."os" or null)) && (!("apple" == target."vendor" or null)) && (!("wasm32" == target."arch" or null)));
           }
           {
             name = "rustls-webpki";
-            packageId = "rustls-webpki 0.103.3";
+            packageId = "rustls-webpki 0.103.4";
             rename = "webpki";
             usesDefaultFeatures = false;
             target = { target, features }: ("wasm32" == target."arch" or null);
           }
           {
             name = "rustls-webpki";
-            packageId = "rustls-webpki 0.103.3";
+            packageId = "rustls-webpki 0.103.4";
             rename = "webpki";
             usesDefaultFeatures = false;
             target = { target, features }: ("android" == target."os" or null);
@@ -9200,7 +9500,7 @@ rec {
         devDependencies = [
           {
             name = "rustls";
-            packageId = "rustls 0.23.28";
+            packageId = "rustls 0.23.29";
             usesDefaultFeatures = false;
             features = [ "ring" ];
           }
@@ -9251,11 +9551,11 @@ rec {
         };
         resolvedDefaultFeatures = [ "alloc" "default" "std" ];
       };
-      "rustls-webpki 0.103.3" = rec {
+      "rustls-webpki 0.103.4" = rec {
         crateName = "rustls-webpki";
-        version = "0.103.3";
+        version = "0.103.4";
         edition = "2021";
-        sha256 = "0ddl9qxx94iyichk05r7l30d9dxfd35ybffhsxpsr9pppki2z9z4";
+        sha256 = "1z4jmmgasjgk9glb160a66bshvgifa64mgfjrkqp7dy1w158h5qa";
         libName = "webpki";
         dependencies = [
           {
@@ -9279,6 +9579,7 @@ rec {
           "alloc" = [ "ring?/alloc" "pki-types/alloc" ];
           "aws-lc-rs" = [ "dep:aws-lc-rs" "aws-lc-rs/aws-lc-sys" "aws-lc-rs/prebuilt-nasm" ];
           "aws-lc-rs-fips" = [ "dep:aws-lc-rs" "aws-lc-rs/fips" ];
+          "aws-lc-rs-unstable" = [ "aws-lc-rs" "aws-lc-rs/unstable" ];
           "default" = [ "std" ];
           "ring" = [ "dep:ring" ];
           "std" = [ "alloc" "pki-types/std" ];
@@ -9762,47 +10063,6 @@ rec {
         features = {
         };
       };
-      "session_builder" = rec {
-        crateName = "session_builder";
-        version = "0.1.0";
-        edition = "2021";
-        crateBin = [
-          {
-            name = "session_builder";
-            path = "src/main.rs";
-            requiredFeatures = [ ];
-          }
-        ];
-        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./services/session_builder; };
-        dependencies = [
-          {
-            name = "anyhow";
-            packageId = "anyhow";
-          }
-          {
-            name = "sha2";
-            packageId = "sha2 0.10.9";
-          }
-          {
-            name = "shellexpand";
-            packageId = "shellexpand";
-          }
-          {
-            name = "solana-client";
-            packageId = "solana-client";
-          }
-          {
-            name = "solana-sdk";
-            packageId = "solana-sdk";
-          }
-          {
-            name = "tokio";
-            packageId = "tokio";
-            features = [ "full" ];
-          }
-        ];
-
-      };
       "sha1" = rec {
         crateName = "sha1";
         version = "0.10.6";
@@ -9962,34 +10222,34 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" "std" ];
       };
-      "shellexpand" = rec {
-        crateName = "shellexpand";
-        version = "3.1.1";
-        edition = "2018";
-        sha256 = "1fwhid2r117rbis2f6lj8mpfjf0w6lq6nqfxjha86cb3vmjxy7wb";
-        authors = [
-          "Vladimir Matveev <vmatveev@citrine.cc>"
-          "Ian Jackson <iwj@torproject.org>"
-        ];
+      "shard" = rec {
+        crateName = "shard";
+        version = "0.1.0";
+        edition = "2021";
+        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./programs/shard; };type = [ "cdylib" "lib" ];
         dependencies = [
           {
-            name = "dirs";
-            packageId = "dirs";
-            optional = true;
+            name = "anchor-lang";
+            packageId = "anchor-lang";
+          }
+          {
+            name = "registry";
+            packageId = "registry";
+            features = [ "cpi" ];
+          }
+          {
+            name = "sha2";
+            packageId = "sha2 0.10.9";
+          }
+          {
+            name = "valence-common";
+            packageId = "valence-common";
           }
         ];
         features = {
-          "bstr" = [ "dep:bstr" ];
-          "default" = [ "base-0" "tilde" ];
-          "dirs" = [ "dep:dirs" ];
-          "full" = [ "full-msrv-1-51" ];
-          "full-msrv-1-31" = [ "base-0" "tilde" ];
-          "full-msrv-1-51" = [ "full-msrv-1-31" "path" ];
-          "os_str_bytes" = [ "dep:os_str_bytes" ];
-          "path" = [ "bstr" "os_str_bytes" ];
-          "tilde" = [ "dirs" ];
+          "cpi" = [ "no-entrypoint" ];
         };
-        resolvedDefaultFeatures = [ "base-0" "default" "dirs" "tilde" ];
+        resolvedDefaultFeatures = [ "cpi" "default" "no-entrypoint" "no-idl" "no-log-ix-name" ];
       };
       "shlex" = rec {
         crateName = "shlex";
@@ -10236,11 +10496,187 @@ rec {
         };
         resolvedDefaultFeatures = [ "bincode" "serde" ];
       };
+      "solana-account-decoder" = rec {
+        crateName = "solana-account-decoder";
+        version = "2.3.4";
+        edition = "2021";
+        sha256 = "0a75w0yfcrn2ybn9gpqx1m810m83milmxs17inan5z12wgrjn8bc";
+        libName = "solana_account_decoder";
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "Inflector";
+            packageId = "Inflector";
+          }
+          {
+            name = "base64";
+            packageId = "base64 0.22.1";
+          }
+          {
+            name = "bincode";
+            packageId = "bincode";
+          }
+          {
+            name = "bs58";
+            packageId = "bs58";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "bv";
+            packageId = "bv";
+          }
+          {
+            name = "serde";
+            packageId = "serde";
+          }
+          {
+            name = "serde_derive";
+            packageId = "serde_derive";
+          }
+          {
+            name = "serde_json";
+            packageId = "serde_json";
+          }
+          {
+            name = "solana-account";
+            packageId = "solana-account";
+          }
+          {
+            name = "solana-account-decoder-client-types";
+            packageId = "solana-account-decoder-client-types";
+            features = [ "zstd" ];
+          }
+          {
+            name = "solana-address-lookup-table-interface";
+            packageId = "solana-address-lookup-table-interface";
+            features = [ "bincode" "bytemuck" ];
+          }
+          {
+            name = "solana-clock";
+            packageId = "solana-clock";
+          }
+          {
+            name = "solana-config-program-client";
+            packageId = "solana-config-program-client";
+            features = [ "serde" ];
+          }
+          {
+            name = "solana-epoch-schedule";
+            packageId = "solana-epoch-schedule";
+          }
+          {
+            name = "solana-fee-calculator";
+            packageId = "solana-fee-calculator";
+          }
+          {
+            name = "solana-instruction";
+            packageId = "solana-instruction";
+          }
+          {
+            name = "solana-loader-v3-interface";
+            packageId = "solana-loader-v3-interface";
+            features = [ "serde" ];
+          }
+          {
+            name = "solana-nonce";
+            packageId = "solana-nonce";
+            features = [ "serde" ];
+          }
+          {
+            name = "solana-program-option";
+            packageId = "solana-program-option";
+          }
+          {
+            name = "solana-program-pack";
+            packageId = "solana-program-pack";
+          }
+          {
+            name = "solana-pubkey";
+            packageId = "solana-pubkey";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "solana-rent";
+            packageId = "solana-rent";
+          }
+          {
+            name = "solana-sdk-ids";
+            packageId = "solana-sdk-ids";
+          }
+          {
+            name = "solana-slot-hashes";
+            packageId = "solana-slot-hashes";
+          }
+          {
+            name = "solana-slot-history";
+            packageId = "solana-slot-history";
+          }
+          {
+            name = "solana-stake-interface";
+            packageId = "solana-stake-interface";
+          }
+          {
+            name = "solana-sysvar";
+            packageId = "solana-sysvar";
+          }
+          {
+            name = "solana-vote-interface";
+            packageId = "solana-vote-interface";
+            features = [ "bincode" ];
+          }
+          {
+            name = "spl-generic-token";
+            packageId = "spl-generic-token";
+          }
+          {
+            name = "spl-token";
+            packageId = "spl-token";
+            features = [ "no-entrypoint" ];
+          }
+          {
+            name = "spl-token-2022";
+            packageId = "spl-token-2022";
+            features = [ "no-entrypoint" ];
+          }
+          {
+            name = "spl-token-group-interface";
+            packageId = "spl-token-group-interface";
+          }
+          {
+            name = "spl-token-metadata-interface";
+            packageId = "spl-token-metadata-interface";
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror 2.0.12";
+          }
+          {
+            name = "zstd";
+            packageId = "zstd";
+          }
+        ];
+        devDependencies = [
+          {
+            name = "solana-account";
+            packageId = "solana-account";
+            features = [ "bincode" ];
+          }
+          {
+            name = "solana-pubkey";
+            packageId = "solana-pubkey";
+            usesDefaultFeatures = false;
+            features = [ "rand" ];
+          }
+        ];
+
+      };
       "solana-account-decoder-client-types" = rec {
         crateName = "solana-account-decoder-client-types";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "0kk3jyz44ca8c7m35a6ylwvz8k27pgi5rhsq5vkgkgzamrwgnq59";
+        sha256 = "1li7mmq8irnmhvawbj2xhgjan1f7f6r0z014s468ak29jrxgg4hp";
         libName = "solana_account_decoder_client_types";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -10588,9 +11024,9 @@ rec {
       };
       "solana-client" = rec {
         crateName = "solana-client";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "096s6f91bbld4yksfhfmnw5zipzws5pp2m8mvllj70ccn70dk14r";
+        sha256 = "1ls1f90ccsva8ds3y1cxb32hgy4kn0h3jpgwx0f0hf8619bz64ss";
         libName = "solana_client";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -10973,11 +11409,58 @@ rec {
         };
         resolvedDefaultFeatures = [ "borsh" "serde" ];
       };
+      "solana-config-program-client" = rec {
+        crateName = "solana-config-program-client";
+        version = "0.0.2";
+        edition = "2021";
+        sha256 = "0pjrqghci1c99cw7wf3y7rxrvdl5yz0z1d195s9d8pqhdz1ymb2k";
+        libName = "solana_config_program_client";
+        authors = [
+          "Anza Technology Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "bincode";
+            packageId = "bincode";
+            optional = true;
+          }
+          {
+            name = "borsh";
+            packageId = "borsh 0.10.4";
+          }
+          {
+            name = "kaigan";
+            packageId = "kaigan";
+          }
+          {
+            name = "serde";
+            packageId = "serde";
+            optional = true;
+            features = [ "derive" ];
+          }
+          {
+            name = "solana-program";
+            packageId = "solana-program";
+            features = [ "borsh" ];
+          }
+        ];
+        devDependencies = [
+          {
+            name = "bincode";
+            packageId = "bincode";
+          }
+        ];
+        features = {
+          "fetch" = [ "dep:solana-client" "dep:solana-sdk" ];
+          "serde" = [ "dep:bincode" "dep:serde" "kaigan/serde" ];
+        };
+        resolvedDefaultFeatures = [ "serde" ];
+      };
       "solana-connection-cache" = rec {
         crateName = "solana-connection-cache";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "12n4gydfc8g9w1l4nsj38yshhrq0pn9v6sr7jkxac63ss7mg8mq4";
+        sha256 = "0j3lvk2rbnyvqprf3lgi4yknxq4aph207jw3y9lwl561xggxa0vs";
         libName = "solana_connection_cache";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -11094,6 +11577,46 @@ rec {
             packageId = "solana-pubkey";
             usesDefaultFeatures = false;
             features = [ "curve25519" ];
+          }
+        ];
+
+      };
+      "solana-curve25519" = rec {
+        crateName = "solana-curve25519";
+        version = "2.3.4";
+        edition = "2021";
+        sha256 = "12h2vxs9m3ypg6y8avf0p0spxni1clsh63hahpl8vjrhbw0g8r5y";
+        libName = "solana_curve25519";
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "bytemuck";
+            packageId = "bytemuck";
+          }
+          {
+            name = "bytemuck_derive";
+            packageId = "bytemuck_derive";
+          }
+          {
+            name = "curve25519-dalek";
+            packageId = "curve25519-dalek 4.2.0";
+            target = { target, features }: (!("solana" == target."os" or null));
+            features = [ "digest" "rand_core" "serde" ];
+          }
+          {
+            name = "solana-define-syscall";
+            packageId = "solana-define-syscall";
+            target = { target, features }: ("solana" == target."os" or null);
+          }
+          {
+            name = "subtle";
+            packageId = "subtle";
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror 2.0.12";
           }
         ];
 
@@ -12306,9 +12829,9 @@ rec {
       };
       "solana-measure" = rec {
         crateName = "solana-measure";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "16n2z2nmpcmcs621kai1i89yl0kxpgjia86a2gld3bh7ah47q4km";
+        sha256 = "1wqfik49vnj1x79ik00sp7nyhyg0kyb3c7n5k2cy69c7ihx06zf1";
         libName = "solana_measure";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -12411,9 +12934,9 @@ rec {
       };
       "solana-metrics" = rec {
         crateName = "solana-metrics";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "1njanfnddsn5bp6zgwyd853xv5sga1z4mxpzn9qqfgpha7zb3wbk";
+        sha256 = "1d64j361zbgfi6qxm6p00ix3bbx84chkhyjhz487h4asaki1c4yl";
         libName = "solana_metrics";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -12487,9 +13010,9 @@ rec {
       };
       "solana-net-utils" = rec {
         crateName = "solana-net-utils";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "1s4v5h9w7qz6sn3y3zqkhc14rnqdh9yxq73fx52df4wivgk3vx0l";
+        sha256 = "0hnr3msaj0ivw0asxgl86lassmvirzc092s43xxnw3nmbgr5vgxx";
         libName = "solana_net_utils";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -12737,9 +13260,9 @@ rec {
       };
       "solana-perf" = rec {
         crateName = "solana-perf";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "1l3ji0qim6sy6s1pn1zwq48c50d84mz6nbpskl4q6x3g700r8ha0";
+        sha256 = "0wp19la0dsnld7k95h66gqrdl6cl8p8lyg2dgl9gl8c8x7a5957a";
         libName = "solana_perf";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -12770,7 +13293,7 @@ rec {
           }
           {
             name = "curve25519-dalek";
-            packageId = "curve25519-dalek 4.1.3";
+            packageId = "curve25519-dalek 4.2.0";
             features = [ "digest" "rand_core" ];
           }
           {
@@ -13529,7 +14052,7 @@ rec {
           }
           {
             name = "curve25519-dalek";
-            packageId = "curve25519-dalek 4.1.3";
+            packageId = "curve25519-dalek 4.2.0";
             optional = true;
             target = { target, features }: (!("solana" == target."os" or null));
             features = [ "digest" "rand_core" ];
@@ -13617,13 +14140,13 @@ rec {
           "serde" = [ "dep:serde" "dep:serde_derive" ];
           "sha2" = [ "dep:solana-sha256-hasher" "solana-sha256-hasher/sha2" ];
         };
-        resolvedDefaultFeatures = [ "borsh" "bytemuck" "curve25519" "rand" "serde" "sha2" "std" ];
+        resolvedDefaultFeatures = [ "borsh" "bytemuck" "curve25519" "default" "rand" "serde" "sha2" "std" ];
       };
       "solana-pubsub-client" = rec {
         crateName = "solana-pubsub-client";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "1hxd6yywca2gw8h1h78ma916ymgg4s8fpxs6z5nk3dh3l3v893l9";
+        sha256 = "1l08l577giynirad5faakvf2652xdkqn4dra6x6r67yz03xnbsp8";
         libName = "solana_pubsub_client";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -13723,9 +14246,9 @@ rec {
       };
       "solana-quic-client" = rec {
         crateName = "solana-quic-client";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "09fwva2vpm7h7q7yg5qqwza2f3xzzhwvhi4llggg68ml069wwg69";
+        sha256 = "070cfmrcfhyab6vp5m6ynczdzvczq18zl0avk4gj4isix1hqhj9m";
         libName = "solana_quic_client";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -13761,7 +14284,7 @@ rec {
           }
           {
             name = "rustls";
-            packageId = "rustls 0.23.28";
+            packageId = "rustls 0.23.29";
             usesDefaultFeatures = false;
             features = [ "std" ];
           }
@@ -13853,9 +14376,9 @@ rec {
       };
       "solana-rayon-threadlimit" = rec {
         crateName = "solana-rayon-threadlimit";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "0j3f4f3q09j0dhhqkx89clnfb1gxixksvzs834x94kyh8ncnsgzh";
+        sha256 = "052dsx5gvgsrvd6994ggzr1az1ksiyqs3yc12d6sh1v2v8lb683r";
         libName = "solana_rayon_threadlimit";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -14059,9 +14582,9 @@ rec {
       };
       "solana-rpc-client" = rec {
         crateName = "solana-rpc-client";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "1zp4ax2dzqrwpc3zkf9fq9a3ci97vy2y2m1zvsavzr7mhxzbm5sc";
+        sha256 = "1fj9nnczij4yp6g7hs2gzm00sp5ayz6lz8z3ld178nqms9a8vr73";
         libName = "solana_rpc_client";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -14228,9 +14751,9 @@ rec {
       };
       "solana-rpc-client-api" = rec {
         crateName = "solana-rpc-client-api";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "017liazpgi6kbwfvv3ivsn8bpgmajl7c2avzcv1pvg5ds7afaj2h";
+        sha256 = "0z7kns1n5xzd8ibfzpr4395ilqx0pbm1lijik7ywbvs2fddqa447";
         libName = "solana_rpc_client_api";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -14299,9 +14822,9 @@ rec {
       };
       "solana-rpc-client-nonce-utils" = rec {
         crateName = "solana-rpc-client-nonce-utils";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "1h502qlmgmmx60k5g8g62jy9k4qh6k9p9dv1plv55bws1xmslv6j";
+        sha256 = "0wa6h8l0rvw29s28k2h17b9q7lf1239yzgsf0sldrmh40imqnbsq";
         libName = "solana_rpc_client_nonce_utils";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -14355,9 +14878,9 @@ rec {
       };
       "solana-rpc-client-types" = rec {
         crateName = "solana-rpc-client-types";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "1d6a09g55xaihgajbhb3k5x0x0dlw0ibly53hpbbckzni5ya5r0g";
+        sha256 = "0p4lri0xw571as0z5fwbnncakcrk7apcx57cr1p0kfy2chqgvs9z";
         libName = "solana_rpc_client_types";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -15026,6 +15549,18 @@ rec {
           "openssl-vendored" = [ "openssl/vendored" ];
         };
       };
+      "solana-security-txt" = rec {
+        crateName = "solana-security-txt";
+        version = "1.1.1";
+        edition = "2021";
+        sha256 = "10sifx6mrpcr6hs32vp810bxqc36xcx5qvb8gdxrn7yvgqxs92j6";
+        libName = "solana_security_txt";
+        features = {
+          "parser" = [ "thiserror" "twoway" ];
+          "thiserror" = [ "dep:thiserror" ];
+          "twoway" = [ "dep:twoway" ];
+        };
+      };
       "solana-seed-derivable" = rec {
         crateName = "solana-seed-derivable";
         version = "2.2.1";
@@ -15501,9 +16036,9 @@ rec {
       };
       "solana-streamer" = rec {
         crateName = "solana-streamer";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "03llaqg4kf8ivm7n52bfhmpwnipsa6i9gamvry6rdb8qvp8igjs1";
+        sha256 = "1zfzz09v82c42bhcd5x9hlfl6k17f2gisiab2lvhb7x9s3gk6ywd";
         libName = "solana_streamer";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -15584,7 +16119,7 @@ rec {
           }
           {
             name = "rustls";
-            packageId = "rustls 0.23.28";
+            packageId = "rustls 0.23.29";
             usesDefaultFeatures = false;
             features = [ "std" ];
           }
@@ -15684,9 +16219,9 @@ rec {
       };
       "solana-svm-feature-set" = rec {
         crateName = "solana-svm-feature-set";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "11y7r6bnsgbd7zz4x78jxi75kn7lbvz6bw9xl2rr5igvifc70yf5";
+        sha256 = "11kz8p6k9sx4rxmx9caydkvdghcjgdjbbyzr73sfqa968iirwpf7";
         libName = "solana_svm_feature_set";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -15982,9 +16517,9 @@ rec {
       };
       "solana-thin-client" = rec {
         crateName = "solana-thin-client";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "14kqlwmxxbkqgbk940xxk9847k61g3f5v82dnv9layx9mfkxb36a";
+        sha256 = "0idmbyhivj888qcrawj3nbfcdj4rl764y0sp20g4kfa190kicyar";
         libName = "solana_thin_client";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -16095,9 +16630,9 @@ rec {
       };
       "solana-tls-utils" = rec {
         crateName = "solana-tls-utils";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "15vpmvgh9i9lg9aay6qbivjq8zawbzbb7bpw9nwmzzpklvxck4n7";
+        sha256 = "0bscc6d46f8qlwr9kpimck2fz2ak87116af8z02vxfq6rbp7l6r6";
         libName = "solana_tls_utils";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -16105,7 +16640,7 @@ rec {
         dependencies = [
           {
             name = "rustls";
-            packageId = "rustls 0.23.28";
+            packageId = "rustls 0.23.29";
             usesDefaultFeatures = false;
             features = [ "std" "ring" ];
           }
@@ -16131,9 +16666,9 @@ rec {
       };
       "solana-tpu-client" = rec {
         crateName = "solana-tpu-client";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "1nah70zfghg1cdfm7swdxihwhxrn55ygsmrhsb4n5bvndbasc6np";
+        sha256 = "0vx7l2n7xs3p5np2zaywb7mx2626lgyzrwgvz7wp1x9ypf8hddy6";
         libName = "solana_tpu_client";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -16186,8 +16721,8 @@ rec {
             usesDefaultFeatures = false;
           }
           {
-            name = "solana-epoch-info";
-            packageId = "solana-epoch-info";
+            name = "solana-epoch-schedule";
+            packageId = "solana-epoch-schedule";
           }
           {
             name = "solana-measure";
@@ -16400,9 +16935,9 @@ rec {
       };
       "solana-transaction-context" = rec {
         crateName = "solana-transaction-context";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "1mi2zmp2h4q9kka65xm3j48vfsnwfy4nqzw4llrrmfs7r0ki5w7p";
+        sha256 = "02zcvvszg7fm698a5x2zix72w33siis371q644dnnai07yjhac0a";
         libName = "solana_transaction_context";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -16500,9 +17035,9 @@ rec {
       };
       "solana-transaction-metrics-tracker" = rec {
         crateName = "solana-transaction-metrics-tracker";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "0fvdii5mn75pqv3h8av8rix9mpnjsqwg5a6d0wfq3ccgbv5xa12v";
+        sha256 = "1djh89sza6bhi72z0xxpc5an9vsrz6i976qjs4iblkdnvxxjvdd0";
         libName = "solana_transaction_metrics_tracker";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -16558,9 +17093,9 @@ rec {
       };
       "solana-transaction-status-client-types" = rec {
         crateName = "solana-transaction-status-client-types";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "164jqxbwi4xypm94yd70kspp9nyasj2m5xy89kzfm7ry5qivp4yl";
+        sha256 = "09frbclbrylr7szw5lc1ilhagq2gw00a5ahlf6323vyv5cy6lygl";
         libName = "solana_transaction_status_client_types";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -16637,9 +17172,9 @@ rec {
       };
       "solana-udp-client" = rec {
         crateName = "solana-udp-client";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "0i67w3fk50srapc5dym5gmvg1j1nfv5kxz9m6v7nsri9skv0ww93";
+        sha256 = "05hqxfv09y55f2n9pi77kr6fq7iz6l7fww13cgfjp5yl3g6xr3zv";
         libName = "solana_udp_client";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -16702,9 +17237,9 @@ rec {
       };
       "solana-version" = rec {
         crateName = "solana-version";
-        version = "2.3.3";
+        version = "2.3.4";
         edition = "2021";
-        sha256 = "1rcp841gzp40hpbjhqs8vv9adzsxyanjabkns0ld8l0sxha1w44v";
+        sha256 = "0ssha7ryr4r46qnhkqdyi69a3mg65cavd43ikpvghmx34416hjpr";
         libName = "solana_version";
         authors = [
           "Anza Maintainers <maintainers@anza.xyz>"
@@ -16852,6 +17387,164 @@ rec {
         };
         resolvedDefaultFeatures = [ "bincode" "serde" ];
       };
+      "solana-zk-sdk" = rec {
+        crateName = "solana-zk-sdk";
+        version = "2.3.4";
+        edition = "2021";
+        sha256 = "069i8s9ssxhsy9yjqyjws20m2w5wddxwbvfdsms2455r13lwn4vw";
+        libName = "solana_zk_sdk";type = [ "cdylib" "rlib" ];
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "aes-gcm-siv";
+            packageId = "aes-gcm-siv";
+            target = { target, features }: (!("solana" == target."os" or null));
+          }
+          {
+            name = "base64";
+            packageId = "base64 0.22.1";
+          }
+          {
+            name = "bincode";
+            packageId = "bincode";
+            target = { target, features }: (!("solana" == target."os" or null));
+          }
+          {
+            name = "bytemuck";
+            packageId = "bytemuck";
+          }
+          {
+            name = "bytemuck_derive";
+            packageId = "bytemuck_derive";
+          }
+          {
+            name = "curve25519-dalek";
+            packageId = "curve25519-dalek 4.2.0";
+            target = { target, features }: (!("solana" == target."os" or null));
+            features = [ "digest" "rand_core" "serde" ];
+          }
+          {
+            name = "itertools";
+            packageId = "itertools 0.12.1";
+            target = { target, features }: (!("solana" == target."os" or null));
+          }
+          {
+            name = "js-sys";
+            packageId = "js-sys";
+            target = { target, features }: ("wasm32" == target."arch" or null);
+          }
+          {
+            name = "merlin";
+            packageId = "merlin";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "num-derive";
+            packageId = "num-derive";
+          }
+          {
+            name = "num-traits";
+            packageId = "num-traits";
+          }
+          {
+            name = "rand";
+            packageId = "rand 0.8.5";
+            target = { target, features }: (!("solana" == target."os" or null));
+          }
+          {
+            name = "serde";
+            packageId = "serde";
+            target = { target, features }: (!("solana" == target."os" or null));
+          }
+          {
+            name = "serde_derive";
+            packageId = "serde_derive";
+            target = { target, features }: (!("solana" == target."os" or null));
+          }
+          {
+            name = "serde_json";
+            packageId = "serde_json";
+            target = { target, features }: (!("solana" == target."os" or null));
+          }
+          {
+            name = "sha3";
+            packageId = "sha3";
+            target = { target, features }: (!("solana" == target."os" or null));
+          }
+          {
+            name = "solana-derivation-path";
+            packageId = "solana-derivation-path";
+            target = { target, features }: (!("solana" == target."os" or null));
+          }
+          {
+            name = "solana-instruction";
+            packageId = "solana-instruction";
+            features = [ "std" ];
+          }
+          {
+            name = "solana-pubkey";
+            packageId = "solana-pubkey";
+            usesDefaultFeatures = false;
+            features = [ "bytemuck" ];
+          }
+          {
+            name = "solana-pubkey";
+            packageId = "solana-pubkey";
+            usesDefaultFeatures = false;
+            target = { target, features }: (!("wasm32" == target."arch" or null));
+            features = [ "bytemuck" ];
+          }
+          {
+            name = "solana-sdk-ids";
+            packageId = "solana-sdk-ids";
+          }
+          {
+            name = "solana-seed-derivable";
+            packageId = "solana-seed-derivable";
+            target = { target, features }: (!("solana" == target."os" or null));
+          }
+          {
+            name = "solana-seed-phrase";
+            packageId = "solana-seed-phrase";
+            target = { target, features }: (!("solana" == target."os" or null));
+          }
+          {
+            name = "solana-signature";
+            packageId = "solana-signature";
+            usesDefaultFeatures = false;
+            target = { target, features }: (!("solana" == target."os" or null));
+          }
+          {
+            name = "solana-signer";
+            packageId = "solana-signer";
+            target = { target, features }: (!("solana" == target."os" or null));
+          }
+          {
+            name = "subtle";
+            packageId = "subtle";
+            target = { target, features }: (!("solana" == target."os" or null));
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror 2.0.12";
+          }
+          {
+            name = "wasm-bindgen";
+            packageId = "wasm-bindgen";
+            target = { target, features }: ("wasm32" == target."arch" or null);
+          }
+          {
+            name = "zeroize";
+            packageId = "zeroize";
+            usesDefaultFeatures = false;
+            target = { target, features }: (!("solana" == target."os" or null));
+            features = [ "zeroize_derive" ];
+          }
+        ];
+
+      };
       "spinning_top" = rec {
         crateName = "spinning_top";
         version = "0.3.0";
@@ -16870,6 +17563,178 @@ rec {
           "arc_lock" = [ "lock_api/arc_lock" ];
           "owning_ref" = [ "lock_api/owning_ref" ];
         };
+      };
+      "spl-discriminator" = rec {
+        crateName = "spl-discriminator";
+        version = "0.4.1";
+        edition = "2021";
+        sha256 = "1czlnhffa6zcsm94zxalc2ah06fk6571c63py5h1d8sl6ni8sfd7";
+        libName = "spl_discriminator";type = [ "cdylib" "lib" ];
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "bytemuck";
+            packageId = "bytemuck";
+            features = [ "derive" ];
+          }
+          {
+            name = "solana-program-error";
+            packageId = "solana-program-error";
+          }
+          {
+            name = "solana-sha256-hasher";
+            packageId = "solana-sha256-hasher";
+          }
+          {
+            name = "spl-discriminator-derive";
+            packageId = "spl-discriminator-derive";
+          }
+        ];
+        features = {
+          "borsh" = [ "dep:borsh" ];
+        };
+      };
+      "spl-discriminator-derive" = rec {
+        crateName = "spl-discriminator-derive";
+        version = "0.2.0";
+        edition = "2021";
+        sha256 = "0l67xmjji7g5gpl81d288k044mf7s9208bvi3jqcz796ls743s6r";
+        procMacro = true;
+        libName = "spl_discriminator_derive";
+        authors = [
+          "Solana Labs Maintainers <maintainers@solanalabs.com>"
+        ];
+        dependencies = [
+          {
+            name = "quote";
+            packageId = "quote";
+          }
+          {
+            name = "spl-discriminator-syn";
+            packageId = "spl-discriminator-syn";
+          }
+          {
+            name = "syn";
+            packageId = "syn 2.0.104";
+            features = [ "full" ];
+          }
+        ];
+
+      };
+      "spl-discriminator-syn" = rec {
+        crateName = "spl-discriminator-syn";
+        version = "0.2.0";
+        edition = "2021";
+        sha256 = "1fb9ggz816lh7cvnszh3bqsrdyzay8h9fc6arb3ymabw7dcha7wc";
+        libName = "spl_discriminator_syn";
+        authors = [
+          "Solana Labs Maintainers <maintainers@solanalabs.com>"
+        ];
+        dependencies = [
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2";
+          }
+          {
+            name = "quote";
+            packageId = "quote";
+          }
+          {
+            name = "sha2";
+            packageId = "sha2 0.10.9";
+          }
+          {
+            name = "syn";
+            packageId = "syn 2.0.104";
+            features = [ "full" ];
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror 1.0.69";
+          }
+        ];
+
+      };
+      "spl-elgamal-registry" = rec {
+        crateName = "spl-elgamal-registry";
+        version = "0.2.0";
+        edition = "2021";
+        sha256 = "0fl3lsamc3dkq9iflbg05ffrqkr149hajsk1jpjk2hnd17nzxvb5";
+        libName = "spl_elgamal_registry";type = [ "cdylib" "lib" ];
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "bytemuck";
+            packageId = "bytemuck";
+            features = [ "derive" ];
+          }
+          {
+            name = "solana-account-info";
+            packageId = "solana-account-info";
+          }
+          {
+            name = "solana-cpi";
+            packageId = "solana-cpi";
+          }
+          {
+            name = "solana-instruction";
+            packageId = "solana-instruction";
+          }
+          {
+            name = "solana-msg";
+            packageId = "solana-msg";
+          }
+          {
+            name = "solana-program-entrypoint";
+            packageId = "solana-program-entrypoint";
+          }
+          {
+            name = "solana-program-error";
+            packageId = "solana-program-error";
+          }
+          {
+            name = "solana-pubkey";
+            packageId = "solana-pubkey";
+            features = [ "curve25519" ];
+          }
+          {
+            name = "solana-rent";
+            packageId = "solana-rent";
+          }
+          {
+            name = "solana-sdk-ids";
+            packageId = "solana-sdk-ids";
+          }
+          {
+            name = "solana-system-interface";
+            packageId = "solana-system-interface";
+            features = [ "bincode" ];
+          }
+          {
+            name = "solana-sysvar";
+            packageId = "solana-sysvar";
+            features = [ "bincode" ];
+          }
+          {
+            name = "solana-zk-sdk";
+            packageId = "solana-zk-sdk";
+          }
+          {
+            name = "spl-pod";
+            packageId = "spl-pod";
+          }
+          {
+            name = "spl-token-confidential-transfer-proof-extraction";
+            packageId = "spl-token-confidential-transfer-proof-extraction";
+          }
+        ];
+        features = {
+        };
+        resolvedDefaultFeatures = [ "no-entrypoint" ];
       };
       "spl-generic-token" = rec {
         crateName = "spl-generic-token";
@@ -16893,6 +17758,902 @@ rec {
           }
         ];
 
+      };
+      "spl-memo" = rec {
+        crateName = "spl-memo";
+        version = "6.0.0";
+        edition = "2021";
+        sha256 = "1jzpz66c1ljb796yfj818bq2kczbvbibi0zbxxk37qvl15y682cz";
+        libName = "spl_memo";type = [ "cdylib" "lib" ];
+        authors = [
+          "Solana Labs Maintainers <maintainers@solanalabs.com>"
+        ];
+        dependencies = [
+          {
+            name = "solana-account-info";
+            packageId = "solana-account-info";
+          }
+          {
+            name = "solana-instruction";
+            packageId = "solana-instruction";
+          }
+          {
+            name = "solana-msg";
+            packageId = "solana-msg";
+          }
+          {
+            name = "solana-program-entrypoint";
+            packageId = "solana-program-entrypoint";
+          }
+          {
+            name = "solana-program-error";
+            packageId = "solana-program-error";
+          }
+          {
+            name = "solana-pubkey";
+            packageId = "solana-pubkey";
+          }
+        ];
+        features = {
+        };
+        resolvedDefaultFeatures = [ "no-entrypoint" ];
+      };
+      "spl-pod" = rec {
+        crateName = "spl-pod";
+        version = "0.5.1";
+        edition = "2021";
+        sha256 = "16bpw7xjmrv9rcw4x4zf2zdkzvccbfkrrflm995i0ydphspsz56r";
+        libName = "spl_pod";type = [ "cdylib" "lib" ];
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "borsh";
+            packageId = "borsh 1.5.7";
+            optional = true;
+            features = [ "derive" "unstable__schema" ];
+          }
+          {
+            name = "bytemuck";
+            packageId = "bytemuck";
+          }
+          {
+            name = "bytemuck_derive";
+            packageId = "bytemuck_derive";
+          }
+          {
+            name = "num-derive";
+            packageId = "num-derive";
+          }
+          {
+            name = "num-traits";
+            packageId = "num-traits";
+          }
+          {
+            name = "solana-decode-error";
+            packageId = "solana-decode-error";
+          }
+          {
+            name = "solana-msg";
+            packageId = "solana-msg";
+          }
+          {
+            name = "solana-program-error";
+            packageId = "solana-program-error";
+          }
+          {
+            name = "solana-program-option";
+            packageId = "solana-program-option";
+          }
+          {
+            name = "solana-pubkey";
+            packageId = "solana-pubkey";
+          }
+          {
+            name = "solana-zk-sdk";
+            packageId = "solana-zk-sdk";
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror 2.0.12";
+          }
+        ];
+        features = {
+          "borsh" = [ "dep:borsh" "solana-pubkey/borsh" ];
+          "serde-traits" = [ "dep:serde" ];
+        };
+        resolvedDefaultFeatures = [ "borsh" ];
+      };
+      "spl-program-error" = rec {
+        crateName = "spl-program-error";
+        version = "0.7.0";
+        edition = "2021";
+        sha256 = "1il8hq2iyjysflrwczjaqscbfbpg3w3ny455bavp0c2m8a5vrplw";
+        libName = "spl_program_error";type = [ "cdylib" "lib" ];
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "num-derive";
+            packageId = "num-derive";
+          }
+          {
+            name = "num-traits";
+            packageId = "num-traits";
+          }
+          {
+            name = "solana-decode-error";
+            packageId = "solana-decode-error";
+          }
+          {
+            name = "solana-msg";
+            packageId = "solana-msg";
+          }
+          {
+            name = "solana-program-error";
+            packageId = "solana-program-error";
+          }
+          {
+            name = "spl-program-error-derive";
+            packageId = "spl-program-error-derive";
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror 2.0.12";
+          }
+        ];
+
+      };
+      "spl-program-error-derive" = rec {
+        crateName = "spl-program-error-derive";
+        version = "0.5.0";
+        edition = "2021";
+        sha256 = "1l2jxnckhngppc3pc7gny080nbq7x105aiwkhpbi0sf6b7i3j99a";
+        procMacro = true;
+        libName = "spl_program_error_derive";
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2";
+          }
+          {
+            name = "quote";
+            packageId = "quote";
+          }
+          {
+            name = "sha2";
+            packageId = "sha2 0.10.9";
+          }
+          {
+            name = "syn";
+            packageId = "syn 2.0.104";
+            features = [ "full" ];
+          }
+        ];
+
+      };
+      "spl-tlv-account-resolution" = rec {
+        crateName = "spl-tlv-account-resolution";
+        version = "0.10.0";
+        edition = "2021";
+        sha256 = "1mwqp4idvqfpyys8577r8mf25pl2z7fcnqqhb9fp322n45hyj20l";
+        libName = "spl_tlv_account_resolution";type = [ "cdylib" "lib" ];
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "bytemuck";
+            packageId = "bytemuck";
+            features = [ "derive" ];
+          }
+          {
+            name = "num-derive";
+            packageId = "num-derive";
+          }
+          {
+            name = "num-traits";
+            packageId = "num-traits";
+          }
+          {
+            name = "solana-account-info";
+            packageId = "solana-account-info";
+          }
+          {
+            name = "solana-decode-error";
+            packageId = "solana-decode-error";
+          }
+          {
+            name = "solana-instruction";
+            packageId = "solana-instruction";
+            features = [ "std" ];
+          }
+          {
+            name = "solana-msg";
+            packageId = "solana-msg";
+          }
+          {
+            name = "solana-program-error";
+            packageId = "solana-program-error";
+          }
+          {
+            name = "solana-pubkey";
+            packageId = "solana-pubkey";
+            features = [ "curve25519" ];
+          }
+          {
+            name = "spl-discriminator";
+            packageId = "spl-discriminator";
+          }
+          {
+            name = "spl-pod";
+            packageId = "spl-pod";
+          }
+          {
+            name = "spl-program-error";
+            packageId = "spl-program-error";
+          }
+          {
+            name = "spl-type-length-value";
+            packageId = "spl-type-length-value";
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror 2.0.12";
+          }
+        ];
+        features = {
+          "serde-traits" = [ "dep:serde" ];
+        };
+      };
+      "spl-token" = rec {
+        crateName = "spl-token";
+        version = "8.0.0";
+        edition = "2021";
+        sha256 = "1nj2yaszml77r6fpkmncx43h8y5l265hbbhxz4250w1cm336fc05";
+        libName = "spl_token";type = [ "cdylib" "lib" ];
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "arrayref";
+            packageId = "arrayref";
+          }
+          {
+            name = "bytemuck";
+            packageId = "bytemuck";
+          }
+          {
+            name = "num-derive";
+            packageId = "num-derive";
+          }
+          {
+            name = "num-traits";
+            packageId = "num-traits";
+          }
+          {
+            name = "num_enum";
+            packageId = "num_enum";
+          }
+          {
+            name = "solana-account-info";
+            packageId = "solana-account-info";
+          }
+          {
+            name = "solana-cpi";
+            packageId = "solana-cpi";
+          }
+          {
+            name = "solana-decode-error";
+            packageId = "solana-decode-error";
+          }
+          {
+            name = "solana-instruction";
+            packageId = "solana-instruction";
+          }
+          {
+            name = "solana-msg";
+            packageId = "solana-msg";
+          }
+          {
+            name = "solana-program-entrypoint";
+            packageId = "solana-program-entrypoint";
+          }
+          {
+            name = "solana-program-error";
+            packageId = "solana-program-error";
+          }
+          {
+            name = "solana-program-memory";
+            packageId = "solana-program-memory";
+          }
+          {
+            name = "solana-program-option";
+            packageId = "solana-program-option";
+          }
+          {
+            name = "solana-program-pack";
+            packageId = "solana-program-pack";
+          }
+          {
+            name = "solana-pubkey";
+            packageId = "solana-pubkey";
+            features = [ "bytemuck" ];
+          }
+          {
+            name = "solana-rent";
+            packageId = "solana-rent";
+          }
+          {
+            name = "solana-sdk-ids";
+            packageId = "solana-sdk-ids";
+          }
+          {
+            name = "solana-sysvar";
+            packageId = "solana-sysvar";
+            features = [ "bincode" ];
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror 2.0.12";
+          }
+        ];
+        features = {
+        };
+        resolvedDefaultFeatures = [ "no-entrypoint" ];
+      };
+      "spl-token-2022" = rec {
+        crateName = "spl-token-2022";
+        version = "8.0.1";
+        edition = "2021";
+        sha256 = "1rbkb6xfzgnnpy04iq0ynzs48ds3bz594gkrbvjsxswy0yxxzw1i";
+        libName = "spl_token_2022";type = [ "cdylib" "lib" ];
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "arrayref";
+            packageId = "arrayref";
+          }
+          {
+            name = "bytemuck";
+            packageId = "bytemuck";
+            features = [ "derive" ];
+          }
+          {
+            name = "num-derive";
+            packageId = "num-derive";
+          }
+          {
+            name = "num-traits";
+            packageId = "num-traits";
+          }
+          {
+            name = "num_enum";
+            packageId = "num_enum";
+          }
+          {
+            name = "solana-account-info";
+            packageId = "solana-account-info";
+          }
+          {
+            name = "solana-clock";
+            packageId = "solana-clock";
+          }
+          {
+            name = "solana-cpi";
+            packageId = "solana-cpi";
+          }
+          {
+            name = "solana-decode-error";
+            packageId = "solana-decode-error";
+          }
+          {
+            name = "solana-instruction";
+            packageId = "solana-instruction";
+          }
+          {
+            name = "solana-msg";
+            packageId = "solana-msg";
+          }
+          {
+            name = "solana-native-token";
+            packageId = "solana-native-token";
+          }
+          {
+            name = "solana-program-entrypoint";
+            packageId = "solana-program-entrypoint";
+          }
+          {
+            name = "solana-program-error";
+            packageId = "solana-program-error";
+          }
+          {
+            name = "solana-program-memory";
+            packageId = "solana-program-memory";
+          }
+          {
+            name = "solana-program-option";
+            packageId = "solana-program-option";
+          }
+          {
+            name = "solana-program-pack";
+            packageId = "solana-program-pack";
+          }
+          {
+            name = "solana-pubkey";
+            packageId = "solana-pubkey";
+          }
+          {
+            name = "solana-rent";
+            packageId = "solana-rent";
+          }
+          {
+            name = "solana-sdk-ids";
+            packageId = "solana-sdk-ids";
+          }
+          {
+            name = "solana-security-txt";
+            packageId = "solana-security-txt";
+          }
+          {
+            name = "solana-system-interface";
+            packageId = "solana-system-interface";
+          }
+          {
+            name = "solana-sysvar";
+            packageId = "solana-sysvar";
+          }
+          {
+            name = "solana-zk-sdk";
+            packageId = "solana-zk-sdk";
+          }
+          {
+            name = "spl-elgamal-registry";
+            packageId = "spl-elgamal-registry";
+            features = [ "no-entrypoint" ];
+          }
+          {
+            name = "spl-memo";
+            packageId = "spl-memo";
+            features = [ "no-entrypoint" ];
+          }
+          {
+            name = "spl-pod";
+            packageId = "spl-pod";
+          }
+          {
+            name = "spl-token";
+            packageId = "spl-token";
+            features = [ "no-entrypoint" ];
+          }
+          {
+            name = "spl-token-confidential-transfer-ciphertext-arithmetic";
+            packageId = "spl-token-confidential-transfer-ciphertext-arithmetic";
+          }
+          {
+            name = "spl-token-confidential-transfer-proof-extraction";
+            packageId = "spl-token-confidential-transfer-proof-extraction";
+          }
+          {
+            name = "spl-token-confidential-transfer-proof-generation";
+            packageId = "spl-token-confidential-transfer-proof-generation";
+            target = { target, features }: (!("solana" == target."os" or null));
+          }
+          {
+            name = "spl-token-group-interface";
+            packageId = "spl-token-group-interface";
+          }
+          {
+            name = "spl-token-metadata-interface";
+            packageId = "spl-token-metadata-interface";
+          }
+          {
+            name = "spl-transfer-hook-interface";
+            packageId = "spl-transfer-hook-interface";
+          }
+          {
+            name = "spl-type-length-value";
+            packageId = "spl-type-length-value";
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror 2.0.12";
+          }
+        ];
+        features = {
+          "default" = [ "zk-ops" ];
+          "serde-traits" = [ "dep:serde" "dep:serde_with" "dep:base64" "spl-pod/serde-traits" ];
+        };
+        resolvedDefaultFeatures = [ "default" "no-entrypoint" "zk-ops" ];
+      };
+      "spl-token-confidential-transfer-ciphertext-arithmetic" = rec {
+        crateName = "spl-token-confidential-transfer-ciphertext-arithmetic";
+        version = "0.3.0";
+        edition = "2021";
+        sha256 = "1i4rn8jjhfjpk3v9ivcrm8vgjbjs3prf0h6jmiwsmvdmyzx21awl";
+        libName = "spl_token_confidential_transfer_ciphertext_arithmetic";
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "base64";
+            packageId = "base64 0.22.1";
+          }
+          {
+            name = "bytemuck";
+            packageId = "bytemuck";
+          }
+          {
+            name = "solana-curve25519";
+            packageId = "solana-curve25519";
+          }
+          {
+            name = "solana-zk-sdk";
+            packageId = "solana-zk-sdk";
+          }
+        ];
+
+      };
+      "spl-token-confidential-transfer-proof-extraction" = rec {
+        crateName = "spl-token-confidential-transfer-proof-extraction";
+        version = "0.3.0";
+        edition = "2021";
+        sha256 = "1mkvpc7bs3c43wz12x0hr354wh0ahpcbx94vzax1fk7h1y32j9py";
+        libName = "spl_token_confidential_transfer_proof_extraction";
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "bytemuck";
+            packageId = "bytemuck";
+          }
+          {
+            name = "solana-account-info";
+            packageId = "solana-account-info";
+          }
+          {
+            name = "solana-curve25519";
+            packageId = "solana-curve25519";
+          }
+          {
+            name = "solana-instruction";
+            packageId = "solana-instruction";
+          }
+          {
+            name = "solana-instructions-sysvar";
+            packageId = "solana-instructions-sysvar";
+          }
+          {
+            name = "solana-msg";
+            packageId = "solana-msg";
+          }
+          {
+            name = "solana-program-error";
+            packageId = "solana-program-error";
+          }
+          {
+            name = "solana-pubkey";
+            packageId = "solana-pubkey";
+          }
+          {
+            name = "solana-sdk-ids";
+            packageId = "solana-sdk-ids";
+          }
+          {
+            name = "solana-zk-sdk";
+            packageId = "solana-zk-sdk";
+          }
+          {
+            name = "spl-pod";
+            packageId = "spl-pod";
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror 2.0.12";
+          }
+        ];
+
+      };
+      "spl-token-confidential-transfer-proof-generation" = rec {
+        crateName = "spl-token-confidential-transfer-proof-generation";
+        version = "0.4.0";
+        edition = "2021";
+        sha256 = "1vzkrsqil7h2j7gy97jhdas0df4qlx3dj0girrsd9bnl81414nxf";
+        libName = "spl_token_confidential_transfer_proof_generation";
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "curve25519-dalek";
+            packageId = "curve25519-dalek 4.2.0";
+          }
+          {
+            name = "solana-zk-sdk";
+            packageId = "solana-zk-sdk";
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror 2.0.12";
+          }
+        ];
+
+      };
+      "spl-token-group-interface" = rec {
+        crateName = "spl-token-group-interface";
+        version = "0.6.0";
+        edition = "2021";
+        sha256 = "0aaivcld27wdghk2vm3kcm8jb36s4bfbfib0436yfp7qfv6v95sm";
+        libName = "spl_token_group_interface";type = [ "cdylib" "lib" ];
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "bytemuck";
+            packageId = "bytemuck";
+          }
+          {
+            name = "num-derive";
+            packageId = "num-derive";
+          }
+          {
+            name = "num-traits";
+            packageId = "num-traits";
+          }
+          {
+            name = "solana-decode-error";
+            packageId = "solana-decode-error";
+          }
+          {
+            name = "solana-instruction";
+            packageId = "solana-instruction";
+          }
+          {
+            name = "solana-msg";
+            packageId = "solana-msg";
+          }
+          {
+            name = "solana-program-error";
+            packageId = "solana-program-error";
+          }
+          {
+            name = "solana-pubkey";
+            packageId = "solana-pubkey";
+          }
+          {
+            name = "spl-discriminator";
+            packageId = "spl-discriminator";
+          }
+          {
+            name = "spl-pod";
+            packageId = "spl-pod";
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror 2.0.12";
+          }
+        ];
+
+      };
+      "spl-token-metadata-interface" = rec {
+        crateName = "spl-token-metadata-interface";
+        version = "0.7.0";
+        edition = "2021";
+        sha256 = "1vhnvbh5i6c3sd21m9sws5hbzgmiskaiyjs646k1636yy036wk9h";
+        libName = "spl_token_metadata_interface";
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "borsh";
+            packageId = "borsh 1.5.7";
+          }
+          {
+            name = "num-derive";
+            packageId = "num-derive";
+          }
+          {
+            name = "num-traits";
+            packageId = "num-traits";
+          }
+          {
+            name = "solana-borsh";
+            packageId = "solana-borsh";
+          }
+          {
+            name = "solana-decode-error";
+            packageId = "solana-decode-error";
+          }
+          {
+            name = "solana-instruction";
+            packageId = "solana-instruction";
+          }
+          {
+            name = "solana-msg";
+            packageId = "solana-msg";
+          }
+          {
+            name = "solana-program-error";
+            packageId = "solana-program-error";
+            features = [ "borsh" ];
+          }
+          {
+            name = "solana-pubkey";
+            packageId = "solana-pubkey";
+          }
+          {
+            name = "spl-discriminator";
+            packageId = "spl-discriminator";
+          }
+          {
+            name = "spl-pod";
+            packageId = "spl-pod";
+            features = [ "borsh" ];
+          }
+          {
+            name = "spl-type-length-value";
+            packageId = "spl-type-length-value";
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror 2.0.12";
+          }
+        ];
+        features = {
+          "serde-traits" = [ "dep:serde" "spl-pod/serde-traits" ];
+        };
+      };
+      "spl-transfer-hook-interface" = rec {
+        crateName = "spl-transfer-hook-interface";
+        version = "0.10.0";
+        edition = "2021";
+        sha256 = "1g9kj611dg71rclp108lds76rfsfjjnasjwcvqxsdaxn96w0bsd7";
+        libName = "spl_transfer_hook_interface";type = [ "cdylib" "lib" ];
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "arrayref";
+            packageId = "arrayref";
+          }
+          {
+            name = "bytemuck";
+            packageId = "bytemuck";
+            features = [ "derive" ];
+          }
+          {
+            name = "num-derive";
+            packageId = "num-derive";
+          }
+          {
+            name = "num-traits";
+            packageId = "num-traits";
+          }
+          {
+            name = "solana-account-info";
+            packageId = "solana-account-info";
+          }
+          {
+            name = "solana-cpi";
+            packageId = "solana-cpi";
+          }
+          {
+            name = "solana-decode-error";
+            packageId = "solana-decode-error";
+          }
+          {
+            name = "solana-instruction";
+            packageId = "solana-instruction";
+            features = [ "std" ];
+          }
+          {
+            name = "solana-msg";
+            packageId = "solana-msg";
+          }
+          {
+            name = "solana-program-error";
+            packageId = "solana-program-error";
+          }
+          {
+            name = "solana-pubkey";
+            packageId = "solana-pubkey";
+            features = [ "curve25519" ];
+          }
+          {
+            name = "spl-discriminator";
+            packageId = "spl-discriminator";
+          }
+          {
+            name = "spl-pod";
+            packageId = "spl-pod";
+          }
+          {
+            name = "spl-program-error";
+            packageId = "spl-program-error";
+          }
+          {
+            name = "spl-tlv-account-resolution";
+            packageId = "spl-tlv-account-resolution";
+          }
+          {
+            name = "spl-type-length-value";
+            packageId = "spl-type-length-value";
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror 2.0.12";
+          }
+        ];
+
+      };
+      "spl-type-length-value" = rec {
+        crateName = "spl-type-length-value";
+        version = "0.8.0";
+        edition = "2021";
+        sha256 = "1xg9h6s4zhpfd364v7bisqzc2msf9c148i7qjcnq5yhlh9afn5yl";
+        libName = "spl_type_length_value";type = [ "cdylib" "lib" ];
+        authors = [
+          "Anza Maintainers <maintainers@anza.xyz>"
+        ];
+        dependencies = [
+          {
+            name = "bytemuck";
+            packageId = "bytemuck";
+            features = [ "derive" ];
+          }
+          {
+            name = "num-derive";
+            packageId = "num-derive";
+          }
+          {
+            name = "num-traits";
+            packageId = "num-traits";
+          }
+          {
+            name = "solana-account-info";
+            packageId = "solana-account-info";
+          }
+          {
+            name = "solana-decode-error";
+            packageId = "solana-decode-error";
+          }
+          {
+            name = "solana-msg";
+            packageId = "solana-msg";
+          }
+          {
+            name = "solana-program-error";
+            packageId = "solana-program-error";
+          }
+          {
+            name = "spl-discriminator";
+            packageId = "spl-discriminator";
+          }
+          {
+            name = "spl-pod";
+            packageId = "spl-pod";
+          }
+          {
+            name = "thiserror";
+            packageId = "thiserror 2.0.12";
+          }
+        ];
+        features = {
+          "derive" = [ "dep:spl-type-length-value-derive" "solana-program-error/borsh" ];
+        };
       };
       "stable_deref_trait" = rec {
         crateName = "stable_deref_trait";
@@ -16931,7 +18692,7 @@ rec {
         features = {
           "default" = [ "std" "i128" ];
         };
-        resolvedDefaultFeatures = [ "std" ];
+        resolvedDefaultFeatures = [ "const-generics" "default" "i128" "std" ];
       };
       "syn 1.0.109" = rec {
         crateName = "syn";
@@ -17196,9 +18957,9 @@ rec {
       };
       "time" = rec {
         crateName = "time";
-        version = "0.3.37";
+        version = "0.3.41";
         edition = "2021";
-        sha256 = "08bvydyc14plkwhchzia5bcdbmm0mk5fzilsdpjx06w6hf48drrm";
+        sha256 = "0h0cpiyya8cjlrh00d2r72bmgg4lsdcncs76qpwy0rn2kghijxla";
         authors = [
           "Jacob Pratt <open-source@jhpratt.dev>"
           "Time contributors"
@@ -17276,9 +19037,9 @@ rec {
       };
       "time-core" = rec {
         crateName = "time-core";
-        version = "0.1.2";
+        version = "0.1.4";
         edition = "2021";
-        sha256 = "1wx3qizcihw6z151hywfzzyd1y5dl804ydyxci6qm07vbakpr4pg";
+        sha256 = "0z5h9fknvdvbs2k2s1chpi3ab3jvgkfhdnqwrvixjngm263s7sf9";
         libName = "time_core";
         authors = [
           "Jacob Pratt <open-source@jhpratt.dev>"
@@ -17288,9 +19049,9 @@ rec {
       };
       "time-macros" = rec {
         crateName = "time-macros";
-        version = "0.2.19";
+        version = "0.2.22";
         edition = "2021";
-        sha256 = "1pl558z26pp342l5y91n6dxb60xwhar975wk6jc4npiygq0ycd18";
+        sha256 = "0jcaxpw220han2bzbrdlpqhy1s5k9i8ri3lw6n5zv4zcja9p69im";
         procMacro = true;
         libName = "time_macros";
         authors = [
@@ -17578,7 +19339,7 @@ rec {
         dependencies = [
           {
             name = "rustls";
-            packageId = "rustls 0.23.28";
+            packageId = "rustls 0.23.29";
             usesDefaultFeatures = false;
             features = [ "std" ];
           }
@@ -18309,6 +20070,30 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" ];
       };
+      "universal-hash" = rec {
+        crateName = "universal-hash";
+        version = "0.5.1";
+        edition = "2021";
+        sha256 = "1sh79x677zkncasa95wz05b36134822w6qxmi1ck05fwi33f47gw";
+        libName = "universal_hash";
+        authors = [
+          "RustCrypto Developers"
+        ];
+        dependencies = [
+          {
+            name = "crypto-common";
+            packageId = "crypto-common";
+          }
+          {
+            name = "subtle";
+            packageId = "subtle";
+            usesDefaultFeatures = false;
+          }
+        ];
+        features = {
+          "std" = [ "crypto-common/std" ];
+        };
+      };
       "untrusted" = rec {
         crateName = "untrusted";
         version = "0.9.0";
@@ -18398,30 +20183,20 @@ rec {
         ];
 
       };
-      "valence-gateway" = rec {
-        crateName = "valence-gateway";
+      "valence-common" = rec {
+        crateName = "valence-common";
         version = "0.1.0";
         edition = "2021";
-        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./programs/gateway; };
-        libName = "valence_gateway";type = [ "cdylib" "lib" ];
+        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./programs/common; };
+        libName = "valence_common";
         dependencies = [
           {
             name = "anchor-lang";
             packageId = "anchor-lang";
           }
-        ];
-
-      };
-      "valence-registry" = rec {
-        crateName = "valence-registry";
-        version = "0.1.0";
-        edition = "2021";
-        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./programs/registry; };
-        libName = "valence_registry";type = [ "cdylib" "lib" ];
-        dependencies = [
           {
-            name = "anchor-lang";
-            packageId = "anchor-lang";
+            name = "solana-program";
+            packageId = "solana-program";
           }
         ];
 
@@ -18434,6 +20209,10 @@ rec {
         libName = "valence_sdk";
         dependencies = [
           {
+            name = "anchor-client";
+            packageId = "anchor-client";
+          }
+          {
             name = "anchor-lang";
             packageId = "anchor-lang";
           }
@@ -18442,12 +20221,62 @@ rec {
             packageId = "anyhow";
           }
           {
+            name = "registry";
+            packageId = "registry";
+          }
+          {
             name = "sha2";
             packageId = "sha2 0.10.9";
           }
           {
+            name = "shard";
+            packageId = "shard";
+          }
+          {
             name = "solana-client";
             packageId = "solana-client";
+          }
+          {
+            name = "solana-sdk";
+            packageId = "solana-sdk";
+          }
+        ];
+
+      };
+      "valence-tests" = rec {
+        crateName = "valence-tests";
+        version = "0.1.0";
+        edition = "2021";
+        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./tests/integration; };
+        libName = "valence_tests";
+        dependencies = [
+          {
+            name = "anchor-client";
+            packageId = "anchor-client";
+          }
+          {
+            name = "anchor-lang";
+            packageId = "anchor-lang";
+          }
+          {
+            name = "anyhow";
+            packageId = "anyhow";
+          }
+          {
+            name = "registry";
+            packageId = "registry";
+          }
+          {
+            name = "sha2";
+            packageId = "sha2 0.10.9";
+          }
+          {
+            name = "shard";
+            packageId = "shard";
+          }
+          {
+            name = "solana-program";
+            packageId = "solana-program";
           }
           {
             name = "solana-sdk";
@@ -18458,37 +20287,9 @@ rec {
             packageId = "tokio";
             features = [ "full" ];
           }
-        ];
-
-      };
-      "valence-shard" = rec {
-        crateName = "valence-shard";
-        version = "0.1.0";
-        edition = "2021";
-        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./programs/shard; };
-        libName = "valence_shard";type = [ "cdylib" "lib" ];
-        dependencies = [
           {
-            name = "anchor-lang";
-            packageId = "anchor-lang";
-          }
-          {
-            name = "sha2";
-            packageId = "sha2 0.10.9";
-          }
-        ];
-
-      };
-      "valence-verifier" = rec {
-        crateName = "valence-verifier";
-        version = "0.1.0";
-        edition = "2021";
-        src = lib.cleanSourceWith { filter = sourceFilter;  src = ./programs/verifier; };
-        libName = "valence_verifier";type = [ "cdylib" "lib" ];
-        dependencies = [
-          {
-            name = "anchor-lang";
-            packageId = "anchor-lang";
+            name = "valence-sdk";
+            packageId = "valence-sdk";
           }
         ];
 
@@ -20276,7 +22077,7 @@ rec {
           "Win32_Web" = [ "Win32" ];
           "Win32_Web_InternetExplorer" = [ "Win32_Web" ];
         };
-        resolvedDefaultFeatures = [ "Wdk" "Wdk_Foundation" "Wdk_Storage" "Wdk_Storage_FileSystem" "Wdk_System" "Wdk_System_IO" "Win32" "Win32_Foundation" "Win32_Globalization" "Win32_Networking" "Win32_Networking_WinSock" "Win32_Security" "Win32_Security_Authentication" "Win32_Security_Authentication_Identity" "Win32_Security_Credentials" "Win32_Security_Cryptography" "Win32_Storage" "Win32_Storage_FileSystem" "Win32_System" "Win32_System_Com" "Win32_System_Console" "Win32_System_IO" "Win32_System_LibraryLoader" "Win32_System_Memory" "Win32_System_Pipes" "Win32_System_SystemInformation" "Win32_System_WindowsProgramming" "Win32_UI" "Win32_UI_Input" "Win32_UI_Input_KeyboardAndMouse" "Win32_UI_Shell" "default" ];
+        resolvedDefaultFeatures = [ "Wdk" "Wdk_Foundation" "Wdk_Storage" "Wdk_Storage_FileSystem" "Wdk_System" "Wdk_System_IO" "Win32" "Win32_Foundation" "Win32_Networking" "Win32_Networking_WinSock" "Win32_Security" "Win32_Security_Authentication" "Win32_Security_Authentication_Identity" "Win32_Security_Credentials" "Win32_Security_Cryptography" "Win32_Storage" "Win32_Storage_FileSystem" "Win32_System" "Win32_System_Console" "Win32_System_IO" "Win32_System_LibraryLoader" "Win32_System_Memory" "Win32_System_Pipes" "Win32_System_SystemInformation" "Win32_System_WindowsProgramming" "Win32_UI" "Win32_UI_Input" "Win32_UI_Input_KeyboardAndMouse" "default" ];
       };
       "windows-targets 0.42.2" = rec {
         crateName = "windows-targets";
@@ -20556,9 +22357,9 @@ rec {
       };
       "winnow" = rec {
         crateName = "winnow";
-        version = "0.7.11";
+        version = "0.7.12";
         edition = "2021";
-        sha256 = "1kfb2m5ahpqg037a34rgkm18x6nj2mw4fwn89ya0gdw06ipb5ivl";
+        sha256 = "159y8inpy86xswmr4yig9hxss0v2fssyqy1kk12504n8jbsfpvgk";
         dependencies = [
           {
             name = "memchr";
