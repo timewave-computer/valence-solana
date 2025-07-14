@@ -95,18 +95,10 @@ impl ValenceClient {
         );
         
         // Check if counter exists, if not initialize it
-        let counter = match self.shard_program.rpc().get_account(&session_counter_pda) {
-            Ok(account) => {
-                // Account exists, read the counter value
-                // Skip discriminator (8 bytes) and owner (32 bytes) to get counter
-                if account.data.len() >= 48 {
-                    u64::from_le_bytes(account.data[40..48].try_into().unwrap_or([0; 8]))
-                } else {
-                    0
-                }
-            }
+        let counter = match self.shard_program.account::<shard::SessionCounter>(session_counter_pda) {
+            Ok(counter_account) => counter_account.counter,
             Err(_) => {
-                // Account doesn't exist, initialize it first
+                // Account doesn't exist or is invalid, so initialize it
                 self.shard_program
                     .request()
                     .accounts(shard::accounts::InitializeSessionCounter {
@@ -116,7 +108,7 @@ impl ValenceClient {
                     })
                     .args(shard::instruction::InitializeSessionCounter {})
                     .send()?;
-                0 // Start with counter = 0
+                0 // The counter for the new session will be 0
             }
         };
         

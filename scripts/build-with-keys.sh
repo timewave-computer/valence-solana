@@ -3,6 +3,25 @@ set -e
 
 # This script builds programs with specific keypair IDs for testing
 
+# Cleanup function to restore original source files
+cleanup() {
+    if [ -f programs/registry/src/lib.rs.bak ]; then
+        echo "Restoring original registry source..."
+        mv programs/registry/src/lib.rs.bak programs/registry/src/lib.rs 2>/dev/null || true
+    fi
+    if [ -f programs/shard/src/lib.rs.bak ]; then
+        echo "Restoring original shard source..."
+        mv programs/shard/src/lib.rs.bak programs/shard/src/lib.rs 2>/dev/null || true
+    fi
+    if [ -f tests/integration/functions/test_function/src/lib.rs.bak ]; then
+        echo "Restoring original test_function source..."
+        mv tests/integration/functions/test_function/src/lib.rs.bak tests/integration/functions/test_function/src/lib.rs 2>/dev/null || true
+    fi
+}
+
+# Set up trap to ensure cleanup runs on script exit
+trap cleanup EXIT INT TERM
+
 REGISTRY_KEYPAIR="${1:-tests/integration/keypairs/registry-keypair.json}"
 SHARD_KEYPAIR="${2:-tests/integration/keypairs/shard-keypair.json}"
 TEST_FUNCTION_KEYPAIR="${3:-tests/integration/keypairs/test_function-keypair.json}"
@@ -32,9 +51,5 @@ cargo build-sbf --manifest-path programs/shard/Cargo.toml
 echo "Building test function..."
 cargo build-sbf --manifest-path tests/integration/functions/test_function/Cargo.toml
 
-# Restore original IDs (optional - for cleaner git status)
-mv programs/registry/src/lib.rs.bak programs/registry/src/lib.rs
-mv programs/shard/src/lib.rs.bak programs/shard/src/lib.rs
-mv tests/integration/functions/test_function/src/lib.rs.bak tests/integration/functions/test_function/src/lib.rs
-
 echo "Build complete!"
+echo "Original source files restored."

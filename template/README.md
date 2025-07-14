@@ -191,23 +191,41 @@ To create a new function:
    ```
 
 5. **Register** your function with the shard:
-   ```bash
-   # Get your function's bytecode hash
-   anchor idl parse -f functions/my_function/src/lib.rs | sha256sum
-   
-   # Register via CLI (if available) or client code:
-   ```
    ```rust
-   // In your client code
-   let function_id = /* your deployed function program ID */;
-   let bytecode_hash = /* computed hash from above */;
+   use valence_sdk::{ValenceClient, SessionBuilder};
    
-   // Call shard's register_function instruction
-   shard_program.register_function(
+   // Initialize the client
+   let client = ValenceClient::new(
+       cluster,
+       payer,
+       registry_id,
+       shard_id,
+   )?;
+   
+   // Register your function
+   let function_id = /* your deployed function program ID */;
+   let bytecode_hash = [0u8; 32]; // Replace with actual hash
+   let content_hash = client.register_function(function_id, bytecode_hash)?;
+   
+   // Create a session with required capabilities
+   let session_pubkey = SessionBuilder::new()
+       .with_read()
+       .with_write()
+       .with_execute()
+       .with_metadata(b"my_function_session".to_vec())
+       .build(&client)?;
+   
+   // Execute your function
+   let input_data = vec![/* your function input */];
+   client.execute_function(
+       session_pubkey,
        function_id,
        bytecode_hash,
-       capabilities_required, // e.g., READ | WRITE | EXECUTE
+       input_data,
    )?;
+   
+   // Clean up when done
+   client.consume_session(session_pubkey)?;
    ```
 
 ## Testing
