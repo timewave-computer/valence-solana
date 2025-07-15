@@ -110,7 +110,3 @@ Cryptographic state hashing
 Security utilities and validation  
 Minimal SDK with clean abstractions  
 End-to-end test suite  
-
-## Documentation
-
-See `work/crit_simplify.md` for the detailed implementation plan and `work/IMPLEMENTATION_COMPLETE.md` for the completion summary.
