@@ -29,7 +29,7 @@
       echo "Testing SDK..."
       cargo test --manifest-path sdk/Cargo.toml
       
-      echo "Testing Session V2..."
+      echo "Testing Session..."
       cargo test --manifest-path tests/session_v2/Cargo.toml
       
       echo "Testing Encapsulation..."

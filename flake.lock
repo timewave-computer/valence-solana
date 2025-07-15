@@ -3279,17 +3279,18 @@
         "valence-contracts-v0_1_2": "valence-contracts-v0_1_2"
       },
       "locked": {
-        "lastModified": 1752100355,
+        "lastModified": 1752504927,
         "narHash": "sha256-HvL2yGstXSOFFiMW4uni7MJ6FYTN4qXCyRKlEqvp6O4=",
-        "ref": "refs/heads/sam-solana",
-        "rev": "767bed1a0ddafc9adca579831086889fd6f28ba0",
-        "revCount": 62,
-        "type": "git",
-        "url": "file:./submodules/zero.nix"
+        "owner": "timewave-computer",
+        "repo": "zero.nix",
+        "rev": "cefa25bc8e97b8019ebfee1cbf120ce386ca97cb",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "file:./submodules/zero.nix"
+        "owner": "timewave-computer",
+        "ref": "main",
+        "repo": "zero.nix",
+        "type": "github"
       }
     }
   },

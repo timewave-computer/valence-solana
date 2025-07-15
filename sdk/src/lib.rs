@@ -7,6 +7,9 @@ use solana_sdk::{
 use sha2::{Sha256, Digest};
 use anyhow::Result;
 use std::rc::Rc;
+use valence_domain_clients::clients::solana::SolanaClient;
+use valence_domain_clients::solana::{SolanaBaseClient, SolanaSigningClient};
+use valence_domain_clients::common::transaction::TransactionResponse;
 
 pub struct ValenceClient {
     #[allow(dead_code)]
@@ -16,6 +19,8 @@ pub struct ValenceClient {
     payer_pubkey: Pubkey,
     registry_id: Pubkey,
     shard_id: Pubkey,
+    #[allow(dead_code)]
+    solana_client: Option<SolanaClient>,
 }
 
 impl ValenceClient {
@@ -42,11 +47,47 @@ impl ValenceClient {
             payer_pubkey,
             registry_id,
             shard_id,
+            solana_client: None,
         })
     }
     
     pub fn payer(&self) -> Pubkey {
         self.payer_pubkey
+    }
+    
+    /// Create a new ValenceClient with valence-domain-clients SolanaClient
+    pub fn new_with_domain_client(
+        rpc_url: &str,
+        payer: Keypair,
+        registry_id: Pubkey,
+        shard_id: Pubkey,
+    ) -> Result<Self> {
+        let payer_pubkey = payer.pubkey();
+        let payer_rc = Rc::new(payer.insecure_clone());
+        
+        // Create anchor client for program interactions
+        let cluster = Cluster::Custom(rpc_url.to_string(), rpc_url.to_string());
+        let client = Client::new_with_options(
+            cluster,
+            payer_rc.clone(),
+            CommitmentConfig::confirmed(),
+        );
+        
+        let registry_program = client.program(registry_id)?;
+        let shard_program = client.program(shard_id)?;
+        
+        // Create valence-domain-clients SolanaClient
+        let solana_client = SolanaClient::new(rpc_url, &payer.to_base58_string())?;
+        
+        Ok(Self {
+            client,
+            registry_program,
+            shard_program,
+            payer_pubkey,
+            registry_id,
+            shard_id,
+            solana_client: Some(solana_client),
+        })
     }
     
     // Registry operations
@@ -187,6 +228,27 @@ impl ValenceClient {
             .send()?;
             
         Ok(())
+    }
+    
+    /// Get access to the underlying SolanaClient for general Solana operations
+    pub fn solana_client(&self) -> Option<&SolanaClient> {
+        self.solana_client.as_ref()
+    }
+    
+    /// Helper method to get SOL balance using valence-domain-clients
+    pub async fn get_balance(&self) -> Result<f64> {
+        match &self.solana_client {
+            Some(client) => client.get_sol_balance_as_sol().await,
+            None => Err(anyhow::anyhow!("SolanaClient not available. Use new_with_domain_client constructor")),
+        }
+    }
+    
+    /// Helper method to transfer SOL using valence-domain-clients
+    pub async fn transfer_sol(&self, to: &str, amount_sol: f64) -> Result<TransactionResponse> {
+        match &self.solana_client {
+            Some(client) => client.transfer_sol_amount(to, amount_sol).await,
+            None => Err(anyhow::anyhow!("SolanaClient not available. Use new_with_domain_client constructor")),
+        }
     }
 }
 

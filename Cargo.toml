@@ -20,6 +20,7 @@ solana-sdk = "2.1.6"
 solana-client = "2.1.6"
 sha2 = "0.10.8"
 anyhow = "1.0"
+valence-domain-clients = { git = "https://github.com/timewave-computer/valence-domain-clients", rev = "d2fd402366d54f4421c15c7b33ccd6eecbfbcd2b", default-features = false, features = ["solana"] }
 
 [profile.release]
 overflow-checks = true
