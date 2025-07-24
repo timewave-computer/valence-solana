@@ -3,11 +3,8 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-registry = "11111111111111111111111111111112"
-shard = "11111111111111111111111111111113"
-
-[registry]
-url = "https://api.apr.dev"
+valence_core = "VCoreXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+bloom = "BLoomXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
 [provider]
 cluster = "Localnet"
@@ -15,12 +12,3 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
-
-[test]
-startup_wait = 5000
-shutdown_wait = 2000
-upgradeable = false
-
-[[test.genesis]]
-address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
-program = "./tests/fixtures/mpl_token_metadata.so"

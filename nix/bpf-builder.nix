@@ -57,16 +57,21 @@
         echo "Available cargo commands:"
         ls -la ${inputs'.zero-nix.packages.solana-tools}/bin/ | grep cargo || true
         
-        # Use the cargo build-sbf approach from zero.nix (bypassing platform tools installation)
+        # Build from workspace root to ensure all dependencies are available
         echo "Building BPF program..."
         ${if cargoToml != null then ''
-          cargo build --release --target sbf-solana-solana --manifest-path ${cargoToml}
-          # Copy built artifacts
-          find . -name "*.so" -path "*/target/sbf-solana-solana/release/*" -exec cp {} $out/deploy/ \;
+          # Build specific program using workspace
+          cargo build-sbf --manifest-path ${cargoToml}
+          # Copy built artifacts from workspace target/deploy
+          if [ -d "target/deploy" ]; then
+            cp target/deploy/*.so $out/deploy/ || true
+          fi
         '' else ''
-          cargo build --release --target sbf-solana-solana
+          cargo build-sbf
           # Copy built artifacts
-          find . -name "*.so" -path "*/target/sbf-solana-solana/release/*" -exec cp {} $out/deploy/ \;
+          if [ -d "target/deploy" ]; then
+            cp target/deploy/*.so $out/deploy/ || true
+          fi
         ''}
         
         # Verify we built something
@@ -98,16 +103,10 @@
   
   # Helper function to build all Valence programs
   buildValencePrograms = src: {
-    shard = buildBPFProgram {
-      name = "valence-shard";
+    core = buildBPFProgram {
+      name = "valence-core";
       inherit src;
-      cargoToml = "programs/shard/Cargo.toml";
-    };
-    
-    registry = buildBPFProgram {
-      name = "valence-registry";
-      inherit src;
-      cargoToml = "programs/registry/Cargo.toml";
+      cargoToml = "programs/valence-core/Cargo.toml";
     };
   };
   
@@ -128,21 +127,17 @@
       NC='\033[0m' # No Color
       
       # Build programs using nix build
-      echo -e "''${YELLOW}Building valence-shard...''${NC}"
-      nix build .#valence-shard --out-link ./target/nix-shard
-      
-      echo -e "''${YELLOW}Building valence-registry...''${NC}"
-      nix build .#valence-registry --out-link ./target/nix-registry
+      echo -e "''${YELLOW}Building valence-core...''${NC}"
+      nix build .#valence-core --out-link ./target/nix-core
       
       echo ""
       echo -e "''${GREEN}=== BPF Programs Built Successfully ===''${NC}"
       echo ""
       echo "Built programs available in:"
-      echo "  - ./target/nix-shard/deploy/"
-      echo "  - ./target/nix-registry/deploy/"
+      echo "  - ./target/nix-core/deploy/"
       echo ""
       echo "To deploy programs:"
-      echo "  solana program deploy ./target/nix-shard/deploy/<program>.so"
+      echo "  solana program deploy ./target/nix-core/deploy/<program>.so"
     ''}/bin/valence-build-bpf-programs";
   };
   
@@ -155,27 +150,19 @@
       echo "=== Testing BPF Builder ==="
       echo ""
       
-      # Test building the valence programs using the BPF builder
+      # Test building the Valence programs using the BPF builder
       echo "Testing BPF builder with Valence programs..."
-      nix build .#valence-shard --out-link ./target/test-shard-bpf
-      nix build .#valence-registry --out-link ./target/test-registry-bpf
+      nix build .#valence-core --out-link ./target/test-core-bpf
       
       echo ""
-      echo "✓ BPF builder test completed successfully"
+      echo "BPF builder test completed successfully"
       echo "Built programs available in:"
-      echo "  - ./target/test-shard-bpf/deploy/"
-      echo "  - ./target/test-registry-bpf/deploy/"
+      echo "  - ./target/test-core-bpf/deploy/"
       
-      if [ -d "./target/test-shard-bpf/deploy" ]; then
+      if [ -d "./target/test-core-bpf/deploy" ]; then
         echo ""
-        echo "Shard programs:"
-        ls -la ./target/test-shard-bpf/deploy/ || echo "No files found"
-      fi
-      
-      if [ -d "./target/test-registry-bpf/deploy" ]; then
-        echo ""
-        echo "Registry programs:"
-        ls -la ./target/test-registry-bpf/deploy/ || echo "No files found"
+        echo "Core programs:"
+        ls -la ./target/test-core-bpf/deploy/ || echo "No files found"
       fi
     ''}/bin/valence-test-bpf-builder";
   };

@@ -76,3 +76,5 @@ scratch/
 # Flake locks (except root)
 */flake.lock
 !flake.lock
+
+bloom/
