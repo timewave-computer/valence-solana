@@ -1,355 +1,657 @@
-# Valence Protocol Architecture
+# Valence Architecture
 
 ## Overview
 
-The Valence Protocol is a secure microkernel for Solana that enables safe, composable function execution with capabilities. The architecture creates a separation of concerns between function registration, session management, and execution, allowing for flexible and secure composition of on-chain operations.
+Valence is a minimal secure microkernel for Solana programs that provides fundamental mechanisms for authorization and execution. The core follows the principle that a microkernel should provide mechanisms, not policies.
 
 ## Core Design Principles
 
-1. **Separation of Concerns**: Registry handles function data, Shard manages sessions and capabilities, functions contain business logic
-2. **Capability-Based Security**: Fine-grained permissioning of operations sessions can perform
-3. **Linear Type Semantics**: Sessions are consumed after use, preventing replay attacks and ensuring single-use semantics
-4. **Content-Addressable Functions**: Functions are identified by their content hash, ensuring integrity
-5. **Composability**: Functions can be composed through sessions with controlled capability delegation
+### 1. Mechanisms, Not Policies
 
-## System Components
+The microkernel provides:
+- Session and account management with verifier-based authorization
+- Verification delegation with CPI depth optimization
+- Usage tracking and metadata storage
+- Hierarchical composition
 
-### 1. Registry Program (`programs/registry/`)
+Users implement:
+- Authorization logic (policy via verifiers)
+- Business logic (policy via programs)
+- State management (policy via protocols)
 
-The Registry serves as the central catalog of available functions in the system.
+### 2. Zero-Copy by Default
 
-**Key Responsibilities:**
-- Function registration with bytecode validation
-- Content hash computation for function identification
-- Function verification before execution
-- Authority management for function lifecycle
+All core state uses fixed-size fields:
+- No `Vec<T>` in account state (except session accounts list)
+- No `String` types
+- Predictable memory layout
+- Efficient deserialization
 
-**Core Data Structures:**
-```rust
-pub struct FunctionEntry {
-    pub program: Pubkey,           // Program implementing the function
-    pub content_hash: [u8; 32],    // SHA256(program_id || bytecode_hash)
-    pub bytecode_hash: [u8; 32],   // Hash of program bytecode
-    pub authority: Pubkey,         // Who can deregister
-    pub registered_at: i64,        // Timestamp
-}
-```
+### 3. Composition Over Configuration
 
-**Key Operations:**
-- `register_function`: Registers a new function with bytecode hash
-- `verify_function`: Verifies function integrity before execution
-- `deregister_function`: Removes a function (authority only)
+Instead of complex configuration:
+- Deploy custom verifier for authorization logic
+- Combine via sessions for complete protocol flows
+- Use hierarchical sessions for multi-protocol operations
 
-### 2. Shard Program (`programs/shard/`)
+## Session Types and Protocol Choreography
 
-The Shard manages sessions and orchestrates secure function execution.
+Valence implements session types for DeFi protocols. Session types are a type system for communication protocols that ensure messages are exchanged in the correct order.
 
-**Key Responsibilities:**
-- Session lifecycle management (create, execute, consume)
-- Capability enforcement and delegation
-- Cross-program invocation (CPI) to execute functions
-- State transition tracking through content hashing
-- Counter-based nonce management for session uniqueness
+### Core Concepts
 
-**Core Data Structures:**
+- **Session**: Defines a multi-party protocol with linear execution
+- **Accounts**: Participants with specific roles in the protocol
+- **State Machine**: Enforces the protocol's communication patterns
+
+### Session Structure
+
 ```rust
 pub struct Session {
-    pub owner: Pubkey,              // Session owner
-    pub capabilities: Capabilities, // Bitmap of granted permissions
-    pub nonce: u64,                 // Unique counter-based nonce
-    pub state_hash: [u8; 32],       // Current state hash
-    pub metadata: Vec<u8>,          // Session metadata
-    pub created_at: i64,            // Creation timestamp
-    pub consumed: bool,             // Linear type consumption flag
+    pub bump: u8,
+    pub owner: Pubkey,
+    pub accounts: Vec<Pubkey>,          // Session accounts (up to 16)
+    pub consumed: bool,                 // Move semantics - consumed after move
+    pub created_at: i64,
+    pub protocol_type: [u8; 32],        // Hash identifying the protocol choreography
+    
+    // Verification context fields
+    pub verification_data: [u8; 256],   // Shared state between verifiers
+    pub parent_session: Option<Pubkey>, // For composable sessions
 }
-
-pub struct SessionCounter {
-    pub owner: Pubkey,              // Counter owner
-    pub counter: u64,               // Monotonically increasing counter
-}
-
-pub struct Capabilities(pub u64);  // Bitmap: READ | WRITE | EXECUTE | TRANSFER
 ```
 
-**Key Operations:**
-- `initialize_session_counter`: Sets up counter for session nonce generation
-- `create_session`: Creates a new session with specified capabilities
-- `execute_function`: Executes a registered function within session context and increments the session nonce
-- `consume_session`: Marks session as consumed (linear type semantics)
-
-### 3. Common Library (`programs/common/`)
-
-Shared utilities and types used across all programs.
-
-**Key Components:**
-- `indexing::AccountIndex`: Efficient HashMap-based account indexing for O(1) lookups
-- `program_ids`: System program addresses
-- `bounds`: Safe arithmetic operations with overflow protection
-- `validate_program`: Program validation utilities (currently bypassed for testing flexibility)
-- `CommonError`: Error types including InvalidProgram, OutOfBounds, ArithmeticOverflow, AccountNotFound
-
-### 4. SDK (`sdk/`)
-
-Client-side library for interacting with the Valence Protocol.
-
-**Key Features:**
-- High-level API for all protocol operations
-- Session builder pattern for ergonomic session creation
-- Automatic transaction construction and signing
-- Content hash computation utilities
-- Automatic session counter initialization when needed
-
-**Example Usage:**
+Sessions implement move semantics for type linearity:
 ```rust
-// Create a client
-let client = ValenceClient::new(cluster, payer, registry_id, shard_id)?;
-
-// Register a function
-let content_hash = client.register_function(
-    program_id,
-    bytecode_hash
-)?;
-
-// Create a session with capabilities
-let session = client.create_session(
-    Capabilities::READ | Capabilities::WRITE | Capabilities::EXECUTE,
-    session_metadata
-)?;
-
-// Execute function
-client.execute_function(
-    session,
-    program_id,
-    bytecode_hash,
-    input_data
-)?;
-
-// Consume session
-client.consume_session(session)?;
+// Session can be moved but not copied
+move_session(session, new_owner);
+// session.consumed = true
+// Original owner can no longer use
 ```
 
-## Data Flow
+### Account Structure
 
-### Function Registration Flow
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant SDK
-    participant Registry
-    participant Solana
-
-    User->>SDK: register_function(program, bytecode_hash)
-    SDK->>SDK: Compute content_hash
-    SDK->>Registry: RegisterFunction instruction
-    Registry->>Registry: Validate inputs
-    Registry->>Registry: Compute content_hash
-    Registry->>Registry: Create FunctionEntry PDA
-    Registry->>Solana: Store function entry
-    Registry-->>SDK: Success
-    SDK-->>User: content_hash
+```rust
+pub struct SessionAccount {
+    pub bump: u8,
+    pub session: Pubkey,            // Parent session
+    pub verifier: Pubkey,           // Authorization logic
+    
+    // Security fields
+    pub nonce: u64,                 // Replay protection
+    
+    // Lifecycle fields
+    pub uses: u32,                  // Usage count
+    pub max_uses: u32,              // Maximum allowed uses
+    pub expires_at: i64,            // Lifetime expiration
+    pub created_at: i64,
+    
+    // Metadata
+    pub metadata: [u8; 64],         // Verifier-specific data
+}
 ```
 
-This diagram shows how functions are registered in the system. The user provides the program ID and bytecode hash to the SDK. The SDK computes a content hash and sends a registration instruction to the Registry program. The Registry validates the inputs, recomputes the content hash for verification, creates a Program Derived Address (PDA) for the function entry, and stores it on-chain. The content hash is returned to the user as a unique identifier for the registered function.
+## Verification Model
 
-### Session Creation Flow
+The Valence microkernel delegates all authorization logic to verifier programs, maintaining simplicity in the core:
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant SDK
-    participant Shard
-    participant Solana
+### Verification Flow
 
-    User->>SDK: create_session(capabilities, metadata)
-    SDK->>Shard: CreateSession instruction
-    Shard->>Shard: Get/increment session counter
-    Shard->>Shard: Derive session PDA
-    Shard->>Solana: Create session account
-    Shard-->>SDK: Success
-    SDK-->>User: session_pubkey
+1. **Account Creation**: Specify verifier program that implements authorization logic
+2. **Operation Request**: Caller provides operation data to use account
+3. **Verifier Check**: Core delegates to verifier via CPI
+4. **Usage Update**: If verified, increment usage count and nonce
+
+### Verifier Interface
+
+```rust
+// Verifier programs implement this interface
+pub fn verify_operation(
+    account: &SessionAccount,
+    caller: &Pubkey,
+    operation_data: &[u8],
+    session_data: &[u8; 256], // Shared session context
+) -> Result<()> {
+    // Implement any authorization logic:
+    // - Check ownership
+    // - Validate balances
+    // - Verify time conditions
+    // - Check external state
+    // - Enforce protocol rules
+}
 ```
 
-This diagram illustrates the session creation process. The user requests a new session with specific capabilities (READ, WRITE, EXECUTE, TRANSFER) and metadata. The SDK sends a CreateSession instruction to the Shard program, which retrieves and increments the user's session counter to ensure uniqueness. The Shard then derives a deterministic PDA using the owner's public key and the counter value, creates the session account on-chain with the specified capabilities, and returns the session's public key to the user for future operations.
+### Example Usage
 
-### Function Execution Flow
+```rust
+// Simple ownership verifier
+if caller != expected_owner {
+    return Err(Error::Unauthorized);
+}
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant SDK
-    participant Shard
-    participant Registry
-    participant Function
-    participant Solana
-
-    User->>SDK: execute_function(session, function_id, input)
-    SDK->>Shard: ExecuteFunction instruction
-    Shard->>Shard: Verify session not consumed
-    Shard->>Shard: Check EXECUTE capability
-    Shard->>Registry: VerifyFunction CPI
-    Registry->>Registry: Validate function exists
-    Registry->>Registry: Check bytecode hash
-    Registry-->>Shard: Verification success
-    Shard->>Function: Process CPI with input
-    Function->>Function: Execute business logic
-    Function-->>Shard: Success
-    Shard->>Shard: Update session state_hash
-    Shard-->>SDK: Success
-    SDK-->>User: Success
+// Complex DeFi verifier might check:
+// - Collateral ratios from oracle
+// - Liquidation thresholds
+// - Protocol parameters
+// - Multi-sig requirements
 ```
 
-This diagram shows the complete function execution flow. When a user wants to execute a function, they provide the session, function identifier, and input data. The Shard program first verifies that the session hasn't been consumed (enforcing linear type semantics) and checks that it has the EXECUTE capability. It then makes a Cross-Program Invocation (CPI) to the Registry to verify the function exists and its bytecode hash matches (note: for testing, a zero bytecode hash bypasses verification). Once verified, the Shard makes another CPI to the actual function program with the input data using the Anchor instruction discriminator. After successful execution, the Shard increments the session nonce and updates the session's state hash to reflect the state transition, ensuring a complete audit trail of all operations.
+## Core Instructions
+
+### Session Management
+- `create_session`: Create new session container (optionally as child of another)
+- `move_session`: Transfer ownership (consumes session)
+- `update_session_data`: Update shared verification data
+- `cleanup_session`: Remove expired accounts
+- `close_session`: Close consumed session and return rent
+
+### Account Management
+- `add_account`: Add account with verifier program
+- `use_account`: Use account with verifier authorization
+- `use_accounts_atomic`: Use multiple accounts atomically (all or nothing)
+- `use_accounts_atomic_with_depth`: CPI depth-aware version with verification modes
+- `use_accounts_simple`: Use two accounts atomically (simplified version)
+- `use_account_if`: Conditionally use account based on state
+- `create_account_with_session`: Helper for single-account sessions
+- `update_account_metadata`: Store protocol data (up to 64 bytes)
+- `close_account`: Close expired account and return rent
+
+### Shard Management
+- `deploy_shard`: Deploy code/state definition with integrity hash
+- `execute_shard`: Execute shard with session account authorization
+
+## Session Composability and Verification Context
+
+Sessions serve dual purposes:
+1. **Protocol Choreography**: Define valid state transitions (session types)
+2. **Verification Context**: Share data between verification function (256 bytes)
+
+### Verification Data Sharing
+
+Each session has a 256-byte `verification_data` field that verifiers can read and write:
+
+```rust
+// First verifier: Oracle writes price
+verify_price(oracle_account) -> writes [price, timestamp, confidence]
+
+// Second verifier: Lending reads price  
+verify_collateral(collateral_account) -> reads price from session
+```
+
+### Verification Cache Layout
+
+For CPI optimization, the verification_data can store cached results:
+
+```
+[0..4]:   Cache version/flags
+[4..8]:   Timestamp (5-minute TTL)
+[8..40]:  Bitmap (256 accounts verified)
+[40..256]: Verifier-specific data
+```
+
+### Hierarchical Sessions
+
+Sessions can have parent sessions, creating a hierarchy:
+
+```rust
+// Create parent session
+let parent = create_session(
+    protocol_type: "AGGREGATOR",
+    parent_session: None,
+);
+
+// Create child sessions
+let child1 = create_session(
+    protocol_type: "LENDING",
+    parent_session: Some(parent),
+);
+```
+
+Benefits:
+- **Scoped Contexts**: Each protocol has its own session
+- **Shared Parent State**: Children can read parent's verification_data
+- **Atomic Multi-Protocol Ops**: Parent coordinates children
+- **Clean Separation**: Each child manages its own accounts
+
+## Multi-Account Atomic Operations
+
+The `use_accounts_atomic` instruction implements a 3-phase commit protocol that ensures atomicity across multiple account operations. This design prevents partial execution and maintains consistency.
+
+### Phase 1: Validation (Read-Only)
+```rust
+// Deserialize and validate all accounts without any state changes
+for account_info in remaining_accounts {
+    // Borrow account data (read-only)
+    let account_data = account_info.try_borrow_data()?;
+    
+    // Deserialize to verify structure
+    let session_account = SessionAccount::try_deserialize(&account_data[8..])?;
+    
+    // Check account is not expired
+    require!(clock.unix_timestamp < session_account.expires_at);
+    
+    // Store for later use (no modifications yet)
+    session_accounts.push(session_account);
+}
+```
+
+**Purpose**: 
+- Ensure all accounts are valid before any operations
+- Detect malformed accounts early
+- Verify all accounts are within their lifetime
+- No state changes occur - completely read-only
+
+### Phase 2: Verification (External Calls)
+```rust
+// Call each account's verifier via CPI
+for (i, account_info) in remaining_accounts.enumerate() {
+    let cpi_ctx = CpiContext::new(
+        verifier_program,
+        VerifyAccount {
+            account: account_info,
+            caller: caller,
+        }
+    );
+    
+    // If ANY verifier fails, entire operation aborts
+    verify_account(cpi_ctx).map_err(|e| {
+        msg!("Verification failed for account {}: {:?}", i, e);
+        e
+    })?;
+}
+```
+
+**Purpose**:
+- Execute authorization logic for each account
+- Verifiers can check complex conditions
+- Verifiers can read/write session verification_data
+- All verifiers must succeed or none proceed
+
+### Phase 3: State Update (Atomic Write)
+```rust
+// Only reached if ALL validations and verifications passed
+for account_info in remaining_accounts {
+    // Now borrow mutably for writing
+    let mut account_data = account_info.try_borrow_mut_data()?;
+    
+    // Deserialize again (required for mutable access)
+    let mut session_account = SessionAccount::try_deserialize(&account_data[8..])?;
+    
+    // Update state
+    session_account.uses += 1;
+    
+    // Serialize back
+    session_account.try_serialize(&mut account_data[8..])?;
+}
+```
+
+**Purpose**:
+- Apply state changes to all accounts
+- Increment usage counters
+- Update any other mutable fields
+
+### Atomicity Guarantees
+
+The 3-phase design provides several guarantees:
+
+1. **All-or-Nothing**: Either all accounts are used successfully, or none are
+2. **No Partial States**: Cannot have some accounts verified but not others
+3. **Consistent View**: All verifiers see the same initial state
+4. **Ordered Execution**: Phases execute strictly in sequence
+5. **Failure Recovery**: Any failure rolls back entire transaction
+
+## CPI Depth Optimization
+
+Solana enforces a maximum Cross-Program Invocation (CPI) depth of 4. This creates a challenge for multi-account atomic operations, which need to verify each account through its respective verifier program.
+
+### The Problem
+
+Without optimization:
+- Initial call to Valence: depth 1
+- Call to `use_accounts_atomic`: depth 2  
+- Each verifier CPI: depth 3
+- Any nested calls: depth 4 (limit reached)
+
+With 16 accounts maximum, naive implementation would require 16 separate CPIs at depth 3, making complex protocols impossible.
+
+### The Solution: Multi-Mode Verification
+
+#### Verification Modes
+
+```rust
+pub enum VerificationMode {
+    Direct,  // Traditional CPI (for complex verifiers)
+    Batch,   // Single CPI for multiple accounts
+    Inline,  // No CPI needed (simple patterns)
+    Cached,  // Use previous verification result
+}
+```
+
+#### Inline Verification
+
+For common patterns, verification happens directly in the core without CPI:
+
+```rust
+pub enum InlineVerifierType {
+    SimpleOwner,    // owner == caller
+    TimeBased,      // current_time < expiry
+    CounterBased,   // uses < max_uses
+    Standard,       // All of the above
+}
+```
+
+Benefits:
+- Zero CPI cost
+- Perfect for simple authorization
+- Maintains security through pattern matching
+
+#### Batch Verification
+
+Verifiers can implement a batch interface to verify multiple accounts in one CPI:
+
+```rust
+// Instead of:
+for account in accounts {
+    verify_account(account)?; // N CPIs
+}
+
+// We do:
+verify_accounts_batch(accounts)?; // 1 CPI
+```
+
+Benefits:
+- O(1) CPI cost instead of O(n)
+- Verifier can optimize validation logic
+- Shared context through session data
+
+#### Depth-Aware Execution
+
+The system adapts based on available CPI depth:
+
+```rust
+match remaining_depth {
+    0..=1 => Full functionality with all modes,
+    2 => Prefer batch verification,
+    3 => Only inline or cached verification,
+    4 => Error: insufficient depth,
+}
+```
+
+### Implementation Example
+
+```rust
+pub fn use_accounts_atomic_with_depth(
+    ctx: Context<UseAccountsAtomicOptimized>,
+    estimated_depth: u8,
+) -> Result<()> {
+    // Phase 1: Classify accounts by verification type
+    let inline_accounts = filter_inline_verifiers(&accounts);
+    let cached_accounts = filter_cached_valid(&accounts);
+    let remaining = group_by_verifier(&accounts);
+    
+    // Phase 2: Optimize verification order
+    // - Inline: 0 CPIs
+    // - Cached: 0 CPIs  
+    // - Batch: 1 CPI per verifier
+    // - Direct: 1 CPI per account
+    
+    // Phase 3: Execute with depth awareness
+    verify_inline_accounts(&inline_accounts)?;
+    skip_cached_accounts(&cached_accounts);
+    verify_remaining_optimally(&remaining, depth)?;
+}
+```
+
+### Performance Comparison
+
+| Scenario | Naive CPIs | Optimized CPIs | Improvement |
+|----------|------------|----------------|-------------|
+| 2 simple accounts | 2 | 0 (inline) | 100% |
+| 8 same verifier | 8 | 1 (batch) | 87.5% |
+| 4 cached accounts | 4 | 0 (cached) | 100% |
+| Mixed 16 accounts | 16 | 2-4 | 75-87.5% |
+
+## Usage Patterns
+
+### Session Types Examples
+
+#### Flash Loan Protocol
+```rust
+// Flash loan protocol session
+let flash_session = create_session(borrower, hash("FLASH_LOAN"));
+
+// Flash loan account with verifier enforcement
+let flash_account = add_account(
+    session: flash_session,
+    verifier: flash_verifier,
+    max_uses: 3, // Borrow, execute, repay
+    lifetime: 300, // 5 minute flash loan
+);
+
+// Verifier enforces protocol ordering
+execute_flash_loan(flash_account); // Verifier ensures correct sequence
+```
+
+#### Cross-Margin Trading
+```rust
+// Session choreographs multiple accounts across pools
+let margin_session = create_session(trader, hash("CROSS_MARGIN"));
+
+// Collateral account in ETH pool
+let eth_account = add_account(
+    session: margin_session,
+    verifier: eth_pool_verifier,
+    max_uses: 100, // Many operations allowed
+    lifetime: 86400 * 30, // 30 days
+    metadata: encode_role("collateral"),
+);
+
+// Debt account in USDC pool  
+let usdc_account = add_account(
+    session: margin_session,
+    verifier: usdc_pool_verifier,
+    max_uses: 100, // Many operations allowed
+    lifetime: 86400 * 30, // 30 days
+    metadata: encode_role("debt"),
+);
+
+// Session ensures atomic execution across pools
+use_accounts_atomic([eth_account, usdc_account]);
+```
+
+### Conditional Account Usage
+
+Four condition types are supported:
+
+```rust
+// Type 0: Use if usage count less than value
+use_account_if(account, 0, 5); // uses < 5
+
+// Type 1: Use if age less than value (seconds)
+use_account_if(account, 1, 3600); // age < 3600 seconds
+
+// Type 2: Use if usage count equals exact value  
+use_account_if(account, 2, 3); // uses == 3
+
+// Type 3: Use if metadata first 8 bytes match value
+use_account_if(account, 3, encoded_target_value); // metadata[0..8] == value
+```
+
+### Optimized Multi-Account Usage
+
+For CPI depth-constrained environments:
+
+```rust
+// Tell Valence your current depth
+use_accounts_atomic_with_depth(ctx, current_depth)?;
+
+// Use simple verifiers when possible
+let verifier = create_simple_owner_verifier(); // Inline-able
+
+// Implement batch verification in your verifier
+pub fn verify_batch(ctx: Context<VerifyBatch>) -> Result<()> {
+    for account in ctx.remaining_accounts {
+        // Verify all atomically
+    }
+}
+```
+
+## Verification Model
+
+### Verifier Pattern
+
+All authorization policies live in user-deployed verifiers. The kernel makes no policy decisions.
+
+#### Simple Verifier
+```rust
+pub fn verify_account(ctx: Context<Verify>) -> Result<()> {
+    let account = ctx.accounts.account;
+    let caller = ctx.accounts.caller;
+    
+    // Check operation is allowed
+    require!(
+        verify_operation(&account, &caller, &operation_data)?,
+        Error::Unauthorized
+    );
+    
+    // Verify caller is authorized
+    require!(
+        caller.key() == account.metadata[..32], // Owner stored in metadata
+        Error::Unauthorized
+    );
+    
+    Ok(())
+}
+```
+
+#### Verifier with Session Context
+```rust
+pub fn verify_with_session(ctx: Context<VerifyWithSession>) -> Result<()> {
+    let session = &mut ctx.accounts.session;
+    
+    // Read shared data
+    let price = u64::from_le_bytes(
+        session.verification_data[0..8].try_into()?
+    );
+    
+    // Perform verification using shared data
+    verify_collateral_value(price)?;
+    
+    // Write result back
+    session.verification_data[8..16].copy_from_slice(
+        &collateral_value.to_le_bytes()
+    );
+    
+    Ok(())
+}
+```
+
+### Verifier Development Guidelines
+
+#### For Simple Patterns
+- Use recognized inline patterns when possible
+- Store owner in first 32 bytes of metadata
+- Keep logic stateless for caching
+
+#### For Complex Verifiers
+- Implement batch interface for efficiency
+- Use session data for shared context
+- Document time-bound validity
+
+#### Security Considerations
+- **Inline Verification**: Only well-known, audited patterns
+- **Cache Security**: TTL prevents stale data, session-scoped
+- **Batch Security**: Must validate all-or-nothing
 
 ## Security Model
 
-### Capability-Based Access Control
+### Trust Boundaries
 
-The protocol uses a bitmap-based capability system:
+**Trusted (Kernel):**
+- valence-core: Session/account management (~1000 lines)
+- State machine verification logic
+- Inline verification patterns
 
-```
-READ     = 1 << 0  // Can read data
-WRITE    = 1 << 1  // Can write data
-EXECUTE  = 1 << 2  // Can execute functions
-TRANSFER = 1 << 3  // Can transfer ownership
-```
+**Untrusted (Userspace):**
+- Verifiers: User authorization logic
+- Business logic: User protocols
 
-Sessions are created with specific capabilities that limit what operations can be performed. This enables:
-- Principle of least privilege
-- Fine-grained access control
-- Capability delegation patterns
-- Secure multi-party interactions
+### Security Properties
 
-### Linear Type Semantics
+1. **Verifier Isolation**: Authorization logic cannot modify kernel state
+2. **Replay Protection**: Nonces prevent operation replay
+3. **Move Semantics**: Sessions prevent double-spending
+4. **Usage Limits**: Max uses prevent unbounded operations
+5. **Time Bounds**: Expiration prevents stale accounts
+6. **Overflow Protection**: All arithmetic uses checked operations
+7. **3-Phase Atomic Operations**: Validate → verify → execute pattern
+8. **Hierarchical Security**: Child sessions require parent access
+9. **CPI Depth Protection**: Adaptive verification modes
 
-Sessions implement linear type semantics through the `consumed` flag:
-- Each session can only be used once for its primary operation
-- After use, sessions are marked as consumed
-- Prevents replay attacks and double-spending
-- Enables UTXO-like patterns for state management
+### Attack Prevention
 
-### Content Addressing
+- **Authorization Bypass**: Mandatory CPI to verifier program
+- **Replay Attack**: Nonce tracking prevents replay
+- **Session Forgery**: PDA derivation with program ID
+- **Usage Exhaustion**: Max uses limit enforced
+- **Time-based Attacks**: Expiration timestamps checked
+- **Parameter Tampering**: Immutable account data
+- **CPI Exhaustion**: Multi-mode verification prevents depth attacks
 
-Functions are identified by their content hash:
-```
-content_hash = SHA256(program_id || bytecode_hash)
-```
+## Design Trade-offs
 
-This ensures:
-- Integrity verification
-- Immutable function references
-- Protection against substitution attacks
-- Deterministic function identification
+### What We Optimize For
 
-**Note**: For testing purposes, the Registry allows bypassing bytecode verification when a zero hash `[0u8; 32]` is provided as the expected bytecode hash.
+1. **Simplicity**: < 1000 lines for core
+2. **Security**: Minimal attack surface with cryptographic guarantees
+3. **Flexibility**: Policy in userspace
+4. **Performance**: Zero-copy, minimal allocations, CPI optimization
+5. **Composability**: Hierarchical sessions and shared context
 
-## Account Structure
+### What We Don't Provide
 
-### Program Derived Addresses (PDAs)
+1. **Built-in Policies**: No default authorization schemes
+2. **State Management**: No global registries
+3. **Complex Types**: No dynamic structures (except accounts list)
+4. **Backwards Compatibility**: Clean design over legacy support
 
-The protocol uses PDAs for deterministic account addresses:
+## Data Layout Conventions
 
-1. **Registry Function Entry**:
-   ```
-   seeds = [FUNCTION_SEED, content_hash]
-   ```
+Since verification_data is untyped, protocols should establish conventions:
 
-2. **Session Counter**:
-   ```
-   seeds = [SESSION_COUNTER_SEED, owner.key()]
-   ```
+### Standard Layouts
 
-3. **Session**:
-   ```
-   seeds = [SESSION_SEED, owner.key(), counter.to_le_bytes()]
-   ```
+```rust
+// Price data (56 bytes)
+[price: u64][timestamp: i64][confidence: u64][source: Pubkey]
 
-### Account Relationships
+// Position data (32 bytes)
+[collateral: u64][debt: u64][health: u64][update_time: i64]
 
-```
-Owner Account
-    ├── SessionCounter (PDA)
-    │   └── counter: u64
-    └── Session[] (PDAs)
-        ├── capabilities
-        ├── state_hash
-        └── consumed flag
+// Simple value (8 bytes)
+[value: u64]
 
-Registry Program
-    └── FunctionEntry[] (PDAs)
-        ├── program
-        ├── content_hash
-        └── bytecode_hash
+// Verification cache (see Verification Cache Layout above)
 ```
 
-This diagram illustrates the hierarchical relationship between accounts in the Valence Protocol. Each owner account has an associated SessionCounter PDA that tracks the monotonically increasing counter used for session creation. The owner can have multiple Session PDAs, each with its own capabilities, state hash, and consumption status. Separately, the Registry program maintains FunctionEntry PDAs that store information about registered functions, including the program address, content hash, and bytecode hash.
+### Best Practices
 
-## Error Handling
+1. **Define Clear Layouts**: Document your data layout
+2. **Version Your Formats**: Include version byte if needed
+3. **Validate Parent Access**: Check parent_session is expected
+4. **Use Atomic Operations**: Update all related data together
+5. **Include Timestamps**: For time-sensitive data
+6. **Reserve Space**: Leave room for future fields
 
-The protocol defines specific error types for each program:
+## Future Enhancements
 
-**Registry Errors:**
-- `ProgramMismatch`: Function program doesn't match expected
-- `BytecodeMismatch`: Bytecode hash verification failed
-- `ContentHashMismatch`: Content hash doesn't match computed
-- `UnauthorizedDeregistration`: Caller not authorized
-
-**Shard Errors:**
-- `InsufficientCapabilities`: Session lacks required capability
-- `SessionConsumed`: Session already used
-- `UnauthorizedCaller`: Caller not session owner
-- `InvalidProgram`: Program validation failed
-- `CounterNotInitialized`: Session counter not set up
-
-## Implementation Details
-
-### Function Invocation
-
-When the Shard program invokes a function via CPI, it uses Anchor's instruction discriminator format:
-- The discriminator is the first 8 bytes of `SHA256("global:process")`
-- For the `process` instruction: `[147, 104, 175, 139, 110, 254, 236, 21]`
-- Input data is serialized using Borsh format: `[discriminator][length][data]`
-
-### Session State Updates
-
-During `execute_function`, the session state is updated as follows:
-1. The nonce is incremented to ensure each state is unique
-2. A new state hash is computed: `SHA256(prev_state_hash || function_hash || input_data || new_nonce)`
-3. This creates an immutable audit trail of all operations
-
-## Performance Considerations
-
-1. **Account Size Optimization**: 
-   - Fixed-size accounts where possible
-   - Efficient packing of capability bitmaps
-   - Minimal metadata storage
-
-2. **Compute Unit Optimization**:
-   - Efficient hash computations
-   - Minimal CPI overhead
-   - Batch operations where possible
-
-3. **Parallelization**:
-   - Independent sessions can execute in parallel
-   - No global state bottlenecks
-   - Sharded architecture enables horizontal scaling
-
-## Testing Strategy
-
-The protocol includes the following tests:
-
-1. **Unit Tests**: Each program has isolated unit tests
-2. **Integration Tests**: End-to-end flow testing
-3. **Mock Tests**: Fast tests without validator
-4. **Security Tests**: Capability enforcement, replay prevention
-5. **Performance Tests**: Compute unit usage, throughput
-
-## Deployment Architecture
-
-The system consists of two main on-chain programs: the Registry program (responsible for function registration and verification) and the Shard program (managing sessions and orchestrating function execution). Both programs are deployed on the Solana runtime and interact with each other through Cross-Program Invocations (CPIs). This clean separation of concerns allows for independent upgrades and modular system design.
+1. **Verifier Registry**: On-chain registry of inline patterns
+2. **Parallel Verification**: Use Solana's parallel execution
+3. **Zero-Knowledge Proofs**: Verify without CPI
+4. **Compression**: Pack multiple verifications into one
 
 ## Conclusion
 
-The Valence Protocol provides a foundation for secure, composable on-chain computation. By separating concerns between function registration, session management, and execution, it enables flexible patterns while maintaining strong security guarantees. The capability-based security model and linear type semantics ensure safe execution, while the content-addressable function system provides integrity and composability.
+Valence provides a minimal, secure foundation for building complex DeFi protocols on Solana. By combining verifier-based authorization, session types, hierarchical composition, and CPI depth optimization, it enables sophisticated multi-protocol operations while maintaining simplicity and security.
 
-This architecture enables developers to build complex on-chain applications with confidence, knowing that the underlying protocol provides strong safety and security guarantees while remaining flexible and performant.
+The kernel remains intentionally minimal, with innovation happening in verifiers and protocols. This design ensures a stable core that rarely changes while supporting the evolution of DeFi primitives above it.

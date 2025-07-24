@@ -42,6 +42,7 @@
             };
             bpfBuilderConfig = import ./nix/bpf-builder.nix {inherit pkgs inputs';};
           in bpfBuilderConfig.buildBPFProgram;
+          
         };
       };
 
@@ -53,14 +54,8 @@
       }: let
         # Import subflakes
         devshellConfig = import ./nix/devshell.nix {inherit pkgs inputs';};
-        buildApps = import ./nix/build.nix {inherit pkgs inputs';};
         crate2nixApps = import ./nix/crate2nix.nix {inherit pkgs inputs';};
-        fastBuildApps = import ./nix/fast-build.nix {inherit pkgs inputs';};
         localApps = import ./nix/local.nix {inherit pkgs inputs';};
-        testApps = import ./nix/test.nix {inherit pkgs inputs';};
-        templateApps = import ./nix/template.nix {inherit pkgs inputs';};
-        simpleTemplateApps = import ./nix/template-simple.nix {inherit pkgs inputs';};
-        flakeTemplateApps = import ./nix/template-with-flake.nix {inherit pkgs inputs';};
         packagesConfig = import ./nix/packages.nix {inherit pkgs inputs';};
         bpfBuilderConfig = import ./nix/bpf-builder.nix {inherit pkgs inputs';};
         
@@ -83,26 +78,10 @@
         packages = packagesConfig // {
           # Re-export packages that were in apps as packages too
           inherit (packagesConfig) default generate-cargo-nix regenerate-cargo-nix;
-        } // (let
-          # Build all Valence programs and expose them individually
-          valencePrograms = bpfBuilderConfig.buildValencePrograms ./.;
-        in {
-          # Individual programs
-          valence-shard = valencePrograms.shard;
-          valence-registry = valencePrograms.registry;
-          
-          # Also expose the full set
-          valencePrograms = pkgs.symlinkJoin {
-            name = "valence-programs";
-            paths = builtins.attrValues valencePrograms;
-          };
-        });
+        };
 
         # Apps - combine all app definitions
-        apps = buildApps // crate2nixApps // fastBuildApps // localApps // testApps // templateApps // simpleTemplateApps // flakeTemplateApps // {
-          # Only include actual apps from bpfBuilderConfig, not functions
-          inherit (bpfBuilderConfig) build-bpf-programs test-bpf-builder;
-        };
+        apps = crate2nixApps // localApps;
       };
     };
 }

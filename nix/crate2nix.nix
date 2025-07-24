@@ -35,7 +35,7 @@ in {
         --output ./Cargo.nix
       
       echo ""
-      echo "✓ Cargo.nix generated successfully!"
+      echo "Cargo.nix generated successfully!"
       echo ""
       echo "This file contains Nix expressions for all Rust dependencies."
       echo "Commit Cargo.nix to version control for reproducible builds."
@@ -80,7 +80,7 @@ in {
         --output ./Cargo.nix
       
       echo ""
-      echo "✓ Cargo.nix regenerated successfully!"
+      echo "Cargo.nix regenerated successfully!"
       echo ""
       echo "This file contains Nix expressions for all Rust dependencies."
       echo "Commit Cargo.nix to version control for reproducible builds."
