@@ -2,10 +2,16 @@
 resolver = "2"
 members = [
     "programs/valence-core",
-    "programs/valence-extensions",
-]
-exclude = [
-    "bloom",
+    "programs/valence-functions", 
+    
+    "crates/sdk",
+    "crates/registry",
+    "crates/runtime",
+    "feels/feels-math",
+    "feels/feels-verifiers",
+    "feels/feels-core",
+    "feels/feels-sdk",
+    "examples/registry-workflow",
 ]
 
 [workspace.dependencies]
@@ -13,6 +19,11 @@ anchor-lang = "0.31.1"
 anchor-client = "0.31.1"
 solana-program = "2.1.6"
 solana-sdk = "2.1.6"
+solana-client = "2.1.6"
+solana-transaction-status = "2.1.6"
+solana-account-decoder = "2.1.6"
+spl-token = "4.0"
+borsh = "0.10"
 
 [profile.release]
 overflow-checks = true

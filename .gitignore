@@ -13,12 +13,24 @@ target/
 test-ledger/
 .DS_Store
 
+# Anchor generated files
+target/idl/
+target/types/
+target/deploy/
+target/verifiable/
+.anchor/
+**/__client_accounts_*.rs
+# Keep directory but ignore contents (required for anchor to generate idls)
+**/idls/*
+!**/idls/.gitkeep
+
 # Node.js
 node_modules/
 dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.ts
 
 # Editor directories and files
 .idea/
@@ -60,9 +72,6 @@ tests/target/
 artifacts/
 proptest-regressions/
 
-# TypeScript test files (if temporary)
-tests/zk_functionality.ts
-
 # Scratch/temporary directories
 scratch/
 
@@ -77,4 +86,6 @@ scratch/
 */flake.lock
 !flake.lock
 
-bloom/
+devenv/
+
+feels/
