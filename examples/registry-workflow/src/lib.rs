@@ -8,7 +8,6 @@
 use anchor_lang::prelude::*;
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::collections::HashMap;
-use valence_sdk::ValenceClient;
 
 // Missing types for the example - placeholder implementations
 #[derive(Debug)]
@@ -212,7 +211,9 @@ mod imports {
     }
 
     pub mod guards {
+        #[allow(dead_code)]
         pub const WHITELIST: [u8; 32] = [10u8; 32];
+        #[allow(dead_code)]
         pub const TIME_LOCK: [u8; 32] = [11u8; 32];
     }
 }

@@ -12,6 +12,15 @@ in {
     protobuf  # For off-chain builds
     inputs'.crate2nix.packages.default  # For generating Cargo.nix
     jq  # For JSON parsing in scripts
+    # Dependencies for librocksdb-sys and libclang (use solana-node's clang to avoid collision)
+    llvmPackages.libclang.lib
+    cmake
+    # RocksDB system dependencies
+    zlib
+    bzip2
+    lz4
+    zstd
+    snappy
   ] ++ lib.optionals stdenv.isDarwin [
     libiconv  # Required for macOS builds
     darwin.apple_sdk.frameworks.Security
@@ -59,14 +68,67 @@ in {
       name = "SOURCE_DATE_EPOCH";
       value = "1686858254";
     }
+    {
+      name = "LIBCLANG_PATH";
+      value = "${pkgs.llvmPackages.libclang.lib}/lib";
+    }
+    {
+      name = "BINDGEN_EXTRA_CLANG_ARGS";
+      value = "-I${pkgs.llvmPackages.clang-unwrapped.lib}/lib/clang/${pkgs.llvmPackages.clang-unwrapped.version}/include";
+    }
+    # RocksDB environment variables
+    {
+      name = "ZLIB_INCLUDE_DIR";
+      value = "${pkgs.zlib.dev}/include";
+    }
+    {
+      name = "ZLIB_LIB_DIR";
+      value = "${pkgs.zlib}/lib";
+    }
+    {
+      name = "BZIP2_INCLUDE_DIR";
+      value = "${pkgs.bzip2.dev}/include";
+    }
+    {
+      name = "BZIP2_LIB_DIR";
+      value = "${pkgs.bzip2}/lib";
+    }
+    {
+      name = "LZ4_INCLUDE_DIR";
+      value = "${pkgs.lz4.dev}/include";
+    }
+    {
+      name = "LZ4_LIB_DIR";
+      value = "${pkgs.lz4}/lib";
+    }
+    {
+      name = "ZSTD_INCLUDE_DIR";
+      value = "${pkgs.zstd.dev}/include";
+    }
+    {
+      name = "ZSTD_LIB_DIR";
+      value = "${pkgs.zstd}/lib";
+    }
+    {
+      name = "SNAPPY_INCLUDE_DIR";
+      value = "${pkgs.snappy}/include";
+    }
+    {
+      name = "SNAPPY_LIB_DIR";
+      value = "${pkgs.snappy}/lib";
+    }
   ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
     {
       name = "LIBRARY_PATH";
-      value = "${pkgs.libiconv}/lib";
+      value = "${pkgs.libiconv}/lib:${pkgs.llvmPackages.libclang.lib}/lib";
+    }
+    {
+      name = "DYLD_LIBRARY_PATH";
+      value = "${pkgs.llvmPackages.libclang.lib}/lib";
     }
     {
       name = "LDFLAGS";
-      value = "-L${pkgs.libiconv}/lib";
+      value = "-L${pkgs.libiconv}/lib -L${pkgs.llvmPackages.libclang.lib}/lib";
     }
   ];
   

@@ -22,7 +22,7 @@ in {
       set -e
       
       # Get the crate name from command line argument
-      CRATE_NAME="''${1:-valence_core}"
+      CRATE_NAME="''${1:-valence_kernel}"
       
       echo "=== Building IDL for $CRATE_NAME with nightly rust ==="
       echo ""
@@ -58,7 +58,7 @@ EOF
       
       # Store original workspace location and change to program directory
       export ORIGINAL_PWD="$(pwd)"
-      cd "programs/valence-core" || exit 1
+      cd "programs/valence-kernel" || exit 1
       
       # Ensure target/idl directory exists
       mkdir -p target/idl

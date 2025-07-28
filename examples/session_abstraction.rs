@@ -8,7 +8,7 @@ use valence_sdk::{
     ValenceClient, SessionBuilder, OperationBuilder, AccountType,
     Guard, SessionScope,
 };
-use valence_core::operations::{SessionOperation, OperationBatch};
+use valence_kernel::operations::{SessionOperation, OperationBatch};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let session_pubkey = Pubkey::new_unique(); // Derive properly in real code
     
     // Create the session on-chain
-    let create_ix = client.create_session_instruction(session_pubkey, session)?;
+    let create_ix = client.create_session_account_instruction(session_pubkey, session)?;
     let sig = client.send_transaction(&[create_ix]).await?;
     println!("Session created: {}", sig);
     
@@ -75,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build();
     
     // Execute operations through session
-    let execute_ix = client.execute_operations_instruction(
+    let execute_ix = client.execute_session_operations_instruction(
         session_pubkey,
         operations,
         operations.get_all_accounts(), // Include all registered accounts
@@ -124,7 +124,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let batch = session_manager.build_batch(session_pubkey, true).await?;
     
     // Execute the batch
-    let execute_ix = client.execute_operations_instruction(
+    let execute_ix = client.execute_session_operations_instruction(
         session_pubkey,
         batch,
         vec![], // No additional accounts needed for metadata update
@@ -138,13 +138,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 // Helper extension trait for client
 trait ValenceClientExt {
-    fn create_session_instruction(
+    fn create_session_account_instruction(
         &self,
         session_pubkey: Pubkey,
-        params: valence_core::state::CreateSessionParams,
+        params: valence_kernel::state::CreateSessionParams,
     ) -> Result<solana_sdk::instruction::Instruction, Box<dyn std::error::Error>>;
     
-    fn execute_operations_instruction(
+    fn execute_session_operations_instruction(
         &self,
         session_pubkey: Pubkey,
         batch: OperationBatch,
@@ -153,16 +153,16 @@ trait ValenceClientExt {
 }
 
 impl ValenceClientExt for ValenceClient {
-    fn create_session_instruction(
+    fn create_session_account_instruction(
         &self,
         session_pubkey: Pubkey,
-        params: valence_core::state::CreateSessionParams,
+        params: valence_kernel::state::CreateSessionParams,
     ) -> Result<solana_sdk::instruction::Instruction, Box<dyn std::error::Error>> {
         // Implementation would create proper instruction
         unimplemented!("Create session instruction")
     }
     
-    fn execute_operations_instruction(
+    fn execute_session_operations_instruction(
         &self,
         session_pubkey: Pubkey,
         batch: OperationBatch,

@@ -1,5 +1,5 @@
-// State definitions for protocol-specific data structures in valence-functions
-// Provides reusable state types for common protocol patterns like escrow
+// State definitions for shard-specific data structures in valence-functions
+// Provides reusable state types for common shard patterns like escrow
 use anchor_lang::prelude::*;
 
 // ================================
@@ -7,7 +7,7 @@ use anchor_lang::prelude::*;
 // ================================
 
 /// Trait for validating state consistency and business rules
-/// All protocol states should implement this for safety checks
+/// All shard states should implement this for safety checks
 pub trait StateValidator {
     /// Validate the state against business rules and constraints
     fn validate(&self) -> Result<()>;
@@ -17,7 +17,7 @@ pub trait StateValidator {
 }
 
 // ================================
-// Escrow Protocol State
+// Escrow Shard State
 // ================================
 
 /// Escrow state for atomic swaps and secure transactions
@@ -274,7 +274,8 @@ pub struct EscrowBuilder {
 
 impl EscrowBuilder {
     /// Create a new escrow builder
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             seller: None,
             asset_mint: None,
@@ -284,24 +285,28 @@ impl EscrowBuilder {
     }
 
     /// Set the seller for the escrow
+    #[must_use]
     pub fn seller(mut self, seller: Pubkey) -> Self {
         self.seller = Some(seller);
         self
     }
 
     /// Set the asset mint for the escrow
+    #[must_use]
     pub fn asset_mint(mut self, asset_mint: Pubkey) -> Self {
         self.asset_mint = Some(asset_mint);
         self
     }
 
     /// Set the price for the escrow
+    #[must_use]
     pub fn price(mut self, price: u64) -> Self {
         self.price = Some(price);
         self
     }
 
     /// Set the duration for the escrow (in seconds)
+    #[must_use]
     pub fn duration(mut self, duration: i64) -> Self {
         self.duration = Some(duration);
         self

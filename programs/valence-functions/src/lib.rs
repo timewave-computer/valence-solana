@@ -1,8 +1,8 @@
 #![allow(unexpected_cfgs)]
 #![allow(deprecated)]
 
-// Valence Functions - Protocol-specific guard implementations and state management
-// Provides reusable components for building protocol-specific authorization logic
+// Valence Functions - Shard-specific guard implementations and state management
+// Provides reusable components for building shard-specific authorization logic
 use anchor_lang::prelude::*;
 
 // ================================
@@ -12,17 +12,17 @@ use anchor_lang::prelude::*;
 declare_id!("Va1enceFunc11111111111111111111111111111111");
 
 // ================================
-// Core Protocol Trait System
+// Core Shard Trait System
 // ================================
 
-/// Core trait for protocol definitions with embedded constants
-/// Enables protocols to define their identity, versioning, and upgrade paths
-pub trait Protocol: Clone {
-    /// Unique identifier for this protocol
-    /// Should be derived from protocol name and core characteristics
+/// Core trait for shard definitions with embedded constants
+/// Enables shards to define their identity, versioning, and upgrade paths
+pub trait Shard: Clone {
+    /// Unique identifier for this shard
+    /// Should be derived from shard name and core characteristics
     fn id(&self) -> [u8; 32];
 
-    /// Protocol version for upgrades and compatibility tracking
+    /// Shard version for upgrades and compatibility tracking
     /// Follows semantic versioning principles
     fn version(&self) -> u16;
 
@@ -32,18 +32,18 @@ pub trait Protocol: Clone {
 }
 
 // ================================
-// Protocol Upgrade System
+// Shard Upgrade System
 // ================================
 
-/// Trait for implementing safe protocol upgrades
-/// Ensures data migration and compatibility validation during protocol evolution
-pub trait ProtocolUpgrade<T> {
+/// Trait for implementing safe shard upgrades
+/// Ensures data migration and compatibility validation during shard evolution
+pub trait ShardUpgrade<T> {
     /// Check if upgrade is allowed from old version
     /// Validates compatibility and prerequisites for migration
     fn can_upgrade_from(&self, old_version: u16, migration_data: &[u8]) -> Result<bool>;
 
     /// Migrate data from old session format to new format
-    /// Handles data transformation during protocol upgrades
+    /// Handles data transformation during shard upgrades
     fn migrate_from(&self, old_session_data: &[u8], migration_data: &[u8]) -> Result<Vec<u8>>;
 
     /// Validate that migration was successful
@@ -55,7 +55,7 @@ pub trait ProtocolUpgrade<T> {
 // Runtime Environment Context
 // ================================
 
-/// Runtime context provided to all protocol functions
+/// Runtime context provided to all shard functions
 /// Contains essential blockchain state and caller information for guard evaluation
 #[derive(Clone, Debug, Default)]
 pub struct Environment {
@@ -106,7 +106,7 @@ pub mod escrow;
 pub mod functions;
 /// Guard implementations for authorization
 pub mod guards;
-/// State definitions for protocol-specific data structures
+/// State definitions for shard-specific data structures
 pub mod states;
 /// Utility functions and helpers
 pub mod utils;

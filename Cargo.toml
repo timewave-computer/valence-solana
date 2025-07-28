@@ -1,17 +1,18 @@
 [workspace]
 resolver = "2"
 members = [
-    "programs/valence-core",
+    "programs/valence-kernel",
     "programs/valence-functions", 
     
-    "crates/sdk",
-    "crates/registry",
-    "crates/runtime",
+    "crates/valence-sdk",
+    "crates/valence-registry",
+    "crates/valence-runtime",
     "feels/feels-math",
-    "feels/feels-verifiers",
+    "feels/feels-functions",
     "feels/feels-core",
     "feels/feels-sdk",
     "examples/registry-workflow",
+    # "examples/zk-transfer-limit", # Temporarily excluded - needs updating for new API
 ]
 
 [workspace.dependencies]

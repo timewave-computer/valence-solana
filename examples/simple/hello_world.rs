@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
-use valence_core::state::{Session, SessionVariant};
-use valence_core::guards::Guard;
+use valence_kernel::state::{Session, SessionVariant};
+use valence_kernel::guards::Guard;
 use valence_functions::guards::builtin::always_true_guard;
 
 #[program]
@@ -27,7 +27,7 @@ pub mod hello_world {
         };
 
         // Initialize the session account
-        *session_account = Session::Dynamic(valence_core::state::DynamicSessionData {
+        *session_account = Session::Dynamic(valence_kernel::state::DynamicSessionData {
             owner: owner_key,
             protocol: protocol_id,
             authz_state,

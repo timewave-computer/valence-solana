@@ -2,7 +2,7 @@
 // This shows how to create sessions with guards and execute operations
 
 use anchor_lang::prelude::*;
-use valence_core::*;
+use valence_kernel::*;
 
 /// Example program showing guard system usage
 fn main() {

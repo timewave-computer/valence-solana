@@ -10,9 +10,12 @@ pub mod time;
 pub mod multisig;
 /// State machine guards
 pub mod state_machine;
+// /// Zero-knowledge proof verification gateway
+// pub mod zk_verification_gateway;
 
 pub use core::*;
 pub use escrow::*;
 pub use time::*;
 pub use multisig::*;
 pub use state_machine::*;
+// pub use zk_verification_gateway::*;

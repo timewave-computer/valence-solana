@@ -3,7 +3,7 @@
 // ================================
 
 use anchor_lang::prelude::*;
-use valence_core::*;
+use valence_kernel::*;
 
 // ================================
 // Scenario: Preventing State Contamination

@@ -2,7 +2,7 @@
 use crate::Environment;
 use anchor_lang::prelude::*;
 
-/// Metadata for functions in the protocol registry
+/// Metadata for functions in the shard registry
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct FunctionMetadata {
     pub content_hash: [u8; 32],
@@ -43,7 +43,7 @@ impl FunctionResult {
     }
 }
 
-/// Trait for pure functions that transform state deterministically
+/// Trait for pure functions that deterministically transform state
 pub trait PureFunction: Clone {
     type Input;
     type Output;

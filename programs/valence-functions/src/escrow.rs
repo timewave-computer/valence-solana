@@ -1,14 +1,14 @@
-// Simplified escrow protocol for atomic swaps and secure trading
-use crate::{Protocol, states::EscrowStatus};
+// Simplified escrow shard for atomic swaps and secure trading
+use crate::{Shard, states::EscrowStatus};
 use anchor_lang::prelude::*;
 
 // ================================
-// Core Escrow Protocol
+// Core Escrow Shard
 // ================================
 
-/// Simple escrow protocol configuration
+/// Simple escrow shard configuration
 #[derive(Clone, Debug)]
-pub struct EscrowProtocol {
+pub struct EscrowShard {
     /// Service fee in basis points (1 bp = 0.01%)
     pub fee_bps: u16,
     /// Default expiry duration in seconds
@@ -19,7 +19,7 @@ pub struct EscrowProtocol {
     pub minimum_trade_value: u64,
 }
 
-impl Default for EscrowProtocol {
+impl Default for EscrowShard {
     fn default() -> Self {
         Self {
             fee_bps: 100,                       // 1% fee
@@ -30,7 +30,7 @@ impl Default for EscrowProtocol {
     }
 }
 
-impl Protocol for EscrowProtocol {
+impl Shard for EscrowShard {
     fn id(&self) -> [u8; 32] {
         let mut id = [0u8; 32];
         id[..6].copy_from_slice(b"ESCROW");
@@ -44,25 +44,25 @@ impl Protocol for EscrowProtocol {
     }
 
     fn name(&self) -> &'static str {
-        "Valence Escrow Protocol V1"
+        "Valence Escrow Shard V1"
     }
 }
 
 // ================================
-// Protocol Factory Functions
+// Shard Factory Functions
 // ================================
 
-/// Create a peer-to-peer escrow protocol instance
+/// Create a peer-to-peer escrow shard instance
 /// This is a convenience function for creating standard P2P escrow configurations
-pub fn p2p_escrow() -> EscrowProtocol {
-    EscrowProtocol::default()
+pub fn p2p_escrow() -> EscrowShard {
+    EscrowShard::default()
 }
 
 // ================================
-// Protocol Operations
+// Shard Operations
 // ================================
 
-impl EscrowProtocol {
+impl EscrowShard {
     /// Calculate escrow fees
     pub fn calculate_fees(&self, amount: u64) -> Result<u64> {
         (amount as u128)
@@ -122,11 +122,11 @@ impl EscrowStatus {
 }
 
 // ================================
-// Protocol Presets
+// Shard Presets
 // ================================
 
-impl EscrowProtocol {
-    /// Create protocol for NFT trading
+impl EscrowShard {
+    /// Create shard for NFT trading
     pub fn nft_trading() -> Self {
         Self {
             fee_bps: 250,                       // 2.5% fee
@@ -136,7 +136,7 @@ impl EscrowProtocol {
         }
     }
 
-    /// Create protocol for token trading
+    /// Create shard for token trading
     pub fn token_trading() -> Self {
         Self {
             fee_bps: 30,                        // 0.3% fee
@@ -146,7 +146,7 @@ impl EscrowProtocol {
         }
     }
 
-    /// Create protocol for P2P trading
+    /// Create shard for P2P trading
     pub fn p2p_trading() -> Self {
         Self {
             fee_bps: 0,                         // No fees

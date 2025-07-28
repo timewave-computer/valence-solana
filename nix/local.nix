@@ -18,13 +18,13 @@
     ''}/bin/valence-node";
   };
   
-  # Launch complete local Valence environment
-  valence-local = {
+  # Launch local devnet with deployed programs for e2e testing
+  local-devnet = {
     type = "app";
-    program = "${pkgs.writeShellScriptBin "valence-local" ''
+    program = "${pkgs.writeShellScriptBin "local-devnet" ''
       set -e
       
-      echo "=== Launching Valence Local Development Environment ==="
+      echo "=== Launching Valence Local Devnet ==="
       echo ""
       
       # Colors for output

@@ -2059,10 +2059,20 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
+ "feels-functions",
  "feels-math",
- "feels-verifiers",
  "solana-program",
- "valence-core",
+ "valence-kernel",
+]
+
+[[package]]
+name = "feels-functions"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "solana-program",
+ "valence-kernel",
 ]
 
 [[package]]
@@ -2080,7 +2090,7 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "feels-core",
- "feels-verifiers",
+ "feels-functions",
  "serde",
  "serde_json",
  "solana-client",
@@ -2088,17 +2098,7 @@ dependencies = [
  "solana-test-validator",
  "thiserror 1.0.69",
  "tokio",
- "valence-core",
-]
-
-[[package]]
-name = "feels-verifiers"
-version = "0.1.0"
-dependencies = [
- "anchor-lang",
- "anchor-spl",
- "solana-program",
- "valence-core",
+ "valence-kernel",
 ]
 
 [[package]]
@@ -4828,8 +4828,8 @@ dependencies = [
  "serde",
  "tokio",
  "tokio-test",
- "valence-core",
  "valence-functions",
+ "valence-kernel",
  "valence-registry",
  "valence-sdk",
 ]
@@ -11219,25 +11219,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "valence-core"
-version = "0.1.0"
-dependencies = [
- "anchor-client",
- "anchor-lang",
- "borsh 0.10.4",
- "solana-program-test",
- "solana-sdk",
- "tokio",
-]
-
-[[package]]
 name = "valence-functions"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "borsh 0.10.4",
  "serde",
- "valence-core",
+ "valence-kernel",
+]
+
+[[package]]
+name = "valence-kernel"
+version = "0.1.0"
+dependencies = [
+ "anchor-client",
+ "anchor-lang",
+ "borsh 0.10.4",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "tokio",
 ]
 
 [[package]]
@@ -11308,8 +11309,8 @@ dependencies = [
  "spl-token 4.0.2",
  "thiserror 1.0.69",
  "tokio",
- "valence-core",
  "valence-functions",
+ "valence-kernel",
 ]
 
 [[package]]

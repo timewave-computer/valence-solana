@@ -1,132 +1,202 @@
-# Valence - Minimal Secure Microkernel for Solana
+# Valence - Session-Based Orchestration Protocol for Solana
 
-A minimal microkernel providing mechanisms, not policies, for secure program execution on Solana. Valence implements session types for DeFi protocol choreography with verifier-based authorization delegation.
+A session-based orchestration protocol providing secure mechanisms for multi-program coordination on Solana. Valence implements a microkernel architecture with programmable authorization through sessions, guards, and structured operations.
 
-## Quick Start
+## Nix Development Commands
 
+### Development Environments
 ```bash
-# Clone repository
-git clone https://github.com/timewave-computer/valence-solana
-cd valence-solana
+# Enter main development shell (recommended for all development)
+nix develop --accept-flake-config
+# Includes: Rust, Solana CLI, Anchor, native dependencies, build tools
 
-# Enter development environment
-nix develop
+# Run minimal Solana validator only
+nix run .#node
+# Provides: Local test validator without development tools
 
-# Build programs
-cargo build-sbf
-
-# Run tests
-cargo test
+# Launch local devnet for e2e testing (validator + programs deployed)
+nix run .#local-devnet  
+# Provides: Test validator + deployed programs + configuration + ready for testing
 ```
+
+### Build Commands
+```bash
+# Build and run all Solana programs
+nix run .#default
+
+# Generate IDL files for programs
+nix run .#idl-build
+
+# Generate/update Cargo.nix for optimized builds (creates if missing, updates if exists)
+nix run .#generate-cargo-nix
+```
+
+### Available Tools in Nix Shell
+- **solana**: Solana CLI and validator tools
+- **anchor**: Anchor framework for Solana development  
+- **cargo**: Rust package manager with nightly toolchain
+- **crate2nix**: Generate Cargo.nix for optimized Nix builds
+- **Native dependencies**: Automatically configured build tools (cmake, clang, compression libraries)
+
+The Nix environment automatically configures all required environment variables for building native dependencies and resolves system-specific build issues.
+
+### Environment Differences
+- **`nix develop`**: Full development environment with all tools and dependencies
+- **`nix run .#node`**: Minimal validator-only environment (no development tools)
+- **`nix run .#local-devnet`**: Local devnet for e2e testing (validator + deployed programs + configuration)
 
 ## Architecture
 
-Valence implements a microkernel architecture where the core provides fundamental mechanisms while all policies live in user-deployed verifier programs.
+Valence implements a session-based architecture where the core implementation provides fundamental mechanisms for secure multi-program coordination.
 
-### Core Components (`valence-core`)
+### Core Components
 
-The kernel provides essential mechanisms that build upon each other:
+**`programs/valence-kernel`** - Microkernel providing fundamental mechanisms:
 
-**1. Shards** - Developer entry point for protocol logic
-- Deploy your protocol's business logic as executable code
-- Code integrity verified through cryptographic hashing
-- Execution requires authorization from session accounts
-- Provides isolated environment for protocol-specific operations
+**1. Sessions** - Orchestration containers for complex operations
+- Manage collections of borrowed accounts from other programs
+- Provide 256 bytes of shared context accessible to all guards
+- Support atomic execution of multi-step operations
+- Enable secure cross-program coordination
 
-**2. Accounts** - Building blocks for authorization
-- Fundamental unit of authorization in the system
-- Each account specifies a verifier program that controls its usage
-- Lifecycle management through usage counts and time-based expiration
-- 64 bytes of metadata for storing protocol-specific state
-- Nonce-based replay protection ensures operations execute exactly once
+**2. Guards** - Dual authorization system
+- **Built-in Guard VM**: Stack-based virtual machine with opcodes for common authorization patterns
+- **External Guards**: CPI to user-deployed programs for custom authorization logic
+- **Guard Compilation**: High-level guard expressions compiled to VM bytecode
+- Access to session context and borrowed account data
 
-**3. Sessions** - Orchestration containers with shared context
-- Container that manages collections of accounts (up to 16)
-- Provides 256 bytes of shared verification data accessible to all verifiers
-- Enforces linear type semantics through move operations (transfer ownership once)
-- Supports hierarchical composition for complex multi-protocol operations
-- Enables atomic operations across all accounts in the session
+**3. Operations** - Structured execution primitives
+- **BorrowAccount**: Securely borrow accounts from other programs
+- **InvokeProgram**: Execute CPIs with guard authorization
+- **Custom**: Protocol-specific operations
+- All operations are guard-protected and auditable
 
-**4. Verifiers** - External authorization policies
-- User-deployed programs that implement authorization logic
-- Called via CPI when accounts are used
-- Have read access to account data and shared session context
-- Return success/failure to allow or deny operations
-- Enable policy innovation without modifying the kernel
+**4. Registry Integration** - Function and protocol discovery
+- Cryptographic verification of function integrity
+- Decentralized registry for protocol composition
+- Dependency resolution and compatibility checking
 
-### Extensions (`valence-extensions`)
+**`programs/valence-functions`** - Protocol utilities and patterns:
+- **Protocol Trait System**: Standardized interfaces for protocol development
+- **Guard Library**: Reference implementations (multisig, timelock, state machine)
+- **Function Composition**: Tools for building complex protocols from simple functions
+- **Runtime Context**: Environment abstractions for off-chain orchestration
 
-Optional utilities and patterns:
-- **Math**: Fixed-point arithmetic (64.64 representation)
-- **Events**: Structured event emission helpers
-- **Batching**: Transaction batching patterns
-- **Example Verifiers**: Reference implementations (owner, linear lending, curve)
+**`crates/valence-sdk`** - Client development kit:
+- Session management and lifecycle
+- Guard compilation from high-level expressions
+- Transaction building and submission
+- Registry integration utilities
+
+**`crates/valence-runtime`** - Off-chain orchestration service:
+- Complex workflow management
+- Multi-step operation coordination
+- Event monitoring and response
+- Integration with external systems
 
 ### How It Works
 
-1. **Deploy Verifiers**: Implement your authorization policies as separate programs
-2. **Deploy Shard**: Upload your protocol logic that will execute operations
-3. **Create Session**: Initialize a container for managing related accounts
-4. **Add Accounts**: Create accounts within the session, each linked to a verifier
-5. **Execute Shard**: Run your protocol logic with account authorization
-6. **Atomic Operations**: Session automatically ensures all-or-nothing execution
+1. **Create Session**: Initialize an orchestration container
+2. **Compile Guards**: Define authorization logic using guard expressions or VM bytecode
+3. **Borrow Accounts**: Securely access accounts from other programs within the session
+4. **Execute Operations**: Run guard-protected operations atomically
+5. **Registry Integration**: Discover and compose functions from the decentralized registry
 
-The microkernel never makes authorization decisions - all policies are implemented in verifiers. This separation enables innovation in user space while maintaining a stable, minimal core.
+The core never makes authorization decisions - all policies are implemented in guards. This separation enables innovation while maintaining security and auditability.
 
-See [Architecture Documentation](docs/architecture.md) for detailed design
+See documentation in `docs/` for detailed guides on [sessions](docs/sessions.md), [guards](docs/guards.md), and [registry integration](examples/registry-workflow/).
 
 ## Design Principles
 
-1. **Mechanisms, not policies** - Core provides building blocks
-2. **Zero-copy by default** - All state uses fixed-size fields
-3. **Minimal dynamic allocations** - Limited to session account list
-4. **Single responsibility** - Each instruction does one thing
-5. **Composition over inheritance** - Build complexity in userspace
+1. **Session-based orchestration** - Operations grouped in atomic containers
+2. **Dual authorization model** - Built-in VM + external guard programs
+3. **Zero-copy operations** - Efficient account borrowing without data copying
+4. **Composable functions** - Build complex protocols from simple primitives
+5. **Registry-driven discovery** - Decentralized function and protocol registry
 
 ## Usage
 
-1. Deploy a verifier program (see example verifiers in `programs/valence-extensions/src/examples/`)
-2. Create a session with your verifier
-3. Deploy shard code for your logic
-4. Execute shards using sessions for authorization
+### Basic Session Workflow
 
-## Extensions
+```rust
+// 1. Create a session
+let session = valence_kernel::Session::new(session_params)?;
 
-Optional features available as a library:
-- `math` - Fixed-point arithmetic operations
-- `events` - Structured event emission
-- `batching` - Atomic batch execution
+// 2. Define guards (VM bytecode or external program)
+let guard = Guard::vm(guard_bytecode);
 
-Enable features in Cargo.toml:
-```toml
-valence-extensions = { version = "0.1", features = ["math", "events"] }
+// 3. Borrow accounts with guard protection
+session.borrow_account(account_pubkey, guard)?;
+
+// 4. Execute operations atomically
+session.execute_session_operations(operations)?;
+```
+
+### Registry Integration
+
+```rust
+// Discover functions from registry
+let functions = registry.search(FunctionQuery {
+    tags: vec!["defi", "lending"],
+    audit: Some("verified"),
+})?;
+
+// Compose protocol from registry functions
+let protocol = ProtocolBuilder::new()
+    .add_function(functions.lending_v1)
+    .add_function(functions.oracle_v2)
+    .build()?;
 ```
 
 ## Examples
 
-### Verifier Examples (in `programs/valence-extensions/src/examples/`)
-- `owner_verifier.rs` - Simple owner-only verifier
-- `linear_lending_verifier.rs` - Linear type enforcement for lending
-- `multidimensional_curve_verifier.rs` - Complex curve verification
+### Core Examples (in `examples/`)
+- [`registry-workflow/`](examples/registry-workflow/) - Complete registry integration workflow showcasing protocol composition and function reuse
+- `simple/` - Basic session and guard examples
+- `atomic-operations/` - Multi-step atomic operation patterns
+- `lending-protocol/` - Example lending protocol implementation
 
-### Integration Examples (in `examples/`)
-- `composable_sessions.rs` - Demonstrates session composition patterns
-- `lending_with_voucher.rs` - Example lending protocol with voucher system
+### Guard Examples (in `programs/valence-functions/`)
+- Built-in VM guards with opcodes for common patterns
+- External guard programs for custom authorization logic
+- Guard composition and compilation examples
 
 ## Build
 
 ```bash
-# Using Nix development shell
-nix develop -c cargo build-sbf
+# Build all workspace crates (recommended)
+cargo build
 
-# Or using the provided build script
-nix run .#build
+# Build Solana programs for deployment
+cargo build-sbf
+
+# Build using Nix (includes all optimizations)
+nix run .#default
+
+# Generate IDL files for programs
+nix run .#idl-build
 ```
 
-For more build options, see the development environment documentation.
+**Note**: Always use the Nix development environment (`nix develop --accept-flake-config`) for building, as it provides all required system dependencies and environment variables.
 
 ## Documentation
 
-- [Architecture Guide](docs/architecture.md) - System design and concepts
-- [Developer Guide](docs/developer-guide.md) - Building with Valence
-- [Security Model](docs/security-model.md) - Security analysis and best practices
+- [Sessions Guide](docs/sessions.md) - Session-based orchestration concepts
+- [Guards Guide](docs/guards.md) - Authorization system and guard VM
+- [SDK Documentation](crates/valence-sdk/docs/guard_compilation.md) - Guard compilation and client development
+- [Registry Workflow](examples/registry-workflow/) - Complete integration example
+
+## Development
+
+**Workspace Structure:**
+- `programs/valence-kernel` - Main orchestration program
+- `programs/valence-functions` - Protocol utilities and guard library  
+- `crates/valence-sdk` - Client development kit
+- `crates/valence-registry` - Function and protocol registry
+- `crates/valence-runtime` - Off-chain orchestration service
+- `examples/` - Integration examples and workflows
+
+**Generated Artifacts:**
+- `target/idl/valence_kernel.json` - Program IDL for client integration
+- `target/deploy/*.so` - Deployable Solana program binaries
+- `Cargo.nix` - Reproducible Nix build configuration

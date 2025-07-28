@@ -10,10 +10,10 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(test)'] }
 
 [dependencies]
 anchor-lang = { workspace = true }
-valence-core = { path = "../../programs/valence-core", features = ["cpi"] }
+valence-kernel = { path = "../../programs/valence-kernel", features = ["cpi"] }
 valence-functions = { path = "../../programs/valence-functions" }
-valence-registry = { path = "../../crates/registry" }
-valence-sdk = { path = "../../crates/sdk" }
+valence-registry = { path = "../../crates/valence-registry" }
+valence-sdk = { path = "../../crates/valence-sdk" }
 borsh = { workspace = true }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }

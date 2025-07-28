@@ -20,9 +20,6 @@ target/deploy/
 target/verifiable/
 .anchor/
 **/__client_accounts_*.rs
-# Keep directory but ignore contents (required for anchor to generate idls)
-**/idls/*
-!**/idls/.gitkeep
 
 # Node.js
 node_modules/
@@ -87,5 +84,6 @@ scratch/
 !flake.lock
 
 devenv/
+scripts/
 
 feels/

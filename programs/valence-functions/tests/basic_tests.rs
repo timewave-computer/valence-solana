@@ -30,12 +30,12 @@ fn mock_clock() -> Clock {
 }
 
 #[test]
-fn test_escrow_protocol_creation() {
-    let protocol = valence_functions::escrow::p2p_escrow();
+fn test_escrow_shard_creation() {
+    let shard = valence_functions::escrow::p2p_escrow();
 
-    // Basic assertions to ensure protocol is created
-    assert_eq!(protocol.version(), 1);
-    assert_eq!(protocol.name(), "Valence Escrow Protocol V1");
+    // Basic assertions to ensure shard is created
+    assert_eq!(shard.version(), 1);
+    assert_eq!(shard.name(), "Valence Escrow Shard V1");
 }
 
 #[test]

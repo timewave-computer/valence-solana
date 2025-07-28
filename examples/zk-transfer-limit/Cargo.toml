@@ -1,0 +1,15 @@
+[package]
+name = "zk-transfer-limit-example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anchor-lang = { workspace = true }
+anchor-client = { workspace = true }
+solana-sdk = { workspace = true }
+solana-client = { workspace = true }
+valence-kernel = { path = "../../programs/valence-kernel", features = ["cpi"] }
+valence-functions = { path = "../../programs/valence-functions" }
+valence-sdk = { path = "../../crates/valence-sdk" }
+tokio = { version = "1", features = ["full"] }
+borsh = { workspace = true }

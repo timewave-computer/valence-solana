@@ -44,7 +44,7 @@ The `APUEvaluator` is the core interpreter loop that executes `GuardOp` sequence
 
 The `Session` account manages the lifecycle and state of an authorization session. Its structure and associated logic are conceptually portable.
 
-*   **`Session` Data Structure:** Contains fields like `owner`, `protocol`, `usage_count`, `metadata`, `created_at`, `updated_at`, `borrowed_accounts` (with bitmap for efficient tracking), and a reference to its associated guard logic.
+*   **`Session` Data Structure:** Contains fields like `owner`, `shard`, `usage_count`, `metadata`, `created_at`, `updated_at`, `borrowed_accounts` (with bitmap for efficient tracking), and a reference to its associated guard logic.
 *   **Core Logic:** Methods for `increment_usage`, `set_metadata`, `borrow_account`, `release_account`, `release_all`, and `has_borrowed` are state transitions that can be implemented in any environment.
 
 ### 2.3. CPI Allowlisting
@@ -139,27 +139,27 @@ pub struct ClockInfo {
 
 For each target blockchain, a concrete implementation of the `BlockchainContext` trait (or equivalent) would be provided, along with necessary serialization and data mapping layers.
 
-### 4.1. Solana Implementation (`valence-core-solana`)
+### 4.1. Solana Implementation (`valence-kernel-solana`)
 
 *   **Mapping:** Direct mapping of `Pubkey` to `Address`, `AccountInfo` to `AccountInfo`, `Clock::get()` to `get_timestamp`/`get_block_height`, `solana_program::program::invoke` to `invoke_contract`.
 *   **Serialization:** Continue using Borsh for on-chain state.
-*   **Current Codebase:** The existing `valence-core` codebase would be refactored to explicitly use the `BlockchainContext` interface, rather than direct Solana APIs.
+*   **Current Codebase:** The existing `valence-kernel` codebase would be refactored to explicitly use the `BlockchainContext` interface, rather than direct Solana APIs.
 
-### 4.2. EVM Implementation (`valence-core-evm`)
+### 4.2. EVM Implementation (`valence-kernel-evm`)
 
 *   **Language:** Solidity or Rust with `solang` for compilation to EVM bytecode.
 *   **Mapping:** `Address` to `address` (H160), `timestamp` to `block.timestamp`, `block_height` to `block.number`, `invoke_contract` to `call`/`delegatecall`.
 *   **State:** Session and GuardData would be stored as contract state variables or in storage slots.
 *   **Serialization:** ABI encoding/decoding for instruction data, potentially RLP or custom serialization for internal state.
 
-### 4.3. CosmWasm Implementation (`valence-core-cosmwasm`)
+### 4.3. CosmWasm Implementation (`valence-kernel-cosmwasm`)
 
 *   **Language:** Rust.
 *   **Mapping:** `Address` to `Addr` (CosmWasm address type), `timestamp` to `env.block.time.seconds()`, `block_height` to `env.block.height`, `invoke_contract` to `CosmosMsg::Wasm(Execute { ... })`.
 *   **State:** Session and GuardData would be stored in CosmWasm's `Storage` (e.g., using `cw_storage_plus`).
 *   **Serialization:** JSON for messages, potentially Borsh for internal state.
 
-### 4.4. Move Implementation (`valence-core-move`)
+### 4.4. Move Implementation (`valence-kernel-move`)
 
 *   **Language:** Move.
 *   **Mapping:** `Address` to `address` (Move address type), `timestamp` to `signer::timestamp()`, `block_height` to `signer::block_height()`, `invoke_contract` to `call_module_function`.
@@ -170,14 +170,14 @@ For each target blockchain, a concrete implementation of the `BlockchainContext`
 
 To maintain portability while optimizing for each environment:
 
-*   **Core Portable Data Structures:** `GuardOp`, `CPIManifestEntry`, `CompiledGuard`, `Session` (and its sub-structs like `BorrowedAccount`), `SessionSharedData`, `CPIAllowlist` should be defined in a blockchain-agnostic manner.
+*   **Core Portable Data Structures:** `GuardOp`, `CPIManifestEntry`, `SerializedGuard`, `Session` (and its sub-structs like `BorrowedAccount`), `SessionSharedData`, `CPIAllowlist` should be defined in a blockchain-agnostic manner.
 *   **Environment-Specific Serialization:** Each environment's adapter would handle the serialization/deserialization of these core structures to and from the native byte format of that blockchain (e.g., Borsh for Solana, ABI for EVM, JSON/Borsh for CosmWasm, Move's native serialization).
-*   **Client-Side Compilation:** The client-side SDK remains responsible for compiling developer-friendly guard logic into the `CompiledGuard` bytecode, which is then serialized and sent to the appropriate blockchain program.
+*   **Client-Side Compilation:** The client-side SDK remains responsible for compiling developer-friendly guard logic into the `SerializedGuard` bytecode, which is then serialized and sent to the appropriate blockchain program.
 
 ## 6. Compilation Strategy
 
-*   **Client-Side Compiler:** The `Guard` enum (the developer-friendly, recursive representation) and its compiler (`guards/compiler.rs`) would reside in a client-side SDK (e.g., `valence-sdk-js`, `valence-sdk-rust`). This compiler generates the `CompiledGuard` bytecode.
-*   **On-Chain Validation & Execution:** The on-chain kernel program for each environment receives the pre-compiled `CompiledGuard`, validates it, and executes it using its `APUEvaluator`.
+*   **Client-Side Compiler:** The `Guard` enum (the developer-friendly, recursive representation) and its compiler (`guards/compiler.rs`) would reside in a client-side SDK (e.g., `valence-sdk-js`, `valence-sdk-rust`). This compiler generates the `SerializedGuard` bytecode.
+*   **On-Chain Validation & Execution:** The on-chain kernel program for each environment receives the pre-compiled `SerializedGuard`, validates it, and executes it using its `APUEvaluator`.
 
 ## 7. Benefits of this Approach
 

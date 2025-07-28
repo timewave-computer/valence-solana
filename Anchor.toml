@@ -6,7 +6,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-valence_core = "Va1ence111111111111111111111111111111111111"
+valence_kernel = "Va1ence111111111111111111111111111111111111"
 
 [provider]
 cluster = "Localnet"

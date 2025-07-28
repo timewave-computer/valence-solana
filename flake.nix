@@ -78,7 +78,7 @@
         # Packages
         packages = packagesConfig // {
           # Re-export packages that were in apps as packages too
-          inherit (packagesConfig) default generate-cargo-nix regenerate-cargo-nix;
+          inherit (packagesConfig) default generate-cargo-nix;
         };
 
         # Apps - combine all app definitions

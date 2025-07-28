@@ -104,9 +104,9 @@
   # Helper function to build all Valence programs
   buildValencePrograms = src: {
     core = buildBPFProgram {
-      name = "valence-core";
+      name = "valence-kernel";
       inherit src;
-      cargoToml = "programs/valence-core/Cargo.toml";
+      cargoToml = "programs/valence-kernel/Cargo.toml";
     };
   };
   
@@ -127,8 +127,8 @@
       NC='\033[0m' # No Color
       
       # Build programs using nix build
-      echo -e "''${YELLOW}Building valence-core...''${NC}"
-      nix build .#valence-core --out-link ./target/nix-core
+      echo -e "''${YELLOW}Building valence-kernel...''${NC}"
+      nix build .#valence-kernel --out-link ./target/nix-core
       
       echo ""
       echo -e "''${GREEN}=== BPF Programs Built Successfully ===''${NC}"
@@ -152,7 +152,7 @@
       
       # Test building the Valence programs using the BPF builder
       echo "Testing BPF builder with Valence programs..."
-      nix build .#valence-core --out-link ./target/test-core-bpf
+      nix build .#valence-kernel --out-link ./target/test-core-bpf
       
       echo ""
       echo "BPF builder test completed successfully"
