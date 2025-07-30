@@ -1,0 +1,33 @@
+[package]
+name = "e2e-tests"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "e2e-test"
+path = "src/main.rs"
+
+[dependencies]
+anchor-client = { workspace = true }
+anchor-lang = { workspace = true }
+anchor-spl = { workspace = true }
+solana-sdk = { workspace = true }
+solana-client = { workspace = true }
+solana-transaction-status = { workspace = true }
+spl-token = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Local dependencies
+valence-kernel = { workspace = true }
+valence-functions = { workspace = true }
+valence-sdk = { workspace = true }
+valence-runtime = { workspace = true }
+valence-registry = { workspace = true }
+test-shard = { path = "../test-shard" }
+
+# Additional testing utilities
+env_logger = "0.10"
+log = "0.4"

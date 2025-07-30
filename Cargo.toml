@@ -7,17 +7,13 @@ members = [
     "crates/valence-sdk",
     "crates/valence-registry",
     "crates/valence-runtime",
-    "feels/feels-math",
-    "feels/feels-functions",
-    "feels/feels-core",
-    "feels/feels-sdk",
-    "examples/registry-workflow",
-    # "examples/zk-transfer-limit", # Temporarily excluded - needs updating for new API
 ]
+exclude = ["e2e", "examples/zk-transfer-limit"]
 
 [workspace.dependencies]
 anchor-lang = "0.31.1"
 anchor-client = "0.31.1"
+anchor-spl = "0.31.1"
 solana-program = "2.1.6"
 solana-sdk = "2.1.6"
 solana-client = "2.1.6"
@@ -25,6 +21,7 @@ solana-transaction-status = "2.1.6"
 solana-account-decoder = "2.1.6"
 spl-token = "4.0"
 borsh = "0.10"
+
 
 [profile.release]
 overflow-checks = true

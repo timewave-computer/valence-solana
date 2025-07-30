@@ -1,25 +1,12 @@
-# Nix
-result
-result-*
-.direnv/
-.nix/
+# ==================================
+# Rust and Node.js
+# ==================================
 
-# Cargo
-.cargo/
-
-# Solana
-.anchor/
+# Rust/Cargo
 target/
-test-ledger/
-.DS_Store
-
-# Anchor generated files
-target/idl/
-target/types/
-target/deploy/
-target/verifiable/
-.anchor/
-**/__client_accounts_*.rs
+.cargo/
+**/*.rs.bk
+*.log
 
 # Node.js
 node_modules/
@@ -29,61 +16,83 @@ yarn-debug.log*
 yarn-error.log*
 *.ts
 
-# Editor directories and files
-.idea/
-.vscode/
-.claude/
-.cursor/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw? 
+# ==================================
+# Solana
+# ==================================
 
-# Backup files
-*.bak
-*.backup
-
-# Working files
-work/
-result/
-app/
-
-# Local environment files
-.env.local
-deployment.env
-valence.env
-*.key
-*.keypair
-
-# Documentation build artifacts
-docs/tests/
-
-# Anchor framework copy
+# Anchor
+.anchor/
 anchor/
+**/__client_accounts_*.rs
 
-# Test artifacts
+# Solana test environment
+test-ledger/
+e2e/.test-ledger
+
+# Test artifacts and build targets
 test-helpers/target/
 utils/target/
 tests/target/
 artifacts/
 proptest-regressions/
 
-# Scratch/temporary directories
-scratch/
+# ==================================
+# Nix
+# ==================================
 
-# Build logs
-*.log
-
-# Environment files
-.envrc
-.valence-env
+result
+result-*
+.direnv/
+.nix/
+devenv/
 
 # Flake locks (except root)
 */flake.lock
 !flake.lock
 
-devenv/
-scripts/
+# ==================================
+# Environment
+# ==================================
 
-feels/
+# Env
+.env.local
+.envrc
+deployment.env
+valence.env
+.valence-env
+
+# Keys
+*.key
+*.keypair
+
+# ==================================
+# Editor
+# ==================================
+
+.idea/
+.vscode/
+.claude/
+.cursor/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ==================================
+# Temporary
+# ==================================
+
+*.bak
+*.backup
+scratch/
+
+# ==================================
+# Project Specific
+# ==================================
+
+# Working directories
+work/
+app/
+scripts/

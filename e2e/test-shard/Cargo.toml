@@ -1,0 +1,27 @@
+[package]
+name = "test-shard"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "test_shard"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = { workspace = true }
+anchor-spl = { workspace = true }
+solana-program = { workspace = true }
+valence-kernel = { workspace = true, features = ["cpi"] }
+valence-functions = { workspace = true }
+
+[dev-dependencies]
+anchor-client = { workspace = true }
+solana-sdk = { workspace = true }
+tokio = { workspace = true }

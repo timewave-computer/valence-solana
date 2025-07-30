@@ -1,9 +1,18 @@
 // State management modules for valence-kernel program
 
-pub mod bitmap;
-pub mod session;
-pub mod shared_data;
-pub mod guard_data;
-pub mod cpi_allowlist;
+// Account types (on-chain state)
+pub mod session_account;
+pub mod guard_account;
+pub mod allowlist_account;
+pub mod account_lookup;
+pub mod function_registry;
 
-pub use {bitmap::*, session::*, shared_data::*, guard_data::*, cpi_allowlist::*};
+// Utility types
+pub mod bitmap;
+
+// Re-exports
+pub use session_account::{Session, SessionBorrowedAccount, CreateSessionParams};
+pub use guard_account::GuardAccount;
+pub use allowlist_account::AllowlistAccount;
+pub use account_lookup::{SessionAccountLookup, RegisteredAccount, RegisteredProgram};
+pub use bitmap::{BitMap, BitMap8};

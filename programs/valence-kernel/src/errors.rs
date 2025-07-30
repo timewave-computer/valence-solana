@@ -1,3 +1,19 @@
+// Comprehensive error system for valence-kernel operation processing
+//
+// The valence-kernel processes untrusted client operations and performs complex account
+// borrowing, CPI calls, and session management. This error system provides structured,
+// categorized error reporting that enables precise diagnosis of failures across all
+// kernel subsystems. Each error includes detailed context and maps to specific failure
+// modes in the batch execution engine.
+//
+// ERROR CATEGORIZATION: Errors are organized by functional domain (state, authorization,
+// sessions, guards, accounts, etc.) with numeric ranges for easy identification and
+// debugging. This structured approach helps developers quickly identify the source and
+// nature of execution failures in complex operation batches.
+//
+// INTEGRATION: All kernel components use these standardized error types, ensuring
+// consistent error handling and reporting across the entire execution pipeline.
+
 use anchor_lang::prelude::*;
 
 // ================================
@@ -50,6 +66,9 @@ pub enum KernelError {
 
     #[msg("Invalid session config")]
     InvalidSessionConfig, // 6204
+    
+    #[msg("Session has been invalidated")]
+    SessionInactive, // 6205
 
     // ===== Guard Errors (6300-6399) =====
     #[msg("Guard verification failed")]
@@ -73,6 +92,9 @@ pub enum KernelError {
 
     #[msg("Guard data too large")]
     GuardDataTooLarge, // 6307
+
+    #[msg("Invalid guard manifest")]
+    InvalidGuardManifest, // 6308
 
     // ===== Account Errors (6400-6499) =====
     #[msg("Account too small")]
@@ -108,6 +130,36 @@ pub enum KernelError {
     
     #[msg("Account not borrowed")]
     AccountNotBorrowed, // 6505
+    
+    #[msg("Borrowed account mismatch")]
+    BorrowedAccountMismatch, // 6506
+    
+    #[msg("Missing required account")]
+    MissingRequiredAccount, // 6507
+    
+    #[msg("Invalid account data")]
+    InvalidAccountData, // 6508
+    
+    #[msg("Account index out of bounds")]
+    AccountIndexOutOfBounds, // 6509
+    
+    #[msg("Invalid program index")]
+    InvalidProgramIndex, // 6510
+    
+    #[msg("Unauthorized account")]
+    UnauthorizedAccount, // 6511
+    
+    #[msg("Too many accounts registered")]
+    TooManyAccounts, // 6512
+    
+    #[msg("Duplicate account registration")]
+    DuplicateAccount, // 6513
+    
+    #[msg("Unregistered account")]
+    UnregisteredAccount, // 6514
+    
+    #[msg("Account already exists")]
+    AccountAlreadyExists, // 6515
 
     // ===== Performance Errors (6600-6699) =====
     #[msg("Compute budget exceeded")]
@@ -135,36 +187,36 @@ pub enum KernelError {
     
     #[msg("Invalid transaction signature")]
     InvalidTransaction, // 6801
+    
+    #[msg("Session reentrancy violation")]
+    ReentrancyViolation, // 6802
+
+    // ===== Namespace Errors (6900-6999) =====
+    #[msg("Namespace path cannot be empty")]
+    NamespaceEmptyPath, // 6900
+    
+    #[msg("Invalid namespace path format")]
+    NamespaceInvalidPath, // 6901
+    
+    #[msg("Namespace segment cannot be empty")]
+    NamespaceEmptySegment, // 6902
+    
+    #[msg("Namespace segment cannot contain slashes")]
+    NamespaceInvalidSegment, // 6903
+    
+    #[msg("Insufficient privileges for operation")]
+    NamespaceInsufficientPrivileges, // 6904
+    
+    #[msg("Namespace already exists")]
+    NamespaceAlreadyExists, // 6905
+    
+    #[msg("Namespace not found")]
+    NamespaceNotFound, // 6906
+    
+    #[msg("Cannot delete namespace with children")]
+    NamespaceHasChildren, // 6907
+    
+    #[msg("State size exceeds maximum allowed")]
+    NamespaceStateTooLarge, // 6908
 }
 
-// ================================
-// Error Context Builder
-// ================================
-
-/// Generic error macro with context logging
-#[macro_export]
-macro_rules! err_with_context {
-    ($error:expr, $msg:literal $(, $arg:expr)*) => {{
-        anchor_lang::prelude::msg!($msg $(, $arg)*);
-        $error
-    }};
-}
-
-// Error helpers
-pub trait ErrorContext {
-    fn context(self, msg: &str) -> Self;
-}
-
-impl<T> ErrorContext for Result<T> {
-    fn context(self, msg: &str) -> Self {
-        self.inspect_err(|_| msg!("Context: {}", msg))
-    }
-}
-
-#[cfg(debug_assertions)]
-pub fn log_error_details(error: &KernelError, context: &str) {
-    msg!("ERROR: {:?} - {}", error, context);
-}
-
-#[cfg(not(debug_assertions))]
-pub fn log_error_details(_: &KernelError, _: &str) {}

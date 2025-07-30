@@ -1,166 +1,73 @@
 # Valence Runtime
 
-Off-chain runtime service for monitoring on-chain state and orchestrating protocol flows.
+Off-chain runtime service for monitoring Valence protocol state and orchestrating transaction flows. The runtime builds unsigned transactions for external signing and provides real-time state monitoring.
 
-## Overview
+## Features
 
-The Valence Runtime is designed as a non-custodial service that:
-- Monitors on-chain state through WebSocket subscriptions
-- Orchestrates complex protocol flows without holding keys
-- Builds unsigned transactions for external signing
-- Provides deterministic account generation
-- Creates comprehensive audit trails
+- **Session Management**: Track and cache valence-kernel session states
+- **Transaction Building**: Construct unsigned transactions for external signing
+- **State Monitoring**: WebSocket-based monitoring of on-chain account changes
+- **Protocol Coordination**: Orchestrate multi-step protocol flows
+- **Security Validation**: Transaction validation and security policy enforcement
+- **Event Streaming**: Real-time event emission and filtering
 
 ## Architecture
 
-### Core Components
+The runtime is designed as a stateless service that:
+- **Does not hold private keys** - builds unsigned transactions only
+- **Monitors on-chain state** - tracks session and account changes
+- **Coordinates workflows** - manages complex multi-transaction flows  
+- **Validates transactions** - applies security policies before signing
 
-1. **State Monitor** (`state_monitor.rs`)
-   - WebSocket subscriptions to on-chain accounts
-   - Real-time state change notifications
-   - Configurable account filtering
+## Modules
 
-2. **Orchestrator** (`orchestrator.rs`)
-   - Protocol flow definition and execution
-   - Step-by-step transaction sequencing
-   - Conditional execution logic
-   - Retry policies and error handling
+- `session` - Session state management and caching
+- `transaction` - Transaction building and instruction construction  
+- `monitoring` - WebSocket state monitoring and event streaming
+- `coordination` - Protocol flow orchestration and execution
+- `security` - Transaction validation, audit logging, and signing services
+- `core` - Configuration and error types
+- `types` - Common runtime types and utilities
 
-3. **Transaction Builder** (`transaction_builder.rs`)
-   - Unsigned transaction construction
-   - Transaction simulation
-   - Compute budget optimization
-   - Priority fee configuration
-
-4. **Event Stream** (`event_stream.rs`)
-   - Unified event bus for all runtime events
-   - Filterable event subscriptions
-   - Audit trail generation
-
-## Usage
+## Quick Start
 
 ```rust
-use valence_runtime::{Runtime, RuntimeConfig};
+use valence_runtime::*;
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    // Configure runtime
-    let config = RuntimeConfig {
-        rpc_url: "https://api.mainnet-beta.solana.com".to_string(),
-        ws_url: "wss://api.mainnet-beta.solana.com".to_string(),
-        commitment: CommitmentConfig::confirmed(),
-        max_retries: 3,
-        enable_simulation: true,
-    };
-    
-    // Initialize runtime
-    let runtime = Runtime::new(config).await?;
-    
-    // Start services
-    runtime.start().await?;
-    
-    // Subscribe to events
-    let mut events = runtime.subscribe().await;
-    
-    // Monitor specific account
-    let state_monitor = runtime.state_monitor();
-    state_monitor.subscribe_account(account_pubkey, |update| {
-        println!("Account updated: {:?}", update);
-    }).await?;
-    
-    // Build transaction
-    let tx_builder = runtime.transaction_builder();
-    let unsigned_tx = tx_builder
-        .add_instruction(instruction)
-        .with_compute_units(200_000)
-        .build("My transaction".to_string())
-        .await?;
-    
-    // Unsigned transaction ready for external signing
-    println!("Transaction ready for signing: {:?}", unsigned_tx);
-    
-    Ok(())
-}
-```
-
-## Protocol Flow Example
-
-```rust
-use valence_runtime::{ProtocolFlow, FlowStep, InstructionTemplate};
-
-// Define a lending protocol deposit flow
-let deposit_flow = ProtocolFlow {
-    id: "lending-deposit".to_string(),
-    name: "Lending Protocol Deposit".to_string(),
-    steps: vec![
-        FlowStep {
-            name: "approve-tokens".to_string(),
-            description: "Approve token transfer".to_string(),
-            instructions: vec![/* token approval instruction */],
-            conditions: vec![
-                Condition::BalanceGreaterThan {
-                    pubkey: user_token_account,
-                    lamports: deposit_amount,
-                }
-            ],
-            on_success: Some("execute-deposit".to_string()),
-            on_failure: None,
-        },
-        FlowStep {
-            name: "execute-deposit".to_string(),
-            description: "Execute deposit to lending pool".to_string(),
-            instructions: vec![/* deposit instruction */],
-            conditions: vec![],
-            on_success: None,
-            on_failure: None,
-        },
-    ],
-    timeout: Duration::from_secs(60),
-    retry_policy: RetryPolicy::default(),
+// Create runtime configuration
+let config = RuntimeConfig {
+    rpc_url: "https://api.devnet.solana.com".to_string(),
+    ws_url: "wss://api.devnet.solana.com".to_string(),
+    commitment: CommitmentConfig::confirmed(),
+    max_retries: 3,
+    enable_simulation: true,
 };
 
-// Register and execute flow
-orchestrator.register_flow(deposit_flow).await?;
-let instance_id = orchestrator.start_flow(
-    "lending-deposit".to_string(),
-    context,
-).await?;
+// Initialize runtime
+let runtime = Runtime::new(config).await?;
+
+// Start services
+runtime.start().await?;
+
+// Build transactions
+let tx_builder = runtime.transaction_builder();
+let unsigned_tx = tx_builder
+    .add_instruction(my_instruction)
+    .with_compute_units(200_000)
+    .build("My transaction".to_string())
+    .await?;
+
+// Monitor session state
+let session_state = runtime.load_session(session_pubkey).await?;
 ```
 
-## Security Considerations
+## Use Cases
 
-1. **No Key Management**: The runtime never holds or manages private keys
-2. **Transaction Simulation**: All transactions are simulated before submission
-3. **Audit Trails**: Every operation is logged with full context
-4. **Deterministic Addresses**: All PDAs are derived deterministically
-5. **External Signing**: Transactions must be signed externally
+- DeFi protocol automation and execution
+- Multi-signature wallet coordination  
+- Cross-program transaction orchestration
+- Real-time protocol state monitoring
+- Security policy enforcement and audit trails
 
-## Configuration
+Built for production use with comprehensive error handling, metrics, and observability.
 
-The runtime can be configured through environment variables:
-
-```bash
-VALENCE_RPC_URL=https://api.mainnet-beta.solana.com
-VALENCE_WS_URL=wss://api.mainnet-beta.solana.com
-VALENCE_COMMITMENT=confirmed
-VALENCE_MAX_RETRIES=3
-VALENCE_ENABLE_SIMULATION=true
-```
-
-## Development
-
-### Running Tests
-
-```bash
-cargo test -p valence-runtime
-```
-
-### Building
-
-```bash
-cargo build -p valence-runtime --release
-```
-
-## License
-
-Apache-2.0

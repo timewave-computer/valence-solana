@@ -1,0 +1,30 @@
+[features]
+seeds = false
+skip-lint = false
+
+[programs.localnet]
+valence_kernel = "Va1ence111111111111111111111111111111111111"
+valence_functions = "Va1enceFunc11111111111111111111111111111111"
+test_shard = "TestShard111111111111111111111111111111111"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "bash run-e2e-test.sh"
+
+[[test.genesis]]
+address = "Va1ence111111111111111111111111111111111111"
+program = "../target/deploy/valence_kernel.so"
+
+[[test.genesis]]
+address = "Va1enceFunc11111111111111111111111111111111"
+program = "../target/deploy/valence_functions.so"
+
+[[test.genesis]]
+address = "TestShard111111111111111111111111111111111"
+program = "./target/deploy/test_shard.so"

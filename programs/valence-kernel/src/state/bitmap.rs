@@ -1,4 +1,18 @@
-// Generic bitmap implementation for efficient bit tracking
+// Efficient bitmap implementation for valence-kernel state tracking
+//
+// The valence-kernel uses bitmaps extensively for tracking account borrow states,
+// slot occupancy, and other binary flags across its operation processing. This
+// module provides a generic, high-performance bitmap implementation optimized
+// for the kernel's specific tracking requirements.
+//
+// KERNEL INTEGRATION: Bitmaps enable efficient O(1) operations for tracking which
+// accounts are borrowed, which slots are occupied in arrays, and other binary
+// state that must be managed during batch execution. This provides performance
+// benefits over alternative tracking approaches.
+//
+// PERFORMANCE OPTIMIZATION: Fixed-size bitmap storage eliminates heap allocations
+// and provides predictable memory usage patterns that are critical for Solana's
+// strict compute and memory requirements during operation processing.
 use anchor_lang::prelude::*;
 
 /// Generic bitmap for tracking occupied/free slots
@@ -34,11 +48,18 @@ impl<const N: usize> BitMap<N> {
         (self.storage[byte_idx] & (1 << bit_idx)) != 0
     }
     
+    /// Validate index is within bounds
+    fn validate_index(&self, index: usize) -> Result<()> {
+        require!(
+            index < Self::CAPACITY,
+            crate::errors::KernelError::InvalidParameters
+        );
+        Ok(())
+    }
+    
     /// Set a slot
     pub fn set(&mut self, index: usize) -> Result<()> {
-        if index >= Self::CAPACITY {
-            return Err(crate::errors::KernelError::InvalidParameters.into());
-        }
+        self.validate_index(index)?;
         let byte_idx = index / 8;
         let bit_idx = index % 8;
         self.storage[byte_idx] |= 1 << bit_idx;
@@ -47,9 +68,7 @@ impl<const N: usize> BitMap<N> {
     
     /// Clear a slot
     pub fn clear(&mut self, index: usize) -> Result<()> {
-        if index >= Self::CAPACITY {
-            return Err(crate::errors::KernelError::InvalidParameters.into());
-        }
+        self.validate_index(index)?;
         let byte_idx = index / 8;
         let bit_idx = index % 8;
         self.storage[byte_idx] &= !(1 << bit_idx);

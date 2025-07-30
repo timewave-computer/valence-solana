@@ -5,6 +5,7 @@
   ...
 }: let
   crate2nix = inputs'.crate2nix.packages.default;
+  bpfBuilder = import ./bpf-builder.nix {inherit pkgs inputs';};
 in {
   # Default package - build everything
   default = pkgs.writeShellScriptBin "valence-build-all" ''
@@ -19,7 +20,7 @@ in {
     export MACOSX_DEPLOYMENT_TARGET=11.0
     
     echo "Building Valence programs..."
-    if cargo build-sbf; then
+    if (cd programs/valence-kernel && cargo build-sbf) && (cd programs/valence-functions && cargo build-sbf); then
       echo ""
       echo "=== Build Complete ==="
       echo "Built artifacts available in: ./target/deploy/"
@@ -74,4 +75,34 @@ in {
     echo "  - The generated Cargo.nix enables fast incremental builds with Nix caching"
     echo "  - Each dependency becomes a separate Nix derivation for maximum caching efficiency"
   '';
+  
+  # BPF program packages
+  valence-kernel = bpfBuilder.buildBPFProgram {
+    name = "valence-kernel";
+    src = ./..;
+    cargoToml = "programs/valence-kernel/Cargo.toml";
+  };
+  
+  valence-functions = bpfBuilder.buildBPFProgram {
+    name = "valence-functions";
+    src = ./..;
+    cargoToml = "programs/valence-functions/Cargo.toml";
+  };
+  
+  # Build all BPF programs
+  bpf-programs = pkgs.symlinkJoin {
+    name = "valence-bpf-programs";
+    paths = [
+      (bpfBuilder.buildBPFProgram {
+        name = "valence-kernel";
+        src = ./..;
+        cargoToml = "programs/valence-kernel/Cargo.toml";
+      })
+      (bpfBuilder.buildBPFProgram {
+        name = "valence-functions";
+        src = ./..;
+        cargoToml = "programs/valence-functions/Cargo.toml";
+      })
+    ];
+  };
 }

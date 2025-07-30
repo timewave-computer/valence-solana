@@ -3,6 +3,25 @@
 use anchor_lang::prelude::*;
 
 // ================================
+// Common Error Types
+// ================================
+
+#[error_code]
+pub enum FunctionsError {
+    #[msg("Invalid parameters provided")]
+    InvalidParameters,
+    
+    #[msg("Unauthorized access")]
+    Unauthorized,
+    
+    #[msg("Invalid state")]
+    InvalidState,
+    
+    #[msg("Operation failed")]
+    OperationFailed,
+}
+
+// ================================
 // Core State Type System
 // ================================
 

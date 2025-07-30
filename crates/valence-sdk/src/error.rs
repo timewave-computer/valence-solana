@@ -16,11 +16,6 @@ pub enum SdkError {
     #[error("Invalid session configuration")]
     InvalidSessionConfig,
 
-    #[error("Invalid guard configuration")]
-    InvalidGuardConfig,
-
-    #[error("Unsupported guard type")]
-    UnsupportedGuardType,
 
     #[error("Transaction failed: {0}")]
     TransactionFailed(String),
@@ -48,6 +43,24 @@ pub enum SdkError {
 
     #[error("Compute budget exceeded: estimated {estimated}, limit {limit}")]
     ComputeBudgetExceeded { estimated: u64, limit: u64 },
+    
+    #[error("Unauthorized")]
+    Unauthorized,
+    
+    #[error("Session inactive")]
+    SessionInactive,
+    
+    #[error("Arithmetic overflow")]
+    Overflow,
+    
+    #[error("Stale reference: ownership has changed")]
+    StaleReference,
+    
+    #[error("Capability expired")]
+    CapabilityExpired,
+    
+    #[error("Capability exhausted: no uses remaining")]
+    CapabilityExhausted,
 }
 
 impl From<ClientError> for SdkError {

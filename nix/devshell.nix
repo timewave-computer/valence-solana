@@ -12,6 +12,7 @@ in {
     protobuf  # For off-chain builds
     inputs'.crate2nix.packages.default  # For generating Cargo.nix
     jq  # For JSON parsing in scripts
+    just  # Task runner for build and test commands
     # Dependencies for librocksdb-sys and libclang (use solana-node's clang to avoid collision)
     llvmPackages.libclang.lib
     cmake
@@ -142,10 +143,12 @@ in {
       echo "  - solana: Solana CLI and validator"
       echo "  - anchor: Anchor framework for Solana development"
       echo "  - crate2nix: Generate Cargo.nix for Nix builds"
+      echo "  - just: Task runner (run 'just' to see commands)"
       echo ""
-      echo "Development commands:"
-      echo "  - cargo build               - Build workspace"
-      echo "  - cargo test                - Run tests"
+      echo "Quick commands:"
+      echo "  - just                      - Show all available commands"
+      echo "  - just build                - Build all programs"
+      echo "  - just e2e-test             - Run e2e tests"
       echo ""
       echo "Local development:"
       echo "  - nix run .#valence-local   - Launch complete local environment"

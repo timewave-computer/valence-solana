@@ -1,4 +1,4 @@
-# IDL generation environment using rust-overlay for nightly rust
+# IDL generation environment using zero-nix nightly rust
 {
   pkgs,
   inputs',
@@ -6,14 +6,8 @@
   stdenv ? pkgs.stdenv,
   ...
 }: let
-  # Use rust-overlay to get nightly rust toolchain
-  rust-overlay = import (builtins.fetchTarball "https://github.com/oxalica/rust-overlay/archive/master.tar.gz");
-  pkgsWithRust = import pkgs.path { overlays = [ rust-overlay ]; };
-  
-  # Get nightly rust with required components
-  nightlyRust = pkgsWithRust.rust-bin.nightly."2024-12-01".default.override {
-    extensions = [ "rust-src" "llvm-tools-preview" ];
-  };
+  # Use zero-nix nightly rust
+  nightlyRust = inputs'.zero-nix.packages.nightly-rust;
 in {
   # IDL builder using rust-overlay nightly - accepts crate name as argument
   idl-build = {

@@ -1,15 +1,19 @@
 [package]
-name = "zk-transfer-limit-example"
+name = "zk-transfer-limit"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "zk-transfer-limit"
+path = "src/main.rs"
+
 [dependencies]
-anchor-lang = { workspace = true }
-anchor-client = { workspace = true }
-solana-sdk = { workspace = true }
-solana-client = { workspace = true }
-valence-kernel = { path = "../../programs/valence-kernel", features = ["cpi"] }
+anchor-lang = "0.31.1"
+anchor-spl = "0.31.1"
+solana-sdk = "2.3.0"
+solana-program = "2.3.0"
+valence-kernel = { path = "../../programs/valence-kernel" }
 valence-functions = { path = "../../programs/valence-functions" }
-valence-sdk = { path = "../../crates/valence-sdk" }
-tokio = { version = "1", features = ["full"] }
-borsh = { workspace = true }
+
+[workspace]
+# Empty workspace to prevent inheriting from parent

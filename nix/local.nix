@@ -122,7 +122,7 @@
       # Build if any are missing
       if [ -z "$REGISTRY_SO" ] || [ -z "$SHARD_SO" ]; then
         echo "Programs not found, building..."
-        nix run .#build-onchain
+        nix run .#default
         
         # Set paths after build
         REGISTRY_SO="target/sbf-solana-solana/release/valence_registry.so"

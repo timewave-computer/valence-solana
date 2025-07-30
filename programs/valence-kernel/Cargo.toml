@@ -23,6 +23,7 @@ custom-panic = []
 
 [dependencies]
 anchor-lang = { workspace = true }
+anchor-spl = { workspace = true }
 borsh = { workspace = true }
 solana-program = { workspace = true }
 
@@ -31,3 +32,6 @@ anchor-client = { workspace = true }
 solana-program-test = "2.1.6"
 solana-sdk = { workspace = true }
 tokio = { version = "1", features = ["macros"] }
+# Add BPF-compatible getrandom
+getrandom = { version = "0.2.16", features = ["custom"] }
+

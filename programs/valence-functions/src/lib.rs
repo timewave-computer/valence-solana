@@ -1,8 +1,11 @@
 #![allow(unexpected_cfgs)]
 #![allow(deprecated)]
 
-// Valence Functions - Shard-specific guard implementations and state management
-// Provides reusable components for building shard-specific authorization logic
+// Valence Functions - Simplified function implementations aligned with valence-kernel
+// 
+// This crate has been simplified to focus on core function definitions that work
+// with the valence-kernel's hardcoded registry system.
+
 use anchor_lang::prelude::*;
 
 // ================================
@@ -12,129 +15,85 @@ use anchor_lang::prelude::*;
 declare_id!("Va1enceFunc11111111111111111111111111111111");
 
 // ================================
-// Core Shard Trait System
+// Simplified Runtime Environment
 // ================================
 
-/// Core trait for shard definitions with embedded constants
-/// Enables shards to define their identity, versioning, and upgrade paths
-pub trait Shard: Clone {
-    /// Unique identifier for this shard
-    /// Should be derived from shard name and core characteristics
-    fn id(&self) -> [u8; 32];
-
-    /// Shard version for upgrades and compatibility tracking
-    /// Follows semantic versioning principles
-    fn version(&self) -> u16;
-
-    /// Human-readable name for debugging and identification
-    /// Should be concise and descriptive
-    fn name(&self) -> &'static str;
-}
-
-// ================================
-// Shard Upgrade System
-// ================================
-
-/// Trait for implementing safe shard upgrades
-/// Ensures data migration and compatibility validation during shard evolution
-pub trait ShardUpgrade<T> {
-    /// Check if upgrade is allowed from old version
-    /// Validates compatibility and prerequisites for migration
-    fn can_upgrade_from(&self, old_version: u16, migration_data: &[u8]) -> Result<bool>;
-
-    /// Migrate data from old session format to new format
-    /// Handles data transformation during shard upgrades
-    fn migrate_from(&self, old_session_data: &[u8], migration_data: &[u8]) -> Result<Vec<u8>>;
-
-    /// Validate that migration was successful
-    /// Ensures data integrity after upgrade completion
-    fn validate_migration(&self, old_data: &[u8], new_data: &[u8]) -> Result<bool>;
-}
-
-// ================================
-// Runtime Environment Context
-// ================================
-
-/// Runtime context provided to all shard functions
-/// Contains essential blockchain state and caller information for guard evaluation
+/// Runtime context aligned with valence-kernel's ExecutionContext
 #[derive(Clone, Debug, Default)]
 pub struct Environment {
-    /// Identity of the current operation caller
-    /// Used for permission checks and ownership validation
-    pub caller: Pubkey,
-
-    /// Current unix timestamp from the blockchain
-    /// Essential for time-based guards and expiration logic
-    pub timestamp: i64,
-
-    /// Current slot number for block-based operations
-    /// Useful for slot-based randomness and timing
+    /// Transaction metadata
     pub slot: u64,
-
-    /// Recent blockhash for deterministic randomness
-    /// Provides entropy for cryptographic operations
+    pub epoch: u64,
+    pub tx_submitter: Pubkey,
+    
+    /// Session context
+    pub session: Pubkey,
+    pub caller: Pubkey,
+    pub timestamp: i64,
+    
+    /// For backward compatibility (will be removed)
     pub recent_blockhash: [u8; 32],
 }
 
 impl Environment {
-    /// Create a new environment from current blockchain state
-    /// Convenience constructor for common use cases
-    pub fn from_accounts(caller: Pubkey, clock: &Clock, recent_blockhash: [u8; 32]) -> Self {
+    /// Create environment from kernel's execution context
+    pub fn from_kernel_context(
+        slot: u64,
+        epoch: u64,
+        tx_submitter: Pubkey,
+        session: Pubkey,
+        caller: Pubkey,
+        timestamp: i64,
+    ) -> Self {
         Self {
+            slot,
+            epoch,
+            tx_submitter,
+            session,
             caller,
-            timestamp: clock.unix_timestamp,
-            slot: clock.slot,
-            recent_blockhash,
+            timestamp,
+            recent_blockhash: [0u8; 32], // Placeholder
         }
     }
 
-    /// Check if the environment represents a valid blockchain state
-    /// Validates that timestamps and slots are reasonable
+    /// Check if the environment represents a valid state
     pub fn is_valid(&self) -> bool {
-        // Basic sanity checks
         self.timestamp > 0 && self.slot > 0
     }
 }
 
 // ================================
-// Module Declarations
+// Module Declarations (simplified)
 // ================================
 
-/// Simplified escrow functionality
-pub mod escrow;
-/// Business logic functions
+/// Core function trait and infrastructure
+
+/// Individual function implementations
 pub mod functions;
-/// Guard implementations for authorization
-pub mod guards;
-/// State definitions for shard-specific data structures
+
+/// State definitions for function data structures
 pub mod states;
-/// Utility functions and helpers
-pub mod utils;
+
+// Removed: Complex escrow functionality (if not used by kernel)
+// Removed: Complex shard trait system (if not used by kernel)
 
 // ================================
-// Public API Re-exports
+// Public API Re-exports (simplified)
 // ================================
 
-/// Re-export all escrow functionality
-#[allow(ambiguous_glob_reexports)]
-pub use escrow::*;
 /// Re-export function system components
-pub use functions::{
-    core as function_core,
-    composition::*,
-    common::*,
-};
-/// Re-export guard implementations  
-pub use guards::{
-    core as guard_core,
-    escrow::*,
-    time::*,
-    multisig::*,
-    state_machine::*,
-};
+pub use functions::*;
+
 /// Re-export state definitions
-#[allow(ambiguous_glob_reexports)]
 pub use states::*;
-/// Re-export utilities
-pub use utils::*;
+
+// ================================
+// Removed Complex Abstractions
+// ================================
+
+// The following have been removed to align with kernel's simplified approach:
+// - Shard trait system (unused by kernel's hardcoded registry)
+// - ShardUpgrade system (complex upgrade logic not needed)
+// - Complex environment fields (kernel uses ExecutionContext)
+// - Escrow module (if not used by kernel)
 

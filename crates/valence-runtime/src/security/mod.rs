@@ -1,7 +1,4 @@
 //! Security utilities and validation
-//!
-//! This module provides core security functionality for the runtime,
-//! including validation rules, policy enforcement, and security utilities.
 
 use serde::{Deserialize, Serialize};
 use solana_sdk::{pubkey::Pubkey, transaction::Transaction};
@@ -9,23 +6,18 @@ use std::collections::{HashMap, HashSet};
 
 pub mod audit;
 pub mod validation;
+pub mod signing;
 
 pub use audit::{AuditEntry, AuditLogger};
 pub use validation::{TransactionValidator, ValidationResult, ValidationRule};
+pub use signing::{SigningService, CompositeSigningService, SigningRequest, SigningResponse};
 
 /// Security context for operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityContext {
-    /// Current timestamp
     pub timestamp: chrono::DateTime<chrono::Utc>,
-
-    /// Operating environment
     pub environment: Environment,
-
-    /// Active security policies
     pub policies: SecurityPolicies,
-
-    /// Session information
     pub session: Option<SessionInfo>,
 }
 
@@ -67,53 +59,28 @@ impl std::fmt::Display for Environment {
 /// Session information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionInfo {
-    /// Session ID
     pub session_id: String,
-
-    /// Authenticated user/service
     pub identity: String,
-
-    /// Session start time
     pub started_at: chrono::DateTime<chrono::Utc>,
-
-    /// Session expiry
     pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 /// Security policies configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SecurityPolicies {
-    /// Transaction limits
     pub transaction_limits: TransactionLimits,
-
-    /// Program restrictions
     pub program_restrictions: ProgramRestrictions,
-
-    /// Account restrictions
     pub account_restrictions: AccountRestrictions,
-
-    /// Rate limiting
     pub rate_limits: RateLimits,
 }
-
-
 
 /// Transaction limits
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionLimits {
-    /// Maximum transaction size in bytes
     pub max_size_bytes: usize,
-
-    /// Maximum number of instructions
     pub max_instructions: usize,
-
-    /// Maximum compute units
     pub max_compute_units: u32,
-
-    /// Maximum transaction value in lamports
     pub max_value_lamports: u64,
-
-    /// Maximum accounts per transaction
     pub max_accounts: usize,
 }
 
@@ -132,28 +99,16 @@ impl Default for TransactionLimits {
 /// Program restrictions
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ProgramRestrictions {
-    /// Allowed programs (whitelist)
     pub allowed_programs: Option<HashSet<Pubkey>>,
-
-    /// Blocked programs (blacklist)
     pub blocked_programs: HashSet<Pubkey>,
-
-    /// Require all programs to be verified
     pub require_verified_programs: bool,
 }
-
-
 
 /// Account restrictions
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AccountRestrictions {
-    /// Blocked accounts
     pub blocked_accounts: HashSet<Pubkey>,
-
-    /// Require all writable accounts to be owned by known programs
     pub require_known_owners: bool,
-
-    /// Maximum number of writable accounts
     pub max_writable_accounts: usize,
 }
 
@@ -170,16 +125,9 @@ impl Default for AccountRestrictions {
 /// Rate limiting configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RateLimits {
-    /// Transactions per minute
     pub transactions_per_minute: u32,
-
-    /// Transactions per hour
     pub transactions_per_hour: u32,
-
-    /// Compute units per hour
     pub compute_units_per_hour: u64,
-
-    /// Value transferred per day (lamports)
     pub value_per_day: u64,
 }
 
@@ -196,32 +144,20 @@ impl Default for RateLimits {
 
 /// Security analyzer for transactions
 pub struct SecurityAnalyzer {
-    /// Security context
-    context: SecurityContext,
-
-    /// Known program registry
     known_programs: HashMap<Pubkey, ProgramInfo>,
 }
 
 /// Program information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProgramInfo {
-    /// Program name
     pub name: String,
-
-    /// Whether the program is verified
     pub verified: bool,
-
-    /// Risk level
-    pub risk_level: crate::signing_service::RiskLevel,
-
-    /// Known vulnerabilities
+    pub risk_level: crate::security::signing::RiskLevel,
     pub vulnerabilities: Vec<String>,
 }
 
 impl SecurityAnalyzer {
-    /// Create a new security analyzer
-    pub fn new(context: SecurityContext) -> Self {
+    pub fn new(_context: SecurityContext) -> Self {
         let mut known_programs = HashMap::new();
 
         // Add well-known programs
@@ -230,7 +166,7 @@ impl SecurityAnalyzer {
             ProgramInfo {
                 name: "System Program".to_string(),
                 verified: true,
-                risk_level: crate::signing_service::RiskLevel::Low,
+                risk_level: crate::security::signing::RiskLevel::Low,
                 vulnerabilities: Vec::new(),
             },
         );
@@ -240,30 +176,24 @@ impl SecurityAnalyzer {
             ProgramInfo {
                 name: "Token Program".to_string(),
                 verified: true,
-                risk_level: crate::signing_service::RiskLevel::Low,
+                risk_level: crate::security::signing::RiskLevel::Low,
                 vulnerabilities: Vec::new(),
             },
         );
 
-        Self {
-            context,
-            known_programs,
-        }
+        Self { known_programs }
     }
 
-    /// Add known program
     pub fn add_known_program(&mut self, program_id: Pubkey, info: ProgramInfo) {
         self.known_programs.insert(program_id, info);
     }
 
-    /// Analyze transaction security
     pub fn analyze_transaction(&self, transaction: &Transaction) -> SecurityAnalysis {
         let mut analysis = SecurityAnalysis::default();
 
         // Analyze programs
         for instruction in &transaction.message.instructions {
-            let program_id =
-                transaction.message.account_keys[instruction.program_id_index as usize];
+            let program_id = transaction.message.account_keys[instruction.program_id_index as usize];
 
             if let Some(info) = self.known_programs.get(&program_id) {
                 analysis.programs.push(AnalyzedProgram {
@@ -274,7 +204,6 @@ impl SecurityAnalyzer {
                     vulnerabilities: info.vulnerabilities.clone(),
                 });
 
-                // Update overall risk level
                 if info.risk_level as u8 > analysis.overall_risk_level as u8 {
                     analysis.overall_risk_level = info.risk_level;
                 }
@@ -283,96 +212,26 @@ impl SecurityAnalyzer {
                     program_id,
                     name: "Unknown Program".to_string(),
                     verified: false,
-                    risk_level: crate::signing_service::RiskLevel::High,
+                    risk_level: crate::security::signing::RiskLevel::High,
                     vulnerabilities: vec!["Unknown program".to_string()],
                 });
-                analysis.overall_risk_level = crate::signing_service::RiskLevel::High;
+                analysis.overall_risk_level = crate::security::signing::RiskLevel::High;
             }
-        }
-
-        // Analyze accounts
-        let mut writable_count = 0;
-        for (i, key) in transaction.message.account_keys.iter().enumerate() {
-            if transaction.message.is_maybe_writable(i, None) {
-                writable_count += 1;
-                analysis.writable_accounts.push(*key);
-            }
-
-            if self
-                .context
-                .policies
-                .account_restrictions
-                .blocked_accounts
-                .contains(key)
-            {
-                analysis.security_issues.push(SecurityIssue {
-                    severity: IssueSeverity::Critical,
-                    category: IssueCategory::BlockedAccount,
-                    description: format!("Transaction includes blocked account: {}", key),
-                });
-            }
-        }
-
-        // Check limits
-        if writable_count
-            > self
-                .context
-                .policies
-                .account_restrictions
-                .max_writable_accounts
-        {
-            analysis.security_issues.push(SecurityIssue {
-                severity: IssueSeverity::High,
-                category: IssueCategory::LimitExceeded,
-                description: format!(
-                    "Too many writable accounts: {} (max: {})",
-                    writable_count,
-                    self.context
-                        .policies
-                        .account_restrictions
-                        .max_writable_accounts
-                ),
-            });
-        }
-
-        if transaction.message.instructions.len()
-            > self.context.policies.transaction_limits.max_instructions
-        {
-            analysis.security_issues.push(SecurityIssue {
-                severity: IssueSeverity::Medium,
-                category: IssueCategory::LimitExceeded,
-                description: format!(
-                    "Too many instructions: {} (max: {})",
-                    transaction.message.instructions.len(),
-                    self.context.policies.transaction_limits.max_instructions
-                ),
-            });
         }
 
         analysis
     }
 
-    /// Calculate risk score (0-100)
     pub fn calculate_risk_score(&self, analysis: &SecurityAnalysis) -> u8 {
         let mut score = 0u8;
 
         // Base score from risk level
         score += match analysis.overall_risk_level {
-            crate::signing_service::RiskLevel::Low => 10,
-            crate::signing_service::RiskLevel::Medium => 30,
-            crate::signing_service::RiskLevel::High => 60,
-            crate::signing_service::RiskLevel::Critical => 80,
+            crate::security::signing::RiskLevel::Low => 10,
+            crate::security::signing::RiskLevel::Medium => 30,
+            crate::security::signing::RiskLevel::High => 60,
+            crate::security::signing::RiskLevel::Critical => 80,
         };
-
-        // Add points for security issues
-        for issue in &analysis.security_issues {
-            score = score.saturating_add(match issue.severity {
-                IssueSeverity::Low => 5,
-                IssueSeverity::Medium => 10,
-                IssueSeverity::High => 15,
-                IssueSeverity::Critical => 20,
-            });
-        }
 
         // Add points for unknown programs
         let unknown_programs = analysis.programs.iter().filter(|p| !p.verified).count() as u8;
@@ -385,26 +244,17 @@ impl SecurityAnalyzer {
 /// Security analysis result
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SecurityAnalysis {
-    /// Overall risk level
-    pub overall_risk_level: crate::signing_service::RiskLevel,
-
-    /// Analyzed programs
+    pub overall_risk_level: crate::security::signing::RiskLevel,
     pub programs: Vec<AnalyzedProgram>,
-
-    /// Writable accounts
     pub writable_accounts: Vec<Pubkey>,
-
-    /// Security issues found
-    pub security_issues: Vec<SecurityIssue>,
 }
 
 impl SecurityAnalysis {
     pub fn new(_context: SecurityContext) -> Self {
         Self {
-            overall_risk_level: crate::signing_service::RiskLevel::Low,
+            overall_risk_level: crate::security::signing::RiskLevel::Low,
             programs: Vec::new(),
             writable_accounts: Vec::new(),
-            security_issues: Vec::new(),
         }
     }
 }
@@ -415,60 +265,27 @@ pub struct AnalyzedProgram {
     pub program_id: Pubkey,
     pub name: String,
     pub verified: bool,
-    pub risk_level: crate::signing_service::RiskLevel,
+    pub risk_level: crate::security::signing::RiskLevel,
     pub vulnerabilities: Vec<String>,
 }
-
-/// Security issue
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SecurityIssue {
-    pub severity: IssueSeverity,
-    pub category: IssueCategory,
-    pub description: String,
-}
-
-/// Issue severity
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum IssueSeverity {
-    Low,
-    Medium,
-    High,
-    Critical,
-}
-
-/// Issue category
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum IssueCategory {
-    UnknownProgram,
-    BlockedProgram,
-    BlockedAccount,
-    LimitExceeded,
-    PolicyViolation,
-    Vulnerability,
-}
-
-
 
 /// Security utilities
 pub mod utils {
     use super::*;
     use sha2::{Digest, Sha256};
 
-    /// Generate transaction hash for audit purposes
     pub fn transaction_hash(tx: &Transaction) -> String {
         let mut hasher = Sha256::new();
         hasher.update(bincode::serialize(&tx.message).unwrap_or_default());
         format!("{:x}", hasher.finalize())
     }
 
-    /// Check if an account is a system account
     pub fn is_system_account(pubkey: &Pubkey) -> bool {
         pubkey == &solana_sdk::system_program::id()
             || pubkey == &spl_token::id()
             || pubkey == &spl_associated_token_account::id()
     }
 
-    /// Sanitize user input for logging
     pub fn sanitize_for_log(input: &str) -> String {
         input
             .chars()
@@ -505,8 +322,6 @@ mod tests {
         };
 
         let analyzer = SecurityAnalyzer::new(context);
-        assert!(analyzer
-            .known_programs
-            .contains_key(&solana_sdk::system_program::id()));
+        assert!(analyzer.known_programs.contains_key(&solana_sdk::system_program::id()));
     }
 }

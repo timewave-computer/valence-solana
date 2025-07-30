@@ -1,0 +1,20 @@
+[package]
+name = "valence-examples"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "direct_operations"
+path = "direct_operations.rs"
+
+[[bin]]
+name = "batch_operations"
+path = "batch_operations.rs"
+
+[dependencies]
+anchor-lang = "0.31.1"
+anchor-spl = "0.31.1"
+valence-kernel = { path = "../programs/valence-kernel" }
+
+[workspace]
+# Empty workspace to prevent inheriting from parent 
