@@ -58,6 +58,7 @@
         localApps = import ./nix/local.nix {inherit pkgs inputs';};
         packagesConfig = import ./nix/packages.nix {inherit pkgs inputs';};
         bpfBuilderConfig = import ./nix/bpf-builder.nix {inherit pkgs inputs';};
+        idlBuilderConfig = import ./nix/idl-builder.nix {inherit pkgs inputs';};
         
         # Fast build environment with nightly rust and proper caching
         rustEnv = {
@@ -77,11 +78,11 @@
         # Packages
         packages = packagesConfig // {
           # Re-export packages that were in apps as packages too
-          inherit (packagesConfig) default generate-cargo-nix regenerate-cargo-nix;
+          inherit (packagesConfig) default generate-cargo-nix;
         };
 
         # Apps - combine all app definitions
-        apps = crate2nixApps // localApps;
+        apps = crate2nixApps // localApps // idlBuilderConfig;
       };
     };
 }

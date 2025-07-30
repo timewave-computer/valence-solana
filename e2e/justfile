@@ -1,0 +1,238 @@
+# E2E Test Suite for Valence Solana
+# Run 'just' to see available commands
+
+# Default command - show help
+default:
+    @just --list
+
+# Colors for output
+export RED := '\033[0;31m'
+export GREEN := '\033[0;32m'
+export YELLOW := '\033[1;33m'
+export BLUE := '\033[0;34m'
+export NC := '\033[0m' # No Color
+
+# Paths
+export PROJECT_ROOT := join(justfile_directory(), "..")
+export E2E_DIR := justfile_directory()
+export LEDGER_DIR := join(E2E_DIR, ".test-ledger")
+
+# Program paths
+export KERNEL_SO := join(PROJECT_ROOT, "target/deploy/valence_kernel.so")
+export FUNCTIONS_SO := join(PROJECT_ROOT, "target/deploy/valence_functions.so")
+export TEST_SHARD_SO := join(E2E_DIR, "target/deploy/test_shard.so")
+
+# Program IDs
+export KERNEL_ID := "Va1ence111111111111111111111111111111111111"
+export FUNCTIONS_ID := "Va1enceFunc11111111111111111111111111111111"
+export TEST_SHARD_ID := "TestShard1111111111111111111111111111111111"
+
+# Build all programs using Nix BPF builder (default)
+build:
+    @echo -e "{{GREEN}}Building all programs with Nix BPF builder...{{NC}}"
+    @echo -e "{{BLUE}}Building valence-kernel...{{NC}}"
+    cd {{PROJECT_ROOT}} && nix build .#valence-kernel --out-link target/nix-kernel
+    @echo -e "{{BLUE}}Building valence-functions...{{NC}}"
+    cd {{PROJECT_ROOT}} && nix build .#valence-functions --out-link target/nix-functions
+    @echo -e "{{BLUE}}Building test-shard...{{NC}}"
+    cd {{E2E_DIR}}/test-shard && nix develop -c cargo build-sbf
+    @echo -e "{{BLUE}}Copying programs to deploy directory...{{NC}}"
+    @mkdir -p {{PROJECT_ROOT}}/target/deploy
+    @cp {{PROJECT_ROOT}}/target/nix-kernel/deploy/*.so {{PROJECT_ROOT}}/target/deploy/ 2>/dev/null || true
+    @cp {{PROJECT_ROOT}}/target/nix-functions/deploy/*.so {{PROJECT_ROOT}}/target/deploy/ 2>/dev/null || true
+    @echo -e "{{GREEN}}✓ All programs built successfully with Nix{{NC}}"
+
+# Build using cargo (fallback option)
+build-cargo:
+    @echo -e "{{GREEN}}Building all programs with cargo...{{NC}}"
+    @echo -e "{{BLUE}}Using Nix development environment...{{NC}}"
+    cd {{PROJECT_ROOT}} && nix develop -c cargo build-sbf
+    cd {{E2E_DIR}}/test-shard && nix develop -c cargo build-sbf
+    @echo -e "{{GREEN}}✓ All programs built successfully{{NC}}"
+
+# Clean build artifacts and test ledger
+clean:
+    @echo -e "{{YELLOW}}Cleaning build artifacts and test ledger...{{NC}}"
+    rm -rf {{LEDGER_DIR}}
+    cd {{PROJECT_ROOT}} && cargo clean
+    cd {{E2E_DIR}} && cargo clean
+    @echo -e "{{GREEN}}✓ Clean complete{{NC}}"
+
+# Start local validator with programs predeployed
+validator: build
+    @echo -e "{{GREEN}}Starting local validator with programs...{{NC}}"
+    @pkill solana-test-validator || true
+    @sleep 1
+    solana-test-validator \
+        --reset \
+        --quiet \
+        --bpf-program {{KERNEL_ID}} {{KERNEL_SO}} \
+        --bpf-program {{FUNCTIONS_ID}} {{FUNCTIONS_SO}} \
+        --bpf-program {{TEST_SHARD_ID}} {{TEST_SHARD_SO}} \
+        --ledger {{LEDGER_DIR}}
+
+# Run the full e2e test suite
+test: build
+    @echo -e "{{GREEN}}=== Valence E2E Test Suite ==={{NC}}"
+    @echo ""
+    @just _start-validator-background
+    @sleep 3
+    @just _wait-for-validator
+    @just _setup-test-wallet
+    @just _run-integration-test
+    @just _cleanup
+
+# Run tests without building (use existing programs)
+test-no-build:
+    @echo -e "{{GREEN}}=== Valence E2E Test Suite (No Build) ==={{NC}}"
+    @echo ""
+    @just _start-validator-background
+    @sleep 3
+    @just _wait-for-validator
+    @just _setup-test-wallet
+    @just _run-integration-test
+    @just _cleanup
+
+# Run tests with debug logging
+test-debug: build
+    @echo -e "{{GREEN}}=== Valence E2E Test Suite (Debug Mode) ==={{NC}}"
+    @echo ""
+    @just _start-validator-background
+    @sleep 3
+    @just _wait-for-validator
+    @just _setup-test-wallet
+    RUST_LOG=debug just _run-integration-test
+    @just _cleanup
+
+# Run tests keeping validator alive afterwards
+test-interactive: build
+    @echo -e "{{GREEN}}=== Valence E2E Test Suite (Interactive Mode) ==={{NC}}"
+    @echo ""
+    @just _start-validator-background
+    @sleep 3
+    @just _wait-for-validator
+    @just _setup-test-wallet
+    @just _run-integration-test
+    @echo ""
+    @echo -e "{{YELLOW}}Validator is still running. You can interact with it using:{{NC}}"
+    @echo "  solana logs"
+    @echo "  solana program show {{KERNEL_ID}}"
+    @echo "  solana account <pubkey>"
+    @echo ""
+    @echo -e "{{YELLOW}}Press Ctrl+C to stop the validator{{NC}}"
+    @sleep infinity
+
+# Internal: Start validator in background
+_start-validator-background:
+    @echo -e "{{BLUE}}Starting validator in background...{{NC}}"
+    @pkill solana-test-validator || true
+    @sleep 1
+    @rm -rf {{LEDGER_DIR}}
+    @sh -c 'nohup solana-test-validator \
+        --quiet \
+        --bpf-program {{KERNEL_ID}} {{KERNEL_SO}} \
+        --bpf-program {{FUNCTIONS_ID}} {{FUNCTIONS_SO}} \
+        --bpf-program {{TEST_SHARD_ID}} {{TEST_SHARD_SO}} \
+        --ledger {{LEDGER_DIR}} \
+        > {{E2E_DIR}}/validator.log 2>&1 & \
+        echo $$! > {{E2E_DIR}}/.validator.pid'
+
+# Internal: Wait for validator to be ready
+_wait-for-validator:
+    @echo -e "{{BLUE}}Waiting for validator to be ready...{{NC}}"
+    @for i in {1..30}; do \
+        if solana cluster-version >/dev/null 2>&1; then \
+            echo -e "{{GREEN}}✓ Validator is ready!{{NC}}"; \
+            exit 0; \
+        fi; \
+        sleep 1; \
+    done; \
+    echo -e "{{RED}}✗ Validator failed to start{{NC}}"; \
+    cat {{E2E_DIR}}/validator.log; \
+    exit 1
+
+# Internal: Setup test wallet
+_setup-test-wallet:
+    @echo -e "{{BLUE}}Setting up test wallet...{{NC}}"
+    @mkdir -p ~/.config/solana
+    @solana-keygen new --no-bip39-passphrase --force -o ~/.config/solana/id.json
+    @solana config set --url http://localhost:8899
+    @solana config set --keypair ~/.config/solana/id.json
+    @solana airdrop 100
+    @echo -e "{{GREEN}}✓ Wallet funded with 100 SOL{{NC}}"
+
+# Internal: Run the integration test
+_run-integration-test:
+    @echo -e "{{BLUE}}Running integration test...{{NC}}"
+    cd {{E2E_DIR}}/runtime-integration-test && cargo run --release || true
+    @echo -e "{{GREEN}}✓ Test run completed{{NC}}"
+
+# Internal: Cleanup
+_cleanup:
+    @echo -e "{{YELLOW}}Cleaning up...{{NC}}"
+    @-[ -f {{E2E_DIR}}/.validator.pid ] && kill $(cat {{E2E_DIR}}/.validator.pid) 2>/dev/null || true
+    @-rm -f {{E2E_DIR}}/.validator.pid
+    @-pkill solana-test-validator 2>/dev/null || true
+    @echo -e "{{GREEN}}✓ Cleanup complete{{NC}}"
+
+# Monitor validator logs
+logs:
+    @if [ -f {{E2E_DIR}}/validator.log ]; then \
+        tail -f {{E2E_DIR}}/validator.log; \
+    else \
+        echo -e "{{RED}}No validator log found. Run 'just test' first.{{NC}}"; \
+    fi
+
+# Show deployed program information
+programs:
+    @echo -e "{{GREEN}}Deployed Programs:{{NC}}"
+    @echo "Kernel:      {{KERNEL_ID}}"
+    @echo "Functions:   {{FUNCTIONS_ID}}"
+    @echo "Test Shard:  {{TEST_SHARD_ID}}"
+    @echo ""
+    @if solana cluster-version >/dev/null 2>&1; then \
+        echo -e "{{GREEN}}Program Status:{{NC}}"; \
+        solana program show {{KERNEL_ID}} || true; \
+        echo ""; \
+        solana program show {{FUNCTIONS_ID}} || true; \
+        echo ""; \
+        solana program show {{TEST_SHARD_ID}} || true; \
+    else \
+        echo -e "{{YELLOW}}Validator not running. Start with 'just validator' or 'just test'{{NC}}"; \
+    fi
+
+# Quick test - run just the runtime integration test (assumes validator is running)
+quick-test:
+    @if ! solana cluster-version >/dev/null 2>&1; then \
+        echo -e "{{RED}}Validator not running! Start with 'just validator' first{{NC}}"; \
+        exit 1; \
+    fi
+    @just _run-integration-test
+
+# Run anchor tests (if configured)
+anchor-test: build
+    cd {{E2E_DIR}} && anchor test
+
+# Help command with detailed descriptions
+help:
+    @echo -e "{{GREEN}}Valence E2E Test Commands:{{NC}}"
+    @echo ""
+    @echo -e "{{BLUE}}Main Commands:{{NC}}"
+    @echo "  just build              - Build all programs with Nix BPF builder"
+    @echo "  just build-cargo        - Build all programs with cargo (fallback)"
+    @echo "  just test               - Run complete e2e test suite"
+    @echo "  just test-debug         - Run tests with debug logging"
+    @echo "  just test-interactive   - Run tests keeping validator alive"
+    @echo "  just clean              - Clean build artifacts and test ledger"
+    @echo ""
+    @echo -e "{{BLUE}}Development Commands:{{NC}}"
+    @echo "  just validator          - Start local validator with programs"
+    @echo "  just quick-test         - Run integration test (validator must be running)"
+    @echo "  just logs               - Monitor validator logs"
+    @echo "  just programs           - Show deployed program information"
+    @echo "  just anchor-test        - Run anchor tests"
+    @echo ""
+    @echo -e "{{YELLOW}}Tips:{{NC}}"
+    @echo "  - Use 'just test-interactive' to keep validator running after tests"
+    @echo "  - Use 'just test-debug' for detailed logging"
+    @echo "  - Run 'just validator' in one terminal and 'just quick-test' in another"

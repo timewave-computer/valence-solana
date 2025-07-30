@@ -18,13 +18,13 @@
     ''}/bin/valence-node";
   };
   
-  # Launch complete local Valence environment
-  valence-local = {
+  # Launch local devnet with deployed programs for e2e testing
+  local-devnet = {
     type = "app";
-    program = "${pkgs.writeShellScriptBin "valence-local" ''
+    program = "${pkgs.writeShellScriptBin "local-devnet" ''
       set -e
       
-      echo "=== Launching Valence Local Development Environment ==="
+      echo "=== Launching Valence Local Devnet ==="
       echo ""
       
       # Colors for output
@@ -122,7 +122,7 @@
       # Build if any are missing
       if [ -z "$REGISTRY_SO" ] || [ -z "$SHARD_SO" ]; then
         echo "Programs not found, building..."
-        nix run .#build-onchain
+        nix run .#default
         
         # Set paths after build
         REGISTRY_SO="target/sbf-solana-solana/release/valence_registry.so"

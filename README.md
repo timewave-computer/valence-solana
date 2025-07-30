@@ -1,132 +1,187 @@
-# Valence - Minimal Secure Microkernel for Solana
+# Valence Solana
 
-A minimal microkernel providing mechanisms, not policies, for secure program execution on Solana. Valence implements session types for DeFi protocol choreography with verifier-based authorization delegation.
+A secure microkernel for that provides fundamental mechanisms for writing secure, performant, expressive Solana programs. It provides a minimal execution environment that provides foundational mechanisms for building complex, stateful applications without prescribing specific authorization models. The kernel implements an "on-chain linker" architecture that abstracts away Solana's account model while maintaining security through explicit account registration and capability-based access control.
 
-## Quick Start
+At its core, Valence provides Session Accounts—isolated execution contexts that maintain their own account registries, security configurations, and hierarchical namespace organization. The system offers a hybrid execution model with optimized direct operations for common tasks and flexible batch operations for complex, atomic multi-step workflows.
 
+The microkernel achieves security through simplicity: fixed-size data structures, explicit account pre-registration, transaction-level atomicity, and an opt-in `allow_unregistered_cpi` option. Valence follows a "mechanisms, not policies" philosophy, providing composable security primitives that protocols can combine into their own authorization models rather than enforcing rigid patterns.
+
+## Nix Development Commands
+
+### Development Environments
 ```bash
-# Clone repository
-git clone https://github.com/timewave-computer/valence-solana
-cd valence-solana
+# Enter main development shell (recommended for all development)
+nix develop --accept-flake-config
+# Includes: Rust, Solana CLI, Anchor, native dependencies, build tools
 
-# Enter development environment
-nix develop
+# Run minimal Solana validator only
+nix run .#node
+# Provides: Local test validator without development tools
 
-# Build programs
-cargo build-sbf
-
-# Run tests
-cargo test
+# Launch local devnet for e2e testing (validator + programs deployed)
+nix run .#local-devnet  
+# Provides: Test validator + deployed programs + configuration + ready for testing
 ```
+
+### Build Commands
+```bash
+# Build all programs using Nix BPF builder (recommended)
+just build
+# - Provides reproducible, deterministic builds
+# - Automatically handles Anchor stub files
+# - Uses consistent toolchain via zero.nix
+# - Outputs to target/deploy/
+
+# Build all workspace crates (off-chain)
+cargo build
+
+# Build Solana programs using cargo directly (fallback)
+just build-cargo
+# Note: individual program builds work best - workspace builds may have dependency conflicts
+
+# Build individual programs with Nix
+nix build .#valence-kernel --out-link target/nix-kernel
+nix build .#valence-functions --out-link target/nix-functions
+
+# Generate IDL files for programs
+nix run .#idl-build
+
+# Generate/update Cargo.nix for optimized builds
+nix run .#generate-cargo-nix
+```
+
+### Nix BPF Builder
+
+The project includes a custom Nix BPF builder that provides deterministic builds for Solana programs:
+
+**Features:**
+- Reproducible builds across different environments
+- Automatic handling of Anchor's `__client_accounts_crate.rs` stub requirement
+- Consistent toolchain versions via zero.nix integration
+- Pure build environment with all dependencies pre-configured
+- Automatic output to `target/deploy/` for compatibility
+
+**Usage:**
+```bash
+# Build all programs (default in justfile)
+just build
+
+# Build specific programs
+nix build .#valence-kernel
+nix build .#valence-functions
+
+# Use in CI/CD
+nix build .#bpf-programs
+```
+
+The builder automatically creates required stub files during the build process, eliminating the need to commit generated files to version control.
+
+### Available Tools in Nix Shell
+- **solana**: Solana CLI and validator tools
+- **anchor**: Anchor framework for Solana development  
+- **cargo**: Rust package manager with nightly toolchain
+- **crate2nix**: Generate Cargo.nix for optimized Nix builds
+- **Native dependencies**: Automatically configured build tools (cmake, clang, compression libraries)
+- **just**: Task runner for common development commands
+
+The Nix environment automatically configures all required environment variables for building native dependencies and resolves system-specific build issues.
+
+### Environment Differences
+- **`nix develop`**: Full development environment with all tools and dependencies
+- **`nix run .#node`**: Minimal validator-only environment (no development tools)
+- **`nix run .#local-devnet`**: Local devnet for e2e testing (validator + deployed programs + configuration)
 
 ## Architecture
 
-Valence implements a microkernel architecture where the core provides fundamental mechanisms while all policies live in user-deployed verifier programs.
+Valence implements a hybrid execution model with two complementary paths for different use cases, built on a foundation of session-based isolation and pre-registered account access.
 
-### Core Components (`valence-core`)
+### Core Components
 
-The kernel provides essential mechanisms that build upon each other:
+**`programs/valence-kernel`** - The minimal execution kernel:
 
-**1. Shards** - Developer entry point for protocol logic
-- Deploy your protocol's business logic as executable code
-- Code integrity verified through cryptographic hashing
-- Execution requires authorization from session accounts
-- Provides isolated environment for protocol-specific operations
+**1. Sessions** - Isolated execution contexts
+- Maintain namespace hierarchy (e.g., "defi/lending/alice")
+- Track account borrowing state with efficient bitmap
+- Reference guard configuration and Account Lookup Table (ALT)
+- Support clean ownership transfer through invalidation
 
-**2. Accounts** - Building blocks for authorization
-- Fundamental unit of authorization in the system
-- Each account specifies a verifier program that controls its usage
-- Lifecycle management through usage counts and time-based expiration
-- 64 bytes of metadata for storing protocol-specific state
-- Nonce-based replay protection ensures operations execute exactly once
+**2. Account Lookup Table (ALT)** - Pre-registered account access
+- Store up to 16 borrowable accounts with permissions
+- Register up to 16 programs for CPI
+- Eliminate Solana's `remaining_accounts` pattern
+- Provide strong security boundaries
 
-**3. Sessions** - Orchestration containers with shared context
-- Container that manages collections of accounts (up to 16)
-- Provides 256 bytes of shared verification data accessible to all verifiers
-- Enforces linear type semantics through move operations (transfer ownership once)
-- Supports hierarchical composition for complex multi-protocol operations
-- Enables atomic operations across all accounts in the session
+**3. Hybrid Execution Model** - Two first-class execution paths:
+- **Direct Operations**: Optimized single-purpose instructions (spl_transfer, manage_alt, etc.)
+- **Batch Operations**: Flexible execution engine for complex, dynamic operations
+- Both paths are intentional design choices, not legacy artifacts
 
-**4. Verifiers** - External authorization policies
-- User-deployed programs that implement authorization logic
-- Called via CPI when accounts are used
-- Have read access to account data and shared session context
-- Return success/failure to allow or deny operations
-- Enable policy innovation without modifying the kernel
+**4. Function Registry** - Hardcoded function resolution
+- Map function IDs to verified program addresses
+- Enable secure CPI to approved implementations
+- Support extensibility within security constraints
 
-### Extensions (`valence-extensions`)
+**`programs/valence-functions`** - Core function implementations:
+- Reference function implementations for common patterns
+- Simplified runtime environment aligned with kernel
+- Example functions for math, token validation, ZK verification
 
-Optional utilities and patterns:
-- **Math**: Fixed-point arithmetic (64.64 representation)
-- **Events**: Structured event emission helpers
-- **Batching**: Transaction batching patterns
-- **Example Verifiers**: Reference implementations (owner, linear lending, curve)
+**`crates/valence-sdk`** - Client development kit:
+- Session management and lifecycle
+- Transaction building for both execution paths
+- Move semantics support
+- Compute unit optimization
 
-### How It Works
+**`crates/valence-registry`** - Client-side registry utilities:
+- Function and shard registry management
+- IDL generation for integration
+- Compatibility checking
 
-1. **Deploy Verifiers**: Implement your authorization policies as separate programs
-2. **Deploy Shard**: Upload your protocol logic that will execute operations
-3. **Create Session**: Initialize a container for managing related accounts
-4. **Add Accounts**: Create accounts within the session, each linked to a verifier
-5. **Execute Shard**: Run your protocol logic with account authorization
-6. **Atomic Operations**: Session automatically ensures all-or-nothing execution
+**`crates/valence-runtime`** - Off-chain coordination:
+- Session runtime management
+- Transaction orchestration
+- Event monitoring
+- Security validation
 
-The microkernel never makes authorization decisions - all policies are implemented in verifiers. This separation enables innovation in user space while maintaining a stable, minimal core.
+### Design
 
-See [Architecture Documentation](docs/architecture.md) for detailed design
+The kernel follows a "mechanisms, not policies" approach, providing:
+- Provides fundamental security primitives
+- Does not prescribe authorization models
+- Enables protocol composition
+- Maintains practical usability
+
+See the [architecture documentation](docs/000_kernel_architecture.md) for detailed design rationale.
 
 ## Design Principles
 
-1. **Mechanisms, not policies** - Core provides building blocks
-2. **Zero-copy by default** - All state uses fixed-size fields
-3. **Minimal dynamic allocations** - Limited to session account list
-4. **Single responsibility** - Each instruction does one thing
-5. **Composition over inheritance** - Build complexity in userspace
+1. **Mechanisms, not policies** - Provide primitives without prescribing usage
+2. **Session-based isolation** - Each session has its own security context
+3. **Pre-registered access** - Explicit account declaration for security
+4. **Hybrid execution** - Direct operations for simple tasks, batch for complex flows
+5. **Practical security** - Balance theoretical purity with real-world usability
 
-## Usage
+### Function Examples (in `programs/valence-functions/`)
+- Reference implementations for common function patterns
+- Math operations, token validation, ZK verification
+- Examples of kernel integration
 
-1. Deploy a verifier program (see example verifiers in `programs/valence-extensions/src/examples/`)
-2. Create a session with your verifier
-3. Deploy shard code for your logic
-4. Execute shards using sessions for authorization
+## Development
 
-## Extensions
+**Workspace Structure:**
+- `programs/valence-kernel` - Core execution kernel
+- `programs/valence-functions` - Reference function implementations  
+- `crates/valence-sdk` - Client SDK for kernel interaction
+- `crates/valence-registry` - Client-side registry utilities
+- `crates/valence-runtime` - Off-chain coordination service
 
-Optional features available as a library:
-- `math` - Fixed-point arithmetic operations
-- `events` - Structured event emission
-- `batching` - Atomic batch execution
+**Key Concepts:**
+- **Sessions**: Isolated execution contexts with namespaces
+- **ALT**: Pre-registered account access (no `remaining_accounts`)
+- **Direct Operations**: Optimized single-purpose instructions
+- **Batch Operations**: Flexible execution for complex flows
+- **Function Registry**: Hardcoded mapping of IDs to programs
 
-Enable features in Cargo.toml:
-```toml
-valence-extensions = { version = "0.1", features = ["math", "events"] }
-```
-
-## Examples
-
-### Verifier Examples (in `programs/valence-extensions/src/examples/`)
-- `owner_verifier.rs` - Simple owner-only verifier
-- `linear_lending_verifier.rs` - Linear type enforcement for lending
-- `multidimensional_curve_verifier.rs` - Complex curve verification
-
-### Integration Examples (in `examples/`)
-- `composable_sessions.rs` - Demonstrates session composition patterns
-- `lending_with_voucher.rs` - Example lending protocol with voucher system
-
-## Build
-
-```bash
-# Using Nix development shell
-nix develop -c cargo build-sbf
-
-# Or using the provided build script
-nix run .#build
-```
-
-For more build options, see the development environment documentation.
-
-## Documentation
-
-- [Architecture Guide](docs/architecture.md) - System design and concepts
-- [Developer Guide](docs/developer-guide.md) - Building with Valence
-- [Security Model](docs/security-model.md) - Security analysis and best practices
+**Generated Artifacts:**
+- `target/idl/valence_kernel.json` - Program IDL for client integration
+- `target/deploy/*.so` - Deployable Solana program binaries

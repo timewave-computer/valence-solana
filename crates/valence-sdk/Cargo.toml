@@ -1,0 +1,17 @@
+[package]
+name = "valence-sdk"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anchor-lang = { workspace = true }
+anchor-client = { workspace = true }
+solana-sdk = { workspace = true }
+valence-kernel = { path = "../../programs/valence-kernel", features = ["cpi"] }
+valence-functions = { path = "../../programs/valence-functions" }
+spl-token = { workspace = true }
+thiserror = "1.0"
+tokio = { version = "1", features = ["full"] }
+borsh = { workspace = true }
+paste = "1.0"
+chrono = "0.4"
