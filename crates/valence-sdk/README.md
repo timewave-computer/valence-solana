@@ -1,6 +1,6 @@
 # Valence SDK
 
-A Rust SDK for interacting with Valence protocol, providing a clean, ergonomic interface for session management and kernel operations.
+A Rust SDK for interacting with Valence protocol, providing an ergonomic interface for session management and kernel operations.
 
 ## Features
 

@@ -81,7 +81,6 @@ pub fn register_token_account(
     // with a properly constructed ManageALT context
     msg!("Would register account: {} with permissions: {}", 
         account_to_add.address, permissions);
-    
     Ok(())
 }
 

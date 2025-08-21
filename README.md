@@ -1,8 +1,8 @@
 # Valence Solana
 
-A secure microkernel for that provides fundamental mechanisms for writing secure, performant, expressive Solana programs. It provides a minimal execution environment that provides foundational mechanisms for building complex, stateful applications without prescribing specific authorization models. The kernel implements an "on-chain linker" architecture that abstracts away Solana's account model while maintaining security through explicit account registration and capability-based access control.
+A secure microkernel that provides fundamental mechanisms for writing secure, performant, expressive Solana programs. It offers a minimal execution environment with foundational mechanisms for building complex, stateful applications without prescribing specific authorization models. The kernel implements an on-chain linker that abstracts away Solana's account model while maintaining security through explicit account registration and capability-based access control.
 
-At its core, Valence provides Session Accounts—isolated execution contexts that maintain their own account registries, security configurations, and hierarchical namespace organization. The system offers a hybrid execution model with optimized direct operations for common tasks and flexible batch operations for complex, atomic multi-step workflows.
+At its core, Valence provides Session Accounts: isolated execution contexts that maintain their own account registries, security configurations, and hierarchical namespace organization. The system offers a hybrid execution model with optimized direct operations for common tasks and flexible batch operations for complex, atomic multi-step workflows.
 
 The microkernel achieves security through simplicity: fixed-size data structures, explicit account pre-registration, transaction-level atomicity, and an opt-in `allow_unregistered_cpi` option. Valence follows a "mechanisms, not policies" philosophy, providing composable security primitives that protocols can combine into their own authorization models rather than enforcing rigid patterns.
 
