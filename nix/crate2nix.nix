@@ -9,6 +9,7 @@ in {
   # Generate or update Cargo.nix for optimized Nix builds
   generate-cargo-nix = {
     type = "app";
+    meta.description = "Generate Cargo.nix for faster Nix builds";
     program = "${pkgs.writeShellScriptBin "generate-cargo-nix" ''
       set -e
       

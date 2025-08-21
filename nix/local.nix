@@ -7,6 +7,7 @@
   # Run local Solana node (without dev tools)
   node = {
     type = "app";
+    meta.description = "Run local Solana test validator";
     program = "${pkgs.writeShellScriptBin "valence-node" ''
       set -e
       
@@ -21,6 +22,7 @@
   # Launch local devnet with deployed programs for e2e testing
   local-devnet = {
     type = "app";
+    meta.description = "Launch complete local development environment";
     program = "${pkgs.writeShellScriptBin "local-devnet" ''
       set -e
       

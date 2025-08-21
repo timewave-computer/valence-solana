@@ -12,6 +12,7 @@ in {
   # IDL builder using rust-overlay nightly - accepts crate name as argument
   idl-build = {
     type = "app";
+    meta.description = "Generate Anchor IDL files for Solana programs";
     program = "${pkgs.writeShellScriptBin "idl-build" ''
       set -e
       
