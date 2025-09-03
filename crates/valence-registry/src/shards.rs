@@ -139,6 +139,12 @@ pub struct ShardRegistry {
     function_providers: HashMap<u64, Vec<Pubkey>>,
 }
 
+impl Default for ShardRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ShardRegistry {
     /// Create a new shard registry
     pub fn new() -> Self {

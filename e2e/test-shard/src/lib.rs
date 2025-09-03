@@ -76,7 +76,7 @@ pub mod test_shard {
         let params = CreateSessionParams {
             namespace_path,
             namespace_path_len: namespace_bytes.len() as u16,
-            metadata: [0u8; 64], // Empty metadata for testing
+            metadata: [0u8; 32], // Empty metadata for testing
             parent_session: None, // No parent session
         };
 
@@ -85,12 +85,12 @@ pub mod test_shard {
             RegisteredAccount {
                 address: ctx.accounts.token_account_a.key(),
                 permissions: ACCESS_MODE_READ_WRITE,
-                label: *b"Token Account A                 ",
+                label: *b"TokenAAA",
             },
             RegisteredAccount {
                 address: ctx.accounts.token_account_b.key(),
                 permissions: ACCESS_MODE_READ_WRITE,
-                label: *b"Token Account B                 ",
+                label: *b"TokenBBB",
             },
         ];
 
@@ -98,7 +98,7 @@ pub mod test_shard {
             RegisteredProgram {
                 address: ctx.accounts.token_program.key(),
                 active: true,
-                label: *b"SPL Token Program               ",
+                label: *b"SPLToken",
             },
         ];
 

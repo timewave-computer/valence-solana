@@ -193,7 +193,7 @@ impl SessionState {
             shard: Pubkey::new_unique(),
             parent_session: None,
             usage_count: 0,
-            metadata: [0u8; 64],
+            metadata: [0u8; 32],
             created_at: 0,
             updated_at: 0,
             borrowed_accounts: Default::default(),
@@ -203,6 +203,8 @@ impl SessionState {
             nonce: 0,
             child_accounts: [Pubkey::default(); 8],
             child_count: 0,
+            child_sessions: [Pubkey::default(); 8],
+            child_session_count: 0,
         };
         
         Ok(SessionState {

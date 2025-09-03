@@ -160,6 +160,9 @@ pub enum KernelError {
     
     #[msg("Account already exists")]
     AccountAlreadyExists, // 6515
+    
+    #[msg("Too many child sessions")]
+    TooManyChildSessions, // 6516
 
     // ===== Performance Errors (6600-6699) =====
     #[msg("Compute budget exceeded")]

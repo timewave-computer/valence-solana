@@ -67,7 +67,6 @@ impl Environment {
 // ================================
 
 /// Core function trait and infrastructure
-
 /// Individual function implementations
 pub mod functions;
 

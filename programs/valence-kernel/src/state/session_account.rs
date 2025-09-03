@@ -88,8 +88,8 @@ pub struct Session {
     /// Usage counter for rate limiting
     pub usage_count: u64,
     
-    /// Shard-specific metadata
-    pub metadata: [u8; 64],
+    /// Shard-specific metadata (reduced for stack optimization)
+    pub metadata: [u8; 32],
     
     /// Creation timestamp
     pub created_at: i64,
@@ -97,8 +97,8 @@ pub struct Session {
     /// Last update timestamp
     pub updated_at: i64,
     
-    /// Currently borrowed accounts (up to 8 for minimal implementation)
-    pub borrowed_accounts: [SessionBorrowedAccount; 8],
+    /// Currently borrowed accounts (up to 4 for stack optimization)
+    pub borrowed_accounts: [SessionBorrowedAccount; 4],
     
     /// Bitmap tracking which slots are occupied (bit n = slot n occupied)
     /// OPTIMIZATION: Bitmap allows O(1) lookups and atomic updates
@@ -117,11 +117,17 @@ pub struct Session {
     /// Nonce to invalidate cached references after ownership transfer
     pub nonce: u64,
     
-    /// Child accounts created by this session (up to 8)
+    /// Child accounts created by this session (up to 8 - aligned with EVM)
     pub child_accounts: [Pubkey; 8],
     
     /// Number of child accounts created
     pub child_count: u8,
+    
+    /// Child sessions created from this session (up to 8 - aligned with EVM)
+    pub child_sessions: [Pubkey; 8],
+    
+    /// Number of child sessions created
+    pub child_session_count: u8,
 }
 
 impl Session {
@@ -133,16 +139,18 @@ impl Session {
         32 +         // shard
         1 + 32 +     // Option<parent_session>
         8 +          // usage_count
-        64 +         // metadata
+        32 +         // metadata (reduced)
         8 +          // created_at
         8 +          // updated_at
-        8 * 41 +     // borrowed_accounts array
+        4 * 41 +     // borrowed_accounts array (reduced)
         1 +          // borrowed_bitmap
         1 +          // cpi_depth
         1 +          // active
         8 +          // nonce
-        8 * 32 +     // child_accounts array
-        1;           // child_count
+        8 * 32 +     // child_accounts array (aligned with EVM)
+        1 +          // child_count
+        8 * 32 +     // child_sessions array (aligned with EVM)
+        1;           // child_session_count
 
     /// Calculate space for account allocation
     #[must_use]
@@ -223,7 +231,7 @@ impl Session {
 
     /// Release all borrowed accounts
     pub fn release_all_accounts(&mut self) {
-        self.borrowed_accounts = [SessionBorrowedAccount::EMPTY; 8];
+        self.borrowed_accounts = [SessionBorrowedAccount::EMPTY; 4];
         self.borrowed_bitmap = 0;
     }
 
@@ -233,7 +241,7 @@ impl Session {
     }
 
     /// Update session metadata
-    pub fn set_metadata(&mut self, metadata: [u8; 64], clock: &Clock) {
+    pub fn set_metadata(&mut self, metadata: [u8; 32], clock: &Clock) {
         self.metadata = metadata;
         self.updated_at = clock.unix_timestamp;
     }
@@ -271,13 +279,15 @@ impl Session {
             metadata: params.metadata,
             created_at: clock.unix_timestamp,
             updated_at: clock.unix_timestamp,
-            borrowed_accounts: [SessionBorrowedAccount::EMPTY; 8],
+            borrowed_accounts: [SessionBorrowedAccount::EMPTY; 4],
             borrowed_bitmap: 0,
             cpi_depth: 0,
             active: true,
             nonce: 0,
             child_accounts: [Pubkey::default(); 8],
             child_count: 0,
+            child_sessions: [Pubkey::default(); 8],
+            child_session_count: 0,
         })
     }
     
@@ -332,6 +342,24 @@ impl Session {
         Err(crate::errors::KernelError::InvalidParameters.into())
     }
     
+    /// Track a new child session
+    pub fn track_child_session(&mut self, child_session: Pubkey) -> Result<()> {
+        if self.child_session_count as usize >= 8 {
+            return Err(crate::errors::KernelError::TooManyChildSessions.into());
+        }
+        
+        // Check if already tracked
+        for i in 0..self.child_session_count as usize {
+            if self.child_sessions[i] == child_session {
+                return Ok(());
+            }
+        }
+        
+        self.child_sessions[self.child_session_count as usize] = child_session;
+        self.child_session_count += 1;
+        Ok(())
+    }
+    
     /// Check if an account is a child of this session
     #[must_use]
     pub fn is_child_account(&self, account: &Pubkey) -> bool {
@@ -345,15 +373,15 @@ impl Session {
 // Session Creation Parameters
 // ================================
 
-/// Parameters for creating a new session with namespace
+/// Parameters for creating a new session with namespace (optimized for stack usage)
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateSessionParams {
     /// Fixed-size namespace path
     pub namespace_path: [u8; 128],
     /// Length of the actual path
     pub namespace_path_len: u16,
-    /// Initial metadata
-    pub metadata: [u8; 64],
+    /// Initial metadata (reduced for stack optimization)
+    pub metadata: [u8; 32],
     /// Optional parent session
     pub parent_session: Option<Pubkey>,
 }

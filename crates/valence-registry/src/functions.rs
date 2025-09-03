@@ -113,6 +113,12 @@ pub struct FunctionRegistry {
     tag_index: HashMap<String, Vec<u64>>,
 }
 
+impl Default for FunctionRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FunctionRegistry {
     /// Create a new function registry
     pub fn new() -> Self {

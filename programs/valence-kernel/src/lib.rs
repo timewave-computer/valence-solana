@@ -58,8 +58,8 @@ pub const SESSION_ACCOUNT_SEED: &[u8] = b"session";
 // 3. Implementing pagination patterns in your application
 
 /// Maximum number of accounts that can be registered per category in SessionAccountLookup
-/// (borrowable, programs, guards). Total capacity = 3 * MAX_REGISTERED_ACCOUNTS
-pub const MAX_REGISTERED_ACCOUNTS: usize = 8;
+/// (borrowable, programs, guards). Reduced for stack optimization.
+pub const MAX_REGISTERED_ACCOUNTS: usize = 4;
 
 /// Maximum number of accounts that can be referenced in a single batch operation
 pub const MAX_BATCH_ACCOUNTS: usize = 12;
@@ -72,6 +72,18 @@ pub const MAX_OPERATION_DATA_SIZE: usize = 64;
 
 /// Maximum number of account indices that can be passed to a CPI call
 pub const MAX_CPI_ACCOUNT_INDICES: usize = 12;
+
+/// Maximum direct children per session - aligned with EVM
+pub const MAX_DIRECT_CHILDREN: u8 = 8;
+
+/// Maximum depth for cascading invalidation to prevent stack overflow - aligned with EVM
+pub const MAX_CASCADE_DEPTH: u8 = 4;
+
+/// Minimum compute units required to continue cascading
+pub const MIN_COMPUTE_UNITS_FOR_CASCADE: u64 = 50_000;
+
+/// Maximum sessions to invalidate in a single batch
+pub const MAX_BATCH_INVALIDATION_SIZE: usize = 10;
 
 
 // ================================
@@ -115,22 +127,59 @@ pub mod valence_kernel {
         initial_borrowable: Vec<RegisteredAccount>,
         initial_programs: Vec<RegisteredProgram>,
     ) -> Result<()> {
-        instructions::create_session_account(ctx, shard, params, &initial_borrowable, &initial_programs)
+        // Limit parameter sizes to prevent stack overflow (use truncated slices)
+        let borrowable_slice = if initial_borrowable.len() > MAX_REGISTERED_ACCOUNTS { 
+            &initial_borrowable[..MAX_REGISTERED_ACCOUNTS] 
+        } else { 
+            &initial_borrowable 
+        };
+        let programs_slice = if initial_programs.len() > MAX_REGISTERED_ACCOUNTS { 
+            &initial_programs[..MAX_REGISTERED_ACCOUNTS] 
+        } else { 
+            &initial_programs 
+        };
+        
+        instructions::create_session_account(ctx, shard, params, borrowable_slice, programs_slice)
     }
     
-    /// Unified account lookup table management
+    /// Unified account lookup table management (fixed for Anchor compatibility)
     pub fn manage_alt(
-        ctx: Context<ManageALT>,
+        ctx: Context<ManageAlt>,
         add_borrowable: Vec<RegisteredAccount>,
         add_programs: Vec<RegisteredProgram>,
         remove_accounts: Vec<Pubkey>,
     ) -> Result<()> {
-        instructions::manage_alt(ctx, &add_borrowable, &add_programs, &remove_accounts)
+        // Limit sizes to prevent stack overflow and respect contract constraints
+        let borrowable_slice = if add_borrowable.len() > MAX_REGISTERED_ACCOUNTS { 
+            &add_borrowable[..MAX_REGISTERED_ACCOUNTS] 
+        } else { 
+            &add_borrowable 
+        };
+        let programs_slice = if add_programs.len() > MAX_REGISTERED_ACCOUNTS { 
+            &add_programs[..MAX_REGISTERED_ACCOUNTS] 
+        } else { 
+            &add_programs 
+        };
+        let remove_slice = if remove_accounts.len() > MAX_REGISTERED_ACCOUNTS { 
+            &remove_accounts[..MAX_REGISTERED_ACCOUNTS] 
+        } else { 
+            &remove_accounts 
+        };
+        
+        instructions::manage_alt(ctx, borrowable_slice, programs_slice, remove_slice)
     }
     
     /// Invalidate a session for move semantics
     pub fn invalidate_session(ctx: Context<InvalidateSession>) -> Result<()> {
         instructions::invalidate_session(ctx)
+    }
+    
+    /// Invalidate multiple sessions in a single batch operation
+    pub fn invalidate_session_batch(
+        ctx: Context<InvalidateSessionBatch>,
+        session_keys: Vec<Pubkey>,
+    ) -> Result<()> {
+        instructions::invalidate_session_batch(ctx, &session_keys)
     }
     
     /// Execute a batch of operations using the on-chain linker
@@ -195,7 +244,14 @@ pub mod valence_kernel {
 // Type Exports
 // ================================
 
-// Type exports
+// Error types
 pub use crate::errors::KernelError;
+
+// State types
+pub use crate::state::{Session, SessionBorrowedAccount, GuardAccount, SessionAccountLookup};
+pub use crate::state::{RegisteredAccount, RegisteredProgram, CreateSessionParams};
+
+// Namespace types
+pub use crate::namespace::{NamespacePath, Namespace};
 
 

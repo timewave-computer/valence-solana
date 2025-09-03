@@ -186,12 +186,12 @@ pub fn simulate_session_setup() -> std::result::Result<(), Box<dyn Error>> {
         RegisteredAccount {
             address: user_account,
             permissions: ACCESS_MODE_READ_WRITE,
-            label: *b"user_wallet_account_____________",
+            label: *b"usr_wllt",
         },
         RegisteredAccount {
             address: recipient_account,
             permissions: ACCESS_MODE_READ_WRITE,
-            label: *b"recipient_account_______________",
+            label: *b"recipnt_",
         },
     ];
 
@@ -199,7 +199,7 @@ pub fn simulate_session_setup() -> std::result::Result<(), Box<dyn Error>> {
         RegisteredProgram {
             address: zk_verifier_program,
             active: true,
-            label: *b"zk_verifier_program_____________",
+            label: *b"zkverify",
         },
     ];
 
