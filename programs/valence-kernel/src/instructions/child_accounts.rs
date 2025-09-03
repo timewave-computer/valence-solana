@@ -131,7 +131,7 @@ pub struct CreateChildAccount<'info> {
         mut,
         constraint = session.active @ KernelError::SessionInactive
     )]
-    pub session: Account<'info, Session>,
+    pub session: Box<Account<'info, Session>>,
     
     /// Child account being created (must be uninitialized PDA)
     /// CHECK: PDA validation is performed in the instruction handler
@@ -199,7 +199,7 @@ pub struct CloseChildAccount<'info> {
         mut,
         constraint = session.owner == authority.key() @ KernelError::Unauthorized
     )]
-    pub session: Account<'info, Session>,
+    pub session: Box<Account<'info, Session>>,
     
     /// Child account being closed
     /// CHECK: Child account validation is performed in the instruction handler

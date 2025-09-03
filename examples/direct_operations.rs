@@ -74,7 +74,7 @@ pub fn register_token_account(
     let account_to_add = RegisteredAccount {
         address: ctx.accounts.token_account.key(),
         permissions,
-        label: *b"user_token_account              ",
+        label: *b"usertkn\0",
     };
     
     // This example shows the concept - in practice, you'd call manage_alt

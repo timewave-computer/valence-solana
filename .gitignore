@@ -60,6 +60,7 @@ devenv/
 deployment.env
 valence.env
 .valence-env
+*.pid
 
 # Keys
 *.key

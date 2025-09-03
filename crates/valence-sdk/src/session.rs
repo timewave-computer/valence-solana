@@ -6,7 +6,6 @@ use valence_kernel::{
     OperationBatch,
     KernelOperation,
     MAX_BATCH_ACCOUNTS, MAX_BATCH_OPERATIONS, MAX_CPI_ACCOUNT_INDICES, MAX_OPERATION_DATA_SIZE,
-    ACCESS_MODE_READ, ACCESS_MODE_WRITE, ACCESS_MODE_READ_WRITE,
 };
 
 /// Builder for creating sessions
@@ -17,7 +16,7 @@ pub struct SessionBuilder<'a> {
     allow_unregistered_cpi: bool,
     initial_borrowable: Vec<RegisteredAccount>,
     initial_programs: Vec<RegisteredProgram>,
-    metadata: [u8; 64],
+    metadata: [u8; 32],
 }
 
 impl<'a> SessionBuilder<'a> {
@@ -30,7 +29,7 @@ impl<'a> SessionBuilder<'a> {
             allow_unregistered_cpi: false,
             initial_borrowable: Vec::new(),
             initial_programs: Vec::new(),
-            metadata: [0u8; 64],
+            metadata: [0u8; 32],
         }
     }
 
@@ -59,7 +58,7 @@ impl<'a> SessionBuilder<'a> {
     }
 
     /// Set metadata
-    pub fn metadata(mut self, metadata: [u8; 64]) -> Self {
+    pub fn metadata(mut self, metadata: [u8; 32]) -> Self {
         self.metadata = metadata;
         self
     }
@@ -273,6 +272,12 @@ impl<'a> SessionHandle<'a> {
 pub struct BatchBuilder {
     accounts: Vec<Pubkey>,
     operations: Vec<KernelOperation>,
+}
+
+impl Default for BatchBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BatchBuilder {

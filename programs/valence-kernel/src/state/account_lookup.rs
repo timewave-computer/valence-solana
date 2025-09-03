@@ -51,8 +51,8 @@ pub struct SessionAccountLookup {
     pub version: u8,
 }
 
-/// A registered account with metadata
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+/// A registered account with metadata (optimized for stack usage)
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug)]
 pub struct RegisteredAccount {
     /// The account's public key
     pub address: Pubkey,
@@ -60,12 +60,16 @@ pub struct RegisteredAccount {
     /// Permissions bitmap (read, write, etc.)
     pub permissions: u8,
     
-    /// Optional label for debugging
-    pub label: [u8; 32],
+    /// Compact label for debugging (reduced from 32 to 8 bytes)
+    pub label: [u8; 8],
 }
 
-/// A registered program for CPI
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+impl RegisteredAccount {
+    pub const SIZE: usize = 32 + 1 + 8; // address + permissions + label = 41 bytes
+}
+
+/// A registered program for CPI (optimized for stack usage)
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug)]
 pub struct RegisteredProgram {
     /// The program's public key
     pub address: Pubkey,
@@ -73,8 +77,12 @@ pub struct RegisteredProgram {
     /// Whether this program is currently active
     pub active: bool,
     
-    /// Optional label for debugging
-    pub label: [u8; 32],
+    /// Compact label for debugging (reduced from 32 to 8 bytes)
+    pub label: [u8; 8],
+}
+
+impl RegisteredProgram {
+    pub const SIZE: usize = 32 + 1 + 8; // address + active + label = 41 bytes
 }
 
 impl SessionAccountLookup {
@@ -97,12 +105,12 @@ impl SessionAccountLookup {
         const DEFAULT_ACCOUNT: RegisteredAccount = RegisteredAccount {
             address: Pubkey::new_from_array([0u8; 32]),
             permissions: 0,
-            label: [0u8; 32],
+            label: [0u8; 8],
         };
         const DEFAULT_PROGRAM: RegisteredProgram = RegisteredProgram {
             address: Pubkey::new_from_array([0u8; 32]),
             active: false,
-            label: [0u8; 32],
+            label: [0u8; 8],
         };
         
         Self {
@@ -123,7 +131,7 @@ impl SessionAccountLookup {
         &mut self,
         address: Pubkey,
         permissions: u8,
-        label: [u8; 32],
+        label: [u8; 8],
     ) -> Result<()> {
         require!(
             (self.borrowable_count as usize) < MAX_REGISTERED_ACCOUNTS,
@@ -151,7 +159,7 @@ impl SessionAccountLookup {
     pub fn register_program(
         &mut self,
         address: Pubkey,
-        label: [u8; 32],
+        label: [u8; 8],
     ) -> Result<()> {
         require!(
             (self.program_count as usize) < MAX_REGISTERED_ACCOUNTS,
@@ -180,7 +188,7 @@ impl SessionAccountLookup {
         &mut self,
         address: Pubkey,
         permissions: u8,
-        label: [u8; 32],
+        label: [u8; 8],
     ) -> Result<()> {
         require!(
             (self.guard_count as usize) < MAX_REGISTERED_ACCOUNTS,
@@ -229,6 +237,29 @@ impl SessionAccountLookup {
             .position(|a| a.address == *address)
     }
     
+    /// Remove a borrowable account by address
+    pub fn remove_account(&mut self, address: &Pubkey) -> Result<()> {
+        let active_slice = &mut self.borrowable_accounts[..self.borrowable_count as usize];
+        
+        if let Some(index) = active_slice.iter().position(|a| a.address == *address) {
+            // Shift remaining accounts left to fill the gap
+            for i in index..(self.borrowable_count as usize - 1) {
+                self.borrowable_accounts[i] = self.borrowable_accounts[i + 1];
+            }
+            
+            // Clear the last slot and decrement count
+            self.borrowable_accounts[self.borrowable_count as usize - 1] = RegisteredAccount {
+                address: Pubkey::new_from_array([0u8; 32]),
+                permissions: 0,
+                label: [0u8; 8],
+            };
+            self.borrowable_count -= 1;
+        }
+        // Note: We don't error if account isn't found - this is idempotent
+        
+        Ok(())
+    }
+
     /// Validate that an account is registered as borrowable
     pub fn validate_borrowable(&self, address: &Pubkey, required_permissions: u8) -> Result<()> {
         let account = self.borrowable_accounts[..self.borrowable_count as usize]
@@ -245,10 +276,3 @@ impl SessionAccountLookup {
     }
 }
 
-impl RegisteredAccount {
-    pub const SIZE: usize = 32 + 1 + 32; // address + permissions + label
-}
-
-impl RegisteredProgram {
-    pub const SIZE: usize = 32 + 1 + 32; // address + active + label
-}
